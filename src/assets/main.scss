@@ -14,7 +14,8 @@ body {
 }
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 button {
@@ -26,7 +27,8 @@ button:disabled {
 }
 button:focus-visible,
 input:focus-visible,
-select:focus-visible {
+select:focus-visible,
+textarea:focus-visible {
   outline: 3px solid #e1a55c;
   outline-offset: 3px;
 }
@@ -143,6 +145,9 @@ p {
   margin-bottom: 14px;
 }
 .nav-button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   border: 0;
   background: transparent;
   color: #718076;
@@ -172,6 +177,86 @@ p {
 .content {
   padding: 48px clamp(24px, 5vw, 78px) 22px;
   min-width: 0;
+}
+.profile-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: -18px 0 34px;
+  padding: 11px 14px;
+  border: 1px solid #e6ebe2;
+  border-radius: 14px;
+  background: #fff;
+}
+.profile-avatar {
+  display: grid;
+  place-items: center;
+  width: 37px;
+  height: 37px;
+  border-radius: 11px;
+  color: #fff;
+  background: #789e73;
+  font-weight: 800;
+  flex: none;
+}
+.profile-copy {
+  min-width: 0;
+  flex: 1;
+}
+.profile-copy strong,
+.profile-copy small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.profile-copy strong {
+  font-size: 0.85rem;
+}
+.profile-copy small {
+  color: #859387;
+  font-size: 0.72rem;
+  margin-top: 2px;
+}
+.profile-state {
+  color: #638560;
+  background: #edf5e9;
+  border-radius: 99px;
+  padding: 6px 10px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.profile-exit,
+.dialog-close {
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: #728374;
+  padding: 8px;
+  border-radius: 8px;
+}
+.profile-exit:hover,
+.dialog-close:hover {
+  background: #f0f4ef;
+}
+.month-heading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 13px;
+  color: #688a65;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+.week-total {
+  border-top: 1px solid #ffffff43;
+  color: #e8f1e7;
+  font-size: 0.73rem;
+  margin-top: 14px;
+  padding-top: 10px;
 }
 .page-heading,
 .section-heading {
@@ -336,20 +421,40 @@ p {
   padding-bottom: 13px;
   margin-bottom: 13px;
 }
-.day-heading > div > span {
+.day-open > span {
   display: block;
   color: #8b998e;
   font-size: 0.78rem;
   font-weight: 700;
   margin-bottom: 5px;
 }
-.day-heading strong {
+.day-open strong {
   font: 600 1.4rem Outfit;
 }
 .day-heading small {
   font-size: 0.8rem;
   color: #8f9c90;
   text-transform: uppercase;
+}
+.day-open {
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 0;
+  color: inherit;
+}
+.day-open:hover strong {
+  color: #668c61;
+}
+.day-detail-icon {
+  border: 0;
+  background: #f2f6f0;
+  color: #73926b;
+  width: 27px;
+  height: 27px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
 }
 .today-pill {
   background: #e4f0df;
@@ -370,12 +475,11 @@ p {
   gap: 9px;
   cursor: pointer;
   min-width: 0;
-}
-.task input {
-  position: absolute;
-  opacity: 0;
-  width: 19px;
-  height: 19px;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  padding: 3px 0;
+  color: inherit;
 }
 .check-visual {
   width: 19px;
@@ -387,10 +491,6 @@ p {
   color: transparent;
   flex: none;
   font-size: 0.8rem;
-}
-.task input:focus-visible + .check-visual {
-  outline: 3px solid #e1a55c;
-  outline-offset: 3px;
 }
 .task.done .check-visual {
   background: #78a06e;
@@ -412,6 +512,119 @@ p {
 .task.done .task-title {
   text-decoration: line-through;
   color: #879487;
+}
+.task:hover .task-title {
+  color: #547b50;
+}
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: #1d3027a8;
+}
+.day-dialog {
+  width: min(100%, 620px);
+  max-height: min(88vh, 850px);
+  overflow: auto;
+  background: #fff;
+  border-radius: 20px;
+  padding: 26px;
+  box-shadow: 0 22px 65px #172b243b;
+}
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  border-bottom: 1px solid #e8eee7;
+  padding-bottom: 12px;
+}
+.dialog-header h2 {
+  margin: 7px 0 0;
+  text-transform: capitalize;
+}
+.dialog-empty {
+  margin: 24px 0 0;
+}
+.day-goal {
+  padding: 20px 0;
+  border-bottom: 1px solid #edf1eb;
+}
+.day-goal-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.day-goal-title strong,
+.day-goal-title small {
+  display: block;
+}
+.day-goal-title small {
+  font-size: 0.72rem;
+  color: #89988a;
+  margin-top: 3px;
+}
+.meal-hint {
+  font-size: 0.79rem;
+  margin: 14px 0 8px;
+}
+.meal-row {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  margin: 10px 0;
+}
+.meal-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: #415b45;
+  font-weight: 700;
+}
+.meal-check input {
+  accent-color: #789e73;
+  width: 17px;
+  height: 17px;
+}
+.meal-row > input,
+.day-note textarea {
+  width: 100%;
+  border: 1px solid #dfe6dc;
+  background: #fafbf9;
+  border-radius: 9px;
+  padding: 10px;
+  color: #25352b;
+}
+.meal-row > input {
+  min-width: 0;
+  font-size: 0.82rem;
+}
+.completion-check {
+  margin: 18px 0;
+}
+.day-note {
+  display: block;
+  font-size: 0.78rem;
+  color: #657666;
+  font-weight: 700;
+  margin-top: 16px;
+}
+.day-note textarea {
+  display: block;
+  resize: vertical;
+  margin-top: 7px;
+}
+.dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 18px;
 }
 .rest-day {
   font-size: 0.8rem;
@@ -712,6 +925,12 @@ footer {
   .content {
     padding: 30px 18px 95px;
   }
+  .profile-strip {
+    margin: -10px 0 26px;
+  }
+  .profile-state {
+    display: none;
+  }
   .page-heading {
     align-items: start;
     margin-bottom: 24px;
@@ -805,7 +1024,6 @@ footer {
     display: grid;
     gap: 2px;
     place-items: center;
-    font-size: 1.25rem;
     padding: 4px 24px;
   }
   .mobile-nav button span {
@@ -814,6 +1032,15 @@ footer {
   }
   .mobile-nav button.selected {
     color: #668c61;
+  }
+}
+@media (max-width: 480px) {
+  .meal-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .day-dialog {
+    padding: 19px;
   }
 }
 @media (max-width: 390px) {

@@ -16,6 +16,16 @@ export interface Completion {
   local_date: string
   completed_at: string
 }
+export const mealKeys = ['almoco', 'lanche', 'jantar'] as const
+export type MealKey = (typeof mealKeys)[number]
+export type MealEntries = Record<MealKey, { checked: boolean; description: string }>
+export interface GoalDayDetail {
+  goal_id: string
+  user_id: string
+  local_date: string
+  meals: MealEntries
+  note: string
+}
 export interface GoalHistory {
   goal_id: string
   user_id: string

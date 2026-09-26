@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { createGoal, loadData, updateGoal } from './data'
+import { createGoal, loadData, saveDayDetail, updateGoal } from './data'
 import { addDays, localKey, mondayOf, weekStats } from './dates'
 
 describe('local goal history', () => {
@@ -10,8 +10,11 @@ describe('local goal history', () => {
     const yesterday = addDays(today, -1)
     const weekday = yesterday.getDay()
     const original = {
-      title: 'Treino', category: 'treino' as const,
-      scheduled_weekdays: [weekday], points: 10, active: true,
+      title: 'Treino',
+      category: 'treino' as const,
+      scheduled_weekdays: [weekday],
+      points: 10,
+      active: true,
     }
     const goal = await createGoal(original)
     // A goal created yesterday can have a scheduled past day.
@@ -24,11 +27,44 @@ describe('local goal history', () => {
     const data = await loadData()
     expect(data.history).toHaveLength(1)
     expect(data.history[0]).toMatchObject({
-      valid_until: localKey(today), points: 10, active: true,
+      valid_until: localKey(today),
+      points: 10,
+      active: true,
       scheduled_weekdays: [weekday],
     })
     const previousWeek = mondayOf(addDays(today, -7))
     const stats = weekStats(data.goals, [], previousWeek, data.history)
     expect(stats.total).toBe(1)
+  })
+  it('persists meal checks and descriptions for a particular date locally', async () => {
+    const goal = await createGoal({
+      title: 'Dieta',
+      category: 'alimentacao',
+      scheduled_weekdays: [6],
+      points: 10,
+      active: true,
+    })
+    await saveDayDetail({
+      goal_id: goal.id,
+      local_date: '2026-09-26',
+      note: '  Tudo bem  ',
+      meals: {
+        almoco: { checked: true, description: '  Arroz e feijão  ' },
+        lanche: { checked: false, description: '' },
+        jantar: { checked: true, description: 'Salada' },
+      },
+    })
+    expect((await loadData()).dayDetails).toMatchObject([
+      {
+        goal_id: goal.id,
+        local_date: '2026-09-26',
+        note: 'Tudo bem',
+        meals: {
+          almoco: { checked: true, description: 'Arroz e feijão' },
+          lanche: { checked: false, description: '' },
+          jantar: { checked: true, description: 'Salada' },
+        },
+      },
+    ])
   })
 })
