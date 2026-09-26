@@ -12,6 +12,7 @@ import {
   CirclePlay,
   ClipboardList,
   Dumbbell,
+  Download,
   LogOut,
   Pencil,
   Plus,
@@ -47,6 +48,7 @@ import {
   weekStats,
 } from './lib/dates'
 import { moveMeal } from './lib/meals'
+import { createGoalReport } from './lib/report'
 import {
   defaultMealOptions,
   type Completion,
@@ -211,6 +213,21 @@ const monthProgress = computed(() => {
     percent: dueTotal ? Math.round((dueCompleted / dueTotal) * 100) : 0,
   }
 })
+function downloadReport() {
+  const csv = createGoalReport(goals.value, completions.value, history.value, dayDetails.value)
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `semana-em-jogo-relatorio-${localKey(new Date())}.csv`
+  document.body.append(link)
+  link.click()
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+function resizeMealDescription(input: HTMLTextAreaElement) {
+  input.style.height = 'auto'
+  input.style.height = `${input.scrollHeight + 2}px`
+}
 function shiftMonth(amount: number) {
   monthDate.value = new Date(monthDate.value.getFullYear(), monthDate.value.getMonth() + amount, 1)
 }
@@ -359,8 +376,12 @@ function openDay(date: Date) {
 }
 watch(selectedDay, async (date) => {
   await nextTick()
-  if (date) dialogCloseButton.value?.focus()
-  else dayTrigger?.focus()
+  if (date) {
+    dayDialog.value
+      ?.querySelectorAll<HTMLTextAreaElement>('.meal-description')
+      .forEach(resizeMealDescription)
+    dialogCloseButton.value?.focus()
+  } else dayTrigger?.focus()
 })
 watch(editingWeekday, async (day) => {
   await nextTick()
@@ -921,6 +942,14 @@ onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
               <h1>Metas que cabem <em>na vida.</em></h1>
               <p>Escolha ações simples que você gostaria de repetir.</p>
             </div>
+            <button
+              type="button"
+              class="small-button report-button"
+              :disabled="!goals.length"
+              @click="downloadReport"
+            >
+              <Download :size="17" aria-hidden="true" /> Exportar relatório CSV
+            </button>
           </div>
           <div class="goals-layout">
             <form class="goal-form panel" @submit.prevent="save">
@@ -1277,13 +1306,15 @@ onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
                     type="checkbox"
                   />{{ option.label }}</label
                 >
-                <input
+                <textarea
                   v-model="dayDrafts[goal.id]!.meals[option.id]!.description"
-                  type="text"
+                  class="meal-description"
+                  rows="1"
                   maxlength="300"
                   :aria-label="`O que você comeu em ${option.label}`"
                   placeholder="O que você comeu? (opcional)"
-                />
+                  @input="resizeMealDescription($event.target as HTMLTextAreaElement)"
+                ></textarea>
                 <div class="meal-order-actions">
                   <button
                     type="button"
