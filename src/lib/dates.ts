@@ -1,4 +1,10 @@
-import type { Completion, Goal, GoalHistory } from '../types'
+import {
+  mealKeys,
+  type Completion,
+  type Goal,
+  type GoalDayDetail,
+  type GoalHistory,
+} from '../types'
 
 export const weekdays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 export const fullWeekdays = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
@@ -42,25 +48,61 @@ export function scheduledFor(goal: Goal, date: Date): boolean {
   )
 }
 
-export function weekStats(
-  goals: Goal[],
+export function isGoalDone(
+  goal: Goal,
+  day: string,
   completions: Completion[],
-  monday: Date,
-  history: GoalHistory[] = [],
-) {
-  const scheduled = weekDays(monday).flatMap((day) =>
+  dayDetails: GoalDayDetail[] = [],
+): boolean {
+  const detail = dayDetails.find((entry) => entry.goal_id === goal.id && entry.local_date === day)
+  if (goal.category === 'alimentacao' && detail)
+    return mealKeys.every((key) => detail.meals[key]?.checked)
+  return completions.some((entry) => entry.goal_id === goal.id && entry.local_date === day)
+}
+
+function scheduledEntries(goals: Goal[], monday: Date, history: GoalHistory[]) {
+  return weekDays(monday).flatMap((day) =>
     goals
       .map((goal) => goalForDate(goal, history, day))
       .filter((goal) => scheduledFor(goal, day))
       .map((goal) => ({ goal, day: localKey(day) })),
   )
-  const done = scheduled.filter(({ goal, day }) =>
-    completions.some((entry) => entry.goal_id === goal.id && entry.local_date === day),
-  )
+}
+
+export function weekStats(
+  goals: Goal[],
+  completions: Completion[],
+  monday: Date,
+  history: GoalHistory[] = [],
+  dayDetails: GoalDayDetail[] = [],
+) {
+  const scheduled = scheduledEntries(goals, monday, history)
+  const done = scheduled.filter(({ goal, day }) => isGoalDone(goal, day, completions, dayDetails))
   return {
     total: scheduled.length,
     completed: done.length,
     percent: scheduled.length ? Math.round((done.length / scheduled.length) * 100) : 0,
     points: done.reduce((sum, entry) => sum + entry.goal.points, 0),
+  }
+}
+
+export function weekPace(
+  goals: Goal[],
+  completions: Completion[],
+  monday: Date,
+  today: Date,
+  history: GoalHistory[] = [],
+  dayDetails: GoalDayDetail[] = [],
+) {
+  const entries = scheduledEntries(goals, monday, history)
+  const due = entries.filter(({ day }) => day <= localKey(today))
+  const completed = due.filter(({ goal, day }) =>
+    isGoalDone(goal, day, completions, dayDetails),
+  ).length
+  return {
+    total: due.length,
+    completed,
+    percent: due.length ? Math.round((completed / due.length) * 100) : 0,
+    upcoming: entries.length - due.length,
   }
 }

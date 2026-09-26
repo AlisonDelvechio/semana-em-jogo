@@ -1,5 +1,13 @@
 import { createClient } from '@supabase/supabase-js'
-import type { Completion, Goal, GoalHistory, GoalInput } from '../types'
+import {
+  mealKeys,
+  type Completion,
+  type Goal,
+  type GoalDayDetail,
+  type GoalHistory,
+  type GoalInput,
+  type MealEntries,
+} from '../types'
 import { localKey } from './dates'
 
 const url = import.meta.env.VITE_SUPABASE_URL
@@ -7,14 +15,30 @@ const key = import.meta.env.VITE_SUPABASE_ANON_KEY
 export const cloudEnabled = Boolean(url && key)
 export const supabase = cloudEnabled ? createClient(url, key) : null
 const STORAGE_KEY = 'semana-em-jogo-v1'
-type LocalData = { goals: Goal[]; completions: Completion[]; history: GoalHistory[] }
+type LocalData = {
+  goals: Goal[]
+  completions: Completion[]
+  history: GoalHistory[]
+  dayDetails: GoalDayDetail[]
+}
+
+export function emptyMeals(): MealEntries {
+  return Object.fromEntries(
+    mealKeys.map((key) => [key, { checked: false, description: '' }]),
+  ) as MealEntries
+}
 
 function readLocal(): LocalData {
   try {
     const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') as Partial<LocalData>
-    return { goals: data.goals || [], completions: data.completions || [], history: data.history || [] }
+    return {
+      goals: data.goals || [],
+      completions: data.completions || [],
+      history: data.history || [],
+      dayDetails: data.dayDetails || [],
+    }
   } catch {
-    return { goals: [], completions: [], history: [] }
+    return { goals: [], completions: [], history: [], dayDetails: [] }
   }
 }
 function saveLocal(data: LocalData) {
@@ -26,18 +50,21 @@ function errorIfPresent(error: { message: string } | null) {
 
 export async function loadData(): Promise<LocalData> {
   if (!supabase) return readLocal()
-  const [goals, completions, history] = await Promise.all([
+  const [goals, completions, history, dayDetails] = await Promise.all([
     supabase.from('goal_templates').select('*').order('created_at'),
     supabase.from('goal_completions').select('*'),
     supabase.from('goal_history').select('*'),
+    supabase.from('goal_day_details').select('*'),
   ])
   errorIfPresent(goals.error)
   errorIfPresent(completions.error)
   errorIfPresent(history.error)
+  errorIfPresent(dayDetails.error)
   return {
     goals: goals.data as Goal[],
     completions: completions.data as Completion[],
     history: history.data as GoalHistory[],
+    dayDetails: dayDetails.data as GoalDayDetail[],
   }
 }
 
@@ -114,10 +141,45 @@ export async function deleteGoal(id: string): Promise<void> {
     data.goals = data.goals.filter((goal) => goal.id !== id)
     data.completions = data.completions.filter((entry) => entry.goal_id !== id)
     data.history = data.history.filter((entry) => entry.goal_id !== id)
+    data.dayDetails = data.dayDetails.filter((entry) => entry.goal_id !== id)
     saveLocal(data)
     return
   }
   const { error } = await supabase.from('goal_templates').delete().eq('id', id)
+  errorIfPresent(error)
+}
+
+export async function saveDayDetail(detail: Omit<GoalDayDetail, 'user_id'>): Promise<void> {
+  const meals = Object.fromEntries(
+    mealKeys.map((key) => [
+      key,
+      {
+        checked: Boolean(detail.meals[key]?.checked),
+        description: detail.meals[key]?.description.trim().slice(0, 300) || '',
+      },
+    ]),
+  ) as MealEntries
+  const note = detail.note.trim().slice(0, 500)
+  if (!supabase) {
+    const data = readLocal()
+    if (!data.goals.some((goal) => goal.id === detail.goal_id))
+      throw new Error('Meta não encontrada.')
+    data.dayDetails = data.dayDetails.filter(
+      (entry) => !(entry.goal_id === detail.goal_id && entry.local_date === detail.local_date),
+    )
+    data.dayDetails.push({ ...detail, meals, note, user_id: 'local' })
+    saveLocal(data)
+    return
+  }
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  errorIfPresent(userError)
+  if (!userData.user) throw new Error('Sua sessão expirou. Entre novamente.')
+  const { error } = await supabase
+    .from('goal_day_details')
+    .upsert(
+      { ...detail, meals, note, user_id: userData.user.id },
+      { onConflict: 'goal_id,local_date' },
+    )
   errorIfPresent(error)
 }
 
