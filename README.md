@@ -23,7 +23,9 @@ Sem variáveis de ambiente, o app funciona em **modo local**. Os dados ficam ape
 
 ## Publicar na Netlify
 
-Conecte o repositório à Netlify, defina as mesmas variáveis de ambiente públicas e publique. `netlify.toml` define `npm run build` e `dist`; `public/_redirects` cobre rotas da SPA. Cadastre a URL final nas configurações de URL do Supabase Auth para os links de confirmação. A publicação precisa de suas contas e credenciais, por isso não foi feita automaticamente.
+Na Netlify, escolha **Add new project → Import an existing project → GitHub** e selecione `AlisonDelvechio/semana-em-jogo`, com `main` como branch de produção. O repositório já inclui `netlify.toml` com `npm run build` e publicação de `dist`; `public/_redirects` cobre as rotas da SPA.
+
+Antes do deploy, em **Environment variables**, adicione `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` com os mesmos valores públicos usados em `.env.local`. São variáveis incorporadas ao JavaScript durante o build: sem elas, o site abre em modo local e não compartilha dados com a conta. Não use a chave secret/service role. Depois de receber a URL `https://<seu-site>.netlify.app`, configure-a em **Supabase → Authentication → URL Configuration** como Site URL (e mantenha o endereço local como Redirect URL se usa confirmação por email no desenvolvimento). Novos commits em `main` iniciam novos deploys sem apagar as tabelas do Supabase.
 
 ## Verificações
 
@@ -42,4 +44,4 @@ Use **Semana** para acompanhar o checklist e **Mês** para ver o calendário com
 
 As refeições podem ser reordenadas com os botões de subir e descer. Em **Minhas metas**, a personalização de cada dia da semana abre em um modal: aplique as opções nele e depois salve a meta. No registro de uma data, a ordem ajustada é salva apenas para aquela data. A ordem e os identificadores das opções são mantidos sem uma nova migração do banco.
 
-No celular, a navegação fica fixa na parte inferior, os cartões e datas são compactados, e os modais de edição abrem como painéis a partir da base da tela. Os campos e controles usam tamanhos adequados para toque. Ao trocar entre Semana, Mês e Metas, a nova tela começa no topo.
+No celular, a navegação entre Semana, Mês e Metas fica visível logo abaixo do cabeçalho enquanto você rola. O progresso da semana aparece em um cartão compacto antes do checklist; na semana atual, o dia de hoje vem primeiro. Pontos e quantidade de metas aparecem abaixo dos dias. Os modais de edição abrem como painéis a partir da base da tela. Os campos e controles usam tamanhos adequados para toque. Ao trocar de menu, a nova tela começa no topo.
