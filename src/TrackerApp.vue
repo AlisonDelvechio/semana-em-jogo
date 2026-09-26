@@ -15,15 +15,17 @@ import {
   fullWeekdays,
   localKey,
   mondayOf,
+  goalForDate,
   scheduledFor,
   weekDays,
   weekdays,
   weekStats,
 } from './lib/dates'
-import type { Completion, Goal, GoalInput } from './types'
+import type { Completion, Goal, GoalHistory, GoalInput } from './types'
 
 const goals = ref<Goal[]>([]),
-  completions = ref<Completion[]>([])
+  completions = ref<Completion[]>([]),
+  history = ref<GoalHistory[]>([])
 const monday = ref(mondayOf(new Date())),
   tab = ref<'week' | 'goals'>('week')
 const loading = ref(true),
@@ -43,7 +45,7 @@ const fresh = (): GoalInput => ({
 })
 const form = ref<GoalInput>(fresh())
 const days = computed(() => weekDays(monday.value))
-const stats = computed(() => weekStats(goals.value, completions.value, monday.value))
+const stats = computed(() => weekStats(goals.value, completions.value, monday.value, history.value))
 const label = computed(
   () =>
     `${days.value[0]!.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} – ${days.value[6]!.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}`,
@@ -56,7 +58,9 @@ const categoryName = (name: string) =>
 const errorMessage = (error: unknown) => {
   message.value = error instanceof Error ? error.message : 'Algo deu errado. Tente novamente.'
 }
-const planned = (date: Date) => goals.value.filter((goal) => scheduledFor(goal, date))
+const planned = (date: Date) =>
+  goals.value.map((goal) => goalForDate(goal, history.value, date)).filter((goal) => scheduledFor(goal, date))
+const activeThisWeek = computed(() => new Set(days.value.flatMap((date) => planned(date).map((goal) => goal.id))).size)
 const isDone = (goal: Goal, date: Date) =>
   completions.value.some((item) => item.goal_id === goal.id && item.local_date === localKey(date))
 async function refresh() {
@@ -65,6 +69,7 @@ async function refresh() {
     const result = await loadData()
     goals.value = result.goals
     completions.value = result.completions
+    history.value = result.history
   } catch (error) {
     errorMessage(error)
   } finally {
@@ -208,6 +213,7 @@ onMounted(async () => {
       else {
         goals.value = []
         completions.value = []
+        history.value = []
         loading.value = false
       }
     })
@@ -303,7 +309,7 @@ onMounted(async () => {
             </div>
             <div class="summary-card">
               <div class="card-top">METAS ATIVAS <span>◎</span></div>
-              <strong class="stat-number">{{ goals.filter((goal) => goal.active).length }}</strong>
+              <strong class="stat-number">{{ activeThisWeek }}</strong>
               <p>Um plano feito por você.</p>
             </div>
           </div>
@@ -322,11 +328,11 @@ onMounted(async () => {
             <button v-if="!current" class="today-link" @click="monday = mondayOf(new Date())">
               Voltar para esta semana ↗
             </button>
-            <div v-if="!goals.some((goal) => goal.active)" class="empty-state">
+            <div v-if="!days.some((date) => planned(date).length)" class="empty-state">
               <span>✳</span>
-              <h3>Sua jornada começa aqui</h3>
-              <p>Crie uma meta para montar seu primeiro checklist semanal.</p>
-              <button class="primary-button" @click="tab = 'goals'">Criar primeira meta</button>
+              <h3>Nenhuma meta nesta semana</h3>
+              <p>Crie uma meta para montar seu checklist semanal.</p>
+              <button class="primary-button" @click="tab = 'goals'">Ver minhas metas</button>
             </div>
             <div v-else class="days-grid">
               <article
