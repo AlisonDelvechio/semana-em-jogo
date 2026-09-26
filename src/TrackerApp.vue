@@ -36,6 +36,7 @@ import {
   mondayOf,
   goalForDate,
   isGoalDone,
+  mealOptionsForDate,
   scheduledFor,
   weekDays,
   weekPace,
@@ -43,13 +44,14 @@ import {
   weekStats,
 } from './lib/dates'
 import {
-  mealKeys,
+  defaultMealOptions,
   type Completion,
   type Goal,
   type GoalDayDetail,
   type GoalHistory,
   type GoalInput,
   type MealEntries,
+  type MealOption,
 } from './types'
 
 const goals = ref<Goal[]>([]),
@@ -67,15 +69,19 @@ const session = ref<Session | null>(null),
   signUp = ref(false)
 const editing = ref<string | null>(null)
 const selectedDay = ref<Date | null>(null)
-type DayDraft = { meals: MealEntries; note: string; completed: boolean }
+type DayDraft = { meals: MealEntries; meal_options: MealOption[]; note: string; completed: boolean }
 const dayDrafts = ref<Record<string, DayDraft>>({})
-const mealNames = { almoco: 'Almoço', lanche: 'Lanche da tarde', jantar: 'Jantar' }
+const newGoalMeal = ref('')
+const newDayMeals = ref<Record<string, string>>({})
+const newWeekdayMeals = ref<Record<string, string>>({})
 const fresh = (): GoalInput => ({
   title: '',
   category: 'treino',
   scheduled_weekdays: [],
   points: 10,
   active: true,
+  meal_options: defaultMealOptions.map((option) => ({ ...option })),
+  meal_options_by_weekday: {},
 })
 const form = ref<GoalInput>(fresh())
 const days = computed(() => weekDays(monday.value))
@@ -138,37 +144,105 @@ const mealCount = (goal: Goal, date: Date) => {
   const detail = dayDetails.value.find(
     (entry) => entry.goal_id === goal.id && entry.local_date === localKey(date),
   )
-  return detail
-    ? mealKeys.filter((key) => detail.meals[key]?.checked).length
-    : isDone(goal, date)
-      ? 3
-      : 0
+  const options = detail?.meal_options || mealOptionsForDate(goal, date)
+  return {
+    checked: detail
+      ? options.filter(({ id }) => detail.meals[id]?.checked).length
+      : isDone(goal, date)
+        ? options.length
+        : 0,
+    total: options.length,
+  }
+}
+function addOption(options: MealOption[], label: string): MealOption | null {
+  const name = label.trim()
+  if (
+    !name ||
+    name.length > 40 ||
+    options.length >= 12 ||
+    options.some(
+      (item) => item.label.toLocaleLowerCase('pt-BR') === name.toLocaleLowerCase('pt-BR'),
+    )
+  ) {
+    message.value = 'Use um nome único de até 40 caracteres (máximo de 12 refeições).'
+    return null
+  }
+  message.value = ''
+  return { id: crypto.randomUUID(), label: name }
+}
+function addGoalMeal() {
+  const option = addOption(form.value.meal_options, newGoalMeal.value)
+  if (option) {
+    form.value.meal_options.push(option)
+    newGoalMeal.value = ''
+  }
+}
+function removeGoalMeal(id: string) {
+  if (form.value.meal_options.length > 1)
+    form.value.meal_options = form.value.meal_options.filter((option) => option.id !== id)
+}
+function customizeWeekday(day: number) {
+  form.value.meal_options_by_weekday[String(day)] = form.value.meal_options.map((option) => ({
+    ...option,
+  }))
+}
+function resetWeekday(day: number) {
+  delete form.value.meal_options_by_weekday[String(day)]
+}
+function addWeekdayMeal(day: number) {
+  const options = form.value.meal_options_by_weekday[String(day)]!
+  const option = addOption(options, newWeekdayMeals.value[String(day)] || '')
+  if (option) {
+    options.push(option)
+    newWeekdayMeals.value[String(day)] = ''
+  }
+}
+function removeWeekdayMeal(day: number, id: string) {
+  const options = form.value.meal_options_by_weekday[String(day)]!
+  if (options.length > 1)
+    form.value.meal_options_by_weekday[String(day)] = options.filter((option) => option.id !== id)
+}
+function addDayMeal(goalId: string) {
+  const draft = dayDrafts.value[goalId]!
+  const option = addOption(draft.meal_options, newDayMeals.value[goalId] || '')
+  if (option) {
+    draft.meal_options.push(option)
+    draft.meals[option.id] = { checked: false, description: '' }
+    newDayMeals.value[goalId] = ''
+  }
+}
+function removeDayMeal(goalId: string, id: string) {
+  const draft = dayDrafts.value[goalId]!
+  if (draft.meal_options.length > 1) {
+    draft.meal_options = draft.meal_options.filter((option) => option.id !== id)
+    delete draft.meals[id]
+  }
 }
 function openDay(date: Date) {
   selectedDay.value = date
+  message.value = ''
+  newDayMeals.value = {}
   dayDrafts.value = Object.fromEntries(
     planned(date).map((goal) => {
       const detail = dayDetails.value.find(
         (entry) => entry.goal_id === goal.id && entry.local_date === localKey(date),
       )
       const completed = isDone(goal, date)
-      const meals = detail
-        ? (Object.fromEntries(
-            mealKeys.map((key) => [
-              key,
-              {
-                checked: Boolean(detail.meals[key]?.checked),
-                description: detail.meals[key]?.description || '',
-              },
-            ]),
-          ) as MealEntries)
-        : (Object.fromEntries(
-            mealKeys.map((key) => [
-              key,
-              { checked: goal.category === 'alimentacao' && completed, description: '' },
-            ]),
-          ) as MealEntries)
-      return [goal.id, { meals, note: detail?.note || '', completed }]
+      const meal_options = (detail?.meal_options || mealOptionsForDate(goal, date)).map(
+        (option) => ({ ...option }),
+      )
+      const meals = Object.fromEntries(
+        meal_options.map(({ id }) => [
+          id,
+          {
+            checked: detail
+              ? Boolean(detail.meals[id]?.checked)
+              : goal.category === 'alimentacao' && completed,
+            description: detail?.meals[id]?.description || '',
+          },
+        ]),
+      ) as MealEntries
+      return [goal.id, { meals, meal_options, note: detail?.note || '', completed }]
     }),
   )
 }
@@ -184,6 +258,7 @@ async function saveDay() {
         goal_id: goal.id,
         local_date: localKey(date),
         meals: draft.meals,
+        meal_options: draft.meal_options,
         note: draft.note,
       })
       if (goal.category !== 'alimentacao' && draft.completed !== isDone(goal, date))
@@ -261,7 +336,13 @@ async function save() {
     !input.title ||
     !input.scheduled_weekdays.length ||
     !Number.isInteger(input.points) ||
-    input.points < 1
+    input.points < 1 ||
+    (input.category === 'alimentacao' &&
+      (!input.meal_options.length ||
+        input.meal_options.length > 12 ||
+        Object.values(input.meal_options_by_weekday).some(
+          (options) => !options.length || options.length > 12,
+        )))
   ) {
     message.value = 'Informe nome, dias e pontos válidos.'
     return
@@ -288,6 +369,13 @@ function edit(goal: Goal) {
     scheduled_weekdays: [...goal.scheduled_weekdays],
     points: goal.points,
     active: goal.active,
+    meal_options: (goal.meal_options || defaultMealOptions).map((option) => ({ ...option })),
+    meal_options_by_weekday: Object.fromEntries(
+      Object.entries(goal.meal_options_by_weekday || {}).map(([day, options]) => [
+        day,
+        options.map((option) => ({ ...option })),
+      ]),
+    ),
   }
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
@@ -318,6 +406,8 @@ async function pause(goal: Goal) {
       scheduled_weekdays: goal.scheduled_weekdays,
       points: goal.points,
       active: !goal.active,
+      meal_options: goal.meal_options || defaultMealOptions,
+      meal_options_by_weekday: goal.meal_options_by_weekday || {},
     })
     await refresh()
   } catch (error) {
@@ -549,7 +639,7 @@ onMounted(async () => {
                       }}<small
                         >{{
                           goal.category === 'alimentacao'
-                            ? `${mealCount(goal, date)}/3 refeições`
+                            ? `${mealCount(goal, date).checked}/${mealCount(goal, date).total} refeições`
                             : categoryName(goal.category)
                         }}
                         · {{ goal.points }} pts</small
@@ -597,6 +687,40 @@ onMounted(async () => {
                     required
                 /></label>
               </div>
+              <fieldset v-if="form.category === 'alimentacao'" class="meal-options-field">
+                <legend>Refeições para acompanhar</legend>
+                <p>
+                  Estas opções aparecem nos dias da meta. Você pode ajustá-las em um dia específico
+                  depois.
+                </p>
+                <div class="meal-option-list">
+                  <span
+                    v-for="option in form.meal_options"
+                    :key="option.id"
+                    class="meal-option-chip"
+                    >{{ option.label
+                    }}<button
+                      type="button"
+                      :aria-label="`Remover ${option.label}`"
+                      :disabled="form.meal_options.length === 1"
+                      @click="removeGoalMeal(option.id)"
+                    >
+                      <X :size="14" /></button
+                  ></span>
+                </div>
+                <div class="meal-add">
+                  <input
+                    v-model="newGoalMeal"
+                    type="text"
+                    maxlength="40"
+                    placeholder="Ex.: Ceia"
+                    aria-label="Nova refeição da meta"
+                    @keydown.enter.prevent="addGoalMeal"
+                  /><button type="button" class="small-button" @click="addGoalMeal">
+                    <Plus :size="16" /> Adicionar
+                  </button>
+                </div>
+              </fieldset>
               <fieldset>
                 <legend>Em quais dias?</legend>
                 <div class="day-picker">
@@ -611,6 +735,66 @@ onMounted(async () => {
                   >
                     {{ weekdays[day] }}
                   </button>
+                </div>
+              </fieldset>
+              <fieldset
+                v-if="form.category === 'alimentacao' && form.scheduled_weekdays.length"
+                class="weekday-meals-field"
+              >
+                <legend>Opções em cada dia da semana</legend>
+                <p>Todos usam as refeições acima. Personalize apenas os dias que quiser.</p>
+                <div
+                  v-for="day in [1, 2, 3, 4, 5, 6, 0].filter((value) =>
+                    form.scheduled_weekdays.includes(value),
+                  )"
+                  :key="day"
+                  class="weekday-meals-card"
+                >
+                  <div class="weekday-meals-header">
+                    <strong>{{ fullWeekdays[day] }}</strong
+                    ><button
+                      v-if="!form.meal_options_by_weekday[String(day)]"
+                      type="button"
+                      class="text-button"
+                      @click="customizeWeekday(day)"
+                    >
+                      Personalizar</button
+                    ><button v-else type="button" class="text-button" @click="resetWeekday(day)">
+                      Usar padrão
+                    </button>
+                  </div>
+                  <template v-if="form.meal_options_by_weekday[String(day)]">
+                    <div class="meal-option-list">
+                      <span
+                        v-for="option in form.meal_options_by_weekday[String(day)]"
+                        :key="option.id"
+                        class="meal-option-chip"
+                        >{{ option.label
+                        }}<button
+                          type="button"
+                          :disabled="form.meal_options_by_weekday[String(day)]!.length === 1"
+                          :aria-label="`Remover ${option.label} de ${fullWeekdays[day]}`"
+                          @click="removeWeekdayMeal(day, option.id)"
+                        >
+                          <X :size="14" /></button
+                      ></span>
+                    </div>
+                    <div class="meal-add">
+                      <input
+                        v-model="newWeekdayMeals[String(day)]"
+                        type="text"
+                        maxlength="40"
+                        :placeholder="`Outra refeição em ${fullWeekdays[day]}`"
+                        :aria-label="`Nova refeição em ${fullWeekdays[day]}`"
+                        @keydown.enter.prevent="addWeekdayMeal(day)"
+                      /><button type="button" class="small-button" @click="addWeekdayMeal(day)">
+                        <Plus :size="16" /> Adicionar
+                      </button>
+                    </div>
+                  </template>
+                  <small v-else>{{
+                    form.meal_options.map((option) => option.label).join(' · ')
+                  }}</small>
                 </div>
               </fieldset>
               <label class="active-switch"
@@ -727,20 +911,48 @@ onMounted(async () => {
               </div>
             </div>
             <template v-if="goal.category === 'alimentacao'">
-              <p class="meal-hint">Marque as três refeições para concluir esta meta do dia.</p>
-              <div v-for="key in mealKeys" :key="key" class="meal-row">
+              <p class="meal-hint">
+                Marque todas as refeições escolhidas para concluir esta meta do dia.
+              </p>
+              <div
+                v-for="option in dayDrafts[goal.id]!.meal_options"
+                :key="option.id"
+                class="meal-row"
+              >
                 <label class="meal-check"
-                  ><input v-model="dayDrafts[goal.id]!.meals[key].checked" type="checkbox" />{{
-                    mealNames[key]
-                  }}</label
+                  ><input
+                    v-model="dayDrafts[goal.id]!.meals[option.id]!.checked"
+                    type="checkbox"
+                  />{{ option.label }}</label
                 >
                 <input
-                  v-model="dayDrafts[goal.id]!.meals[key].description"
+                  v-model="dayDrafts[goal.id]!.meals[option.id]!.description"
                   type="text"
                   maxlength="300"
-                  :aria-label="`O que você comeu no ${mealNames[key].toLowerCase()}`"
+                  :aria-label="`O que você comeu em ${option.label}`"
                   placeholder="O que você comeu? (opcional)"
                 />
+                <button
+                  type="button"
+                  class="meal-remove"
+                  :disabled="dayDrafts[goal.id]!.meal_options.length === 1"
+                  :aria-label="`Remover ${option.label} deste dia`"
+                  @click="removeDayMeal(goal.id, option.id)"
+                >
+                  <X :size="16" />
+                </button>
+              </div>
+              <div class="meal-add">
+                <input
+                  v-model="newDayMeals[goal.id]"
+                  type="text"
+                  maxlength="40"
+                  placeholder="Outra refeição neste dia"
+                  :aria-label="`Nova refeição de ${goal.title} neste dia`"
+                  @keydown.enter.prevent="addDayMeal(goal.id)"
+                /><button type="button" class="small-button" @click="addDayMeal(goal.id)">
+                  <Plus :size="16" /> Adicionar
+                </button>
               </div>
             </template>
             <label v-else class="meal-check completion-check"

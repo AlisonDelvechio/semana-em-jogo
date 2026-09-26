@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { createGoal, loadData, saveDayDetail, updateGoal } from './data'
+import { defaultMealOptions } from '../types'
 import { addDays, localKey, mondayOf, weekStats } from './dates'
 
 describe('local goal history', () => {
@@ -15,6 +16,8 @@ describe('local goal history', () => {
       scheduled_weekdays: [weekday],
       points: 10,
       active: true,
+      meal_options: defaultMealOptions,
+      meal_options_by_weekday: {},
     }
     const goal = await createGoal(original)
     // A goal created yesterday can have a scheduled past day.
@@ -43,11 +46,14 @@ describe('local goal history', () => {
       scheduled_weekdays: [6],
       points: 10,
       active: true,
+      meal_options: defaultMealOptions,
+      meal_options_by_weekday: {},
     })
     await saveDayDetail({
       goal_id: goal.id,
       local_date: '2026-09-26',
       note: '  Tudo bem  ',
+      meal_options: defaultMealOptions.filter(({ id }) => id !== 'cafe'),
       meals: {
         almoco: { checked: true, description: '  Arroz e feijão  ' },
         lanche: { checked: false, description: '' },
@@ -66,5 +72,40 @@ describe('local goal history', () => {
         },
       },
     ])
+  })
+  it('keeps the original three choices on pre-migration local day records', async () => {
+    const goal = await createGoal({
+      title: 'Dieta',
+      category: 'alimentacao',
+      scheduled_weekdays: [6],
+      points: 10,
+      active: true,
+      meal_options: defaultMealOptions,
+      meal_options_by_weekday: {},
+    })
+    const oldData = JSON.parse(localStorage.getItem('semana-em-jogo-v1')!)
+    oldData.dayDetails = [
+      {
+        goal_id: goal.id,
+        user_id: 'local',
+        local_date: '2026-09-26',
+        note: '',
+        meals: {
+          almoco: { checked: true, description: '' },
+          lanche: { checked: true, description: '' },
+          jantar: { checked: true, description: '' },
+        },
+      },
+    ]
+    localStorage.setItem('semana-em-jogo-v1', JSON.stringify(oldData))
+    const loaded = await loadData()
+    expect(loaded.dayDetails[0]?.meal_options.map(({ id }) => id)).toEqual([
+      'almoco',
+      'lanche',
+      'jantar',
+    ])
+    expect(
+      weekStats(loaded.goals, [], new Date(2026, 8, 21), [], loaded.dayDetails).completed,
+    ).toBe(1)
   })
 })
