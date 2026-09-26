@@ -41,3 +41,5 @@ O percentual em destaque considera apenas metas previstas até o dia exibido; o 
 Use **Semana** para acompanhar o checklist e **Mês** para ver o calendário completo, o progresso até hoje e o total planejado no mês. Clique em uma data em qualquer uma das duas visões para abrir o modal de edição. O usuário atual aparece em um cartão compacto no canto superior direito.
 
 As refeições podem ser reordenadas com os botões de subir e descer. Em **Minhas metas**, a personalização de cada dia da semana abre em um modal: aplique as opções nele e depois salve a meta. No registro de uma data, a ordem ajustada é salva apenas para aquela data. A ordem e os identificadores das opções são mantidos sem uma nova migração do banco.
+
+No celular, a navegação fica fixa na parte inferior, os cartões e datas são compactados, e os modais de edição abrem como painéis a partir da base da tela. Os campos e controles usam tamanhos adequados para toque. Ao trocar entre Semana, Mês e Metas, a nova tela começa no topo.
