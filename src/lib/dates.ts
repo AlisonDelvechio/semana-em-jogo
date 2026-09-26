@@ -1,5 +1,5 @@
 import {
-  mealKeys,
+  defaultMealOptions,
   type Completion,
   type Goal,
   type GoalDayDetail,
@@ -48,6 +48,12 @@ export function scheduledFor(goal: Goal, date: Date): boolean {
   )
 }
 
+export function mealOptionsForDate(goal: Goal, date: Date) {
+  return (
+    goal.meal_options_by_weekday?.[String(date.getDay())] || goal.meal_options || defaultMealOptions
+  )
+}
+
 export function isGoalDone(
   goal: Goal,
   day: string,
@@ -55,8 +61,10 @@ export function isGoalDone(
   dayDetails: GoalDayDetail[] = [],
 ): boolean {
   const detail = dayDetails.find((entry) => entry.goal_id === goal.id && entry.local_date === day)
-  if (goal.category === 'alimentacao' && detail)
-    return mealKeys.every((key) => detail.meals[key]?.checked)
+  if (goal.category === 'alimentacao' && detail) {
+    const options = detail.meal_options || goal.meal_options || []
+    return options.length > 0 && options.every(({ id }) => detail.meals[id]?.checked)
+  }
   return completions.some((entry) => entry.goal_id === goal.id && entry.local_date === day)
 }
 

@@ -573,10 +573,94 @@ p {
 }
 .meal-row {
   display: grid;
-  grid-template-columns: 150px minmax(0, 1fr);
+  grid-template-columns: 150px minmax(0, 1fr) 30px;
   align-items: center;
   gap: 12px;
   margin: 10px 0;
+}
+.meal-remove,
+.meal-option-chip button {
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: #7c8d7f;
+  padding: 5px;
+  border-radius: 6px;
+}
+.meal-remove:hover,
+.meal-option-chip button:hover {
+  background: #f1f4ef;
+}
+.meal-add {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 12px;
+}
+.meal-add input {
+  min-width: 0;
+  flex: 1;
+  border: 1px solid #dfe6dc;
+  background: #fafbf9;
+  color: #25352b;
+  border-radius: 9px;
+  padding: 10px;
+}
+.meal-add .small-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 10px;
+}
+.meal-options-field p {
+  color: #819087;
+  font-size: 0.78rem;
+  margin: 0 0 10px;
+}
+.meal-option-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.meal-option-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #edf5e9;
+  border: 1px solid #d7e7d2;
+  border-radius: 8px;
+  padding: 3px 4px 3px 10px;
+  color: #4f7350;
+  font-size: 0.77rem;
+  font-weight: 700;
+}
+.weekday-meals-field p {
+  font-size: 0.78rem;
+  margin-bottom: 12px;
+}
+.weekday-meals-card {
+  border: 1px solid #e2ebe0;
+  background: #fafcf9;
+  border-radius: 11px;
+  padding: 10px 12px;
+  margin: 9px 0;
+}
+.weekday-meals-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+}
+.weekday-meals-header .text-button {
+  font-size: 0.76rem;
+}
+.weekday-meals-card > small {
+  display: block;
+  font-size: 0.72rem;
+  color: #829083;
+  line-height: 1.5;
 }
 .meal-check {
   display: flex;
@@ -1036,8 +1120,19 @@ footer {
 }
 @media (max-width: 480px) {
   .meal-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) 30px;
     gap: 6px;
+  }
+  .meal-row .meal-check {
+    grid-column: 1;
+  }
+  .meal-row > input {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .meal-remove {
+    grid-column: 2;
+    grid-row: 1 / 3;
   }
   .day-dialog {
     padding: 19px;

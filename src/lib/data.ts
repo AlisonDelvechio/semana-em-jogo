@@ -1,12 +1,14 @@
 import { createClient } from '@supabase/supabase-js'
 import {
-  mealKeys,
+  defaultMealOptions,
+  legacyMealOptions,
   type Completion,
   type Goal,
   type GoalDayDetail,
   type GoalHistory,
   type GoalInput,
   type MealEntries,
+  type MealOption,
 } from '../types'
 import { localKey } from './dates'
 
@@ -22,20 +24,29 @@ type LocalData = {
   dayDetails: GoalDayDetail[]
 }
 
-export function emptyMeals(): MealEntries {
-  return Object.fromEntries(
-    mealKeys.map((key) => [key, { checked: false, description: '' }]),
-  ) as MealEntries
+export function emptyMeals(options: MealOption[] = defaultMealOptions): MealEntries {
+  return Object.fromEntries(options.map(({ id }) => [id, { checked: false, description: '' }]))
 }
 
 function readLocal(): LocalData {
   try {
     const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') as Partial<LocalData>
     return {
-      goals: data.goals || [],
+      goals: (data.goals || []).map((goal) => ({
+        ...goal,
+        meal_options: goal.meal_options || defaultMealOptions,
+        meal_options_by_weekday: goal.meal_options_by_weekday || {},
+      })),
       completions: data.completions || [],
-      history: data.history || [],
-      dayDetails: data.dayDetails || [],
+      history: (data.history || []).map((entry) => ({
+        ...entry,
+        meal_options: entry.meal_options || legacyMealOptions,
+        meal_options_by_weekday: entry.meal_options_by_weekday || {},
+      })),
+      dayDetails: (data.dayDetails || []).map((entry) => ({
+        ...entry,
+        meal_options: entry.meal_options || legacyMealOptions,
+      })),
     }
   } catch {
     return { goals: [], completions: [], history: [], dayDetails: [] }
@@ -78,6 +89,8 @@ function snapshot(goal: Goal, validUntil: string): GoalHistory {
     scheduled_weekdays: [...goal.scheduled_weekdays],
     points: goal.points,
     active: goal.active,
+    meal_options: goal.meal_options || defaultMealOptions,
+    meal_options_by_weekday: goal.meal_options_by_weekday || {},
   }
 }
 
@@ -150,12 +163,20 @@ export async function deleteGoal(id: string): Promise<void> {
 }
 
 export async function saveDayDetail(detail: Omit<GoalDayDetail, 'user_id'>): Promise<void> {
+  const meal_options = detail.meal_options.map(({ id, label }) => ({ id, label: label.trim() }))
+  if (
+    meal_options.length < 1 ||
+    meal_options.length > 12 ||
+    meal_options.some(({ id, label }) => !id || !label || label.length > 40) ||
+    new Set(meal_options.map(({ id }) => id)).size !== meal_options.length
+  )
+    throw new Error('Escolha de 1 a 12 refeições com nomes de até 40 caracteres.')
   const meals = Object.fromEntries(
-    mealKeys.map((key) => [
-      key,
+    meal_options.map(({ id }) => [
+      id,
       {
-        checked: Boolean(detail.meals[key]?.checked),
-        description: detail.meals[key]?.description.trim().slice(0, 300) || '',
+        checked: Boolean(detail.meals[id]?.checked),
+        description: detail.meals[id]?.description.trim().slice(0, 300) || '',
       },
     ]),
   ) as MealEntries
@@ -167,7 +188,7 @@ export async function saveDayDetail(detail: Omit<GoalDayDetail, 'user_id'>): Pro
     data.dayDetails = data.dayDetails.filter(
       (entry) => !(entry.goal_id === detail.goal_id && entry.local_date === detail.local_date),
     )
-    data.dayDetails.push({ ...detail, meals, note, user_id: 'local' })
+    data.dayDetails.push({ ...detail, meal_options, meals, note, user_id: 'local' })
     saveLocal(data)
     return
   }
@@ -177,7 +198,7 @@ export async function saveDayDetail(detail: Omit<GoalDayDetail, 'user_id'>): Pro
   const { error } = await supabase
     .from('goal_day_details')
     .upsert(
-      { ...detail, meals, note, user_id: userData.user.id },
+      { ...detail, meal_options, meals, note, user_id: userData.user.id },
       { onConflict: 'goal_id,local_date' },
     )
   errorIfPresent(error)

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { localKey, mondayOf, weekPace, weekStats } from './dates'
-import type { Goal, GoalDayDetail, GoalHistory } from '../types'
+import { localKey, mealOptionsForDate, mondayOf, weekPace, weekStats } from './dates'
+import { defaultMealOptions, type Goal, type GoalDayDetail, type GoalHistory } from '../types'
 
 describe('weekly calculations', () => {
   it('starts weeks on Monday across year boundaries', () => {
@@ -23,6 +23,8 @@ describe('weekly calculations', () => {
       scheduled_weekdays: [1, 3],
       points: 10,
       active: true,
+      meal_options: defaultMealOptions,
+      meal_options_by_weekday: {},
       created_at: '2026-09-01T12:00:00Z',
     }
     expect(
@@ -42,6 +44,8 @@ describe('weekly calculations', () => {
       scheduled_weekdays: [5],
       points: 20,
       active: false,
+      meal_options: defaultMealOptions,
+      meal_options_by_weekday: {},
       created_at: '2026-09-01T12:00:00Z',
     }
     const history: GoalHistory[] = [
@@ -54,6 +58,8 @@ describe('weekly calculations', () => {
         scheduled_weekdays: [1, 3],
         points: 10,
         active: true,
+        meal_options: defaultMealOptions,
+        meal_options_by_weekday: {},
       },
     ]
     const completion = [
@@ -87,6 +93,8 @@ describe('weekly calculations', () => {
       scheduled_weekdays: [1],
       points: 30,
       active: true,
+      meal_options: defaultMealOptions,
+      meal_options_by_weekday: {},
       created_at: '2026-09-01T12:00:00Z',
     }
     const history: GoalHistory[] = [
@@ -99,6 +107,8 @@ describe('weekly calculations', () => {
         scheduled_weekdays: [1],
         points: 10,
         active: true,
+        meal_options: defaultMealOptions,
+        meal_options_by_weekday: {},
       },
       {
         goal_id: 'g',
@@ -109,6 +119,8 @@ describe('weekly calculations', () => {
         scheduled_weekdays: [3],
         points: 20,
         active: true,
+        meal_options: defaultMealOptions,
+        meal_options_by_weekday: {},
       },
     ]
     const completions = [
@@ -131,6 +143,8 @@ describe('weekly calculations', () => {
       scheduled_weekdays: [6, 0],
       points: 10,
       active: true,
+      meal_options: defaultMealOptions,
+      meal_options_by_weekday: {},
       created_at: '2026-09-01T12:00:00Z',
     }
     const completions = [
@@ -151,6 +165,7 @@ describe('weekly calculations', () => {
         user_id: 'u',
         local_date: '2026-09-26',
         note: '',
+        meal_options: defaultMealOptions.filter(({ id }) => id !== 'cafe'),
         meals: {
           almoco: { checked: true, description: 'Arroz' },
           lanche: { checked: true, description: '' },
@@ -161,9 +176,87 @@ describe('weekly calculations', () => {
     expect(weekPace([goal], completions, monday, new Date(2026, 8, 26), [], details).percent).toBe(
       0,
     )
-    details[0]!.meals.jantar.checked = true
+    details[0]!.meals.jantar!.checked = true
     expect(weekPace([goal], completions, monday, new Date(2026, 8, 26), [], details).percent).toBe(
       100,
     )
+  })
+  it('uses the saved meal choices for each date after editing the goal defaults', () => {
+    const goal: Goal = {
+      id: 'food',
+      user_id: 'u',
+      title: 'Dieta',
+      category: 'alimentacao',
+      scheduled_weekdays: [6, 0],
+      points: 10,
+      active: true,
+      meal_options: defaultMealOptions,
+      meal_options_by_weekday: {},
+      created_at: '2026-09-01T12:00:00Z',
+    }
+    const oldOptions = defaultMealOptions.filter(({ id }) => id !== 'cafe')
+    const details: GoalDayDetail[] = [
+      {
+        goal_id: 'food',
+        user_id: 'u',
+        local_date: '2026-09-26',
+        note: '',
+        meal_options: oldOptions,
+        meals: Object.fromEntries(
+          oldOptions.map(({ id }) => [id, { checked: true, description: '' }]),
+        ),
+      },
+      {
+        goal_id: 'food',
+        user_id: 'u',
+        local_date: '2026-09-27',
+        note: '',
+        meal_options: [
+          { id: 'cafe', label: 'Café da manhã' },
+          { id: 'ceia', label: 'Ceia' },
+        ],
+        meals: {
+          cafe: { checked: true, description: '' },
+          ceia: { checked: false, description: '' },
+        },
+      },
+    ]
+    expect(weekStats([goal], [], new Date(2026, 8, 21), [], details)).toEqual({
+      total: 2,
+      completed: 1,
+      percent: 50,
+      points: 10,
+    })
+    details[1]!.meals.ceia!.checked = true
+    expect(weekStats([goal], [], new Date(2026, 8, 21), [], details).percent).toBe(100)
+  })
+  it('uses weekday choices for new day records', () => {
+    const goal: Goal = {
+      id: 'food',
+      user_id: 'u',
+      title: 'Dieta',
+      category: 'alimentacao',
+      scheduled_weekdays: [1, 6],
+      points: 10,
+      active: true,
+      meal_options: defaultMealOptions,
+      meal_options_by_weekday: {
+        '6': [
+          { id: 'almoco', label: 'Almoço' },
+          { id: 'ceia', label: 'Ceia' },
+        ],
+      },
+      created_at: '2026-09-01T12:00:00Z',
+    }
+    expect(mealOptionsForDate(goal, new Date(2026, 8, 26)).map(({ id }) => id)).toEqual([
+      'almoco',
+      'ceia',
+    ])
+    expect(mealOptionsForDate(goal, new Date(2026, 8, 21)).map(({ id }) => id)).toEqual([
+      'cafe',
+      'almoco',
+      'lanche',
+      'jantar',
+    ])
   })
 })
