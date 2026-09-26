@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { Session } from '@supabase/supabase-js'
 import {
   ArrowDown,
@@ -103,6 +103,18 @@ watch(tab, async () => {
   window.scrollTo({ top: 0, behavior: 'instant' })
 })
 const days = computed(() => weekDays(monday.value))
+const mobileWeek = ref(false)
+const mobileQuery = window.matchMedia('(max-width: 720px)')
+const syncMobileWeek = () => {
+  mobileWeek.value = mobileQuery.matches
+}
+const visibleDays = computed(() => {
+  if (!mobileWeek.value || !current.value) return days.value
+  const today = localKey(new Date())
+  return [...days.value].sort(
+    (a, b) => Number(localKey(b) === today) - Number(localKey(a) === today),
+  )
+})
 const monthDays = computed(() => calendarDays(monthDate.value))
 const monthTitle = computed(() =>
   monthDate.value.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
@@ -549,6 +561,8 @@ async function pause(goal: Goal) {
   }
 }
 onMounted(async () => {
+  syncMobileWeek()
+  mobileQuery.addEventListener('change', syncMobileWeek)
   if (supabase) {
     const { data, error } = await supabase.auth.getSession()
     if (error) errorMessage(error)
@@ -568,6 +582,7 @@ onMounted(async () => {
   if (!cloudEnabled || session.value) await refresh()
   else loading.value = false
 })
+onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
 </script>
 
 <template>
@@ -650,10 +665,10 @@ onMounted(async () => {
           <p>O progresso acontece um dia de cada vez.</p>
         </div>
       </aside>
-      <main class="content">
+      <main :class="['content', { 'week-layout': tab === 'week' }]">
         <div v-if="loading" role="status" class="loading">Carregando sua semana...</div>
-        <template v-else-if="tab === 'week'"
-          ><div class="page-heading">
+        <template v-else-if="tab === 'week'">
+          <div class="page-heading">
             <div>
               <span class="eyebrow">SEU PAINEL SEMANAL</span>
               <div class="month-heading">
@@ -730,7 +745,7 @@ onMounted(async () => {
             </div>
             <div v-else class="days-grid">
               <article
-                v-for="date in days"
+                v-for="date in visibleDays"
                 :key="localKey(date)"
                 :class="['day-card', { 'is-today': localKey(date) === localKey(new Date()) }]"
               >
@@ -787,7 +802,7 @@ onMounted(async () => {
                 </button>
               </article>
             </div>
-          </section></template
+          </section> </template
         ><template v-else-if="tab === 'month'">
           <div class="page-heading month-page-heading">
             <div>

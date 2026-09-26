@@ -1265,6 +1265,37 @@ footer {
   }
 }
 @media (max-width: 720px) {
+  .week-layout {
+    display: flex;
+    flex-direction: column;
+  }
+  .week-layout .page-heading {
+    order: 0;
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 18px;
+  }
+  .week-layout .page-heading .eyebrow,
+  .week-layout .page-heading p {
+    display: none;
+  }
+  .week-layout .page-heading h1 {
+    font-size: 1.25rem;
+    margin: 5px 0 0;
+  }
+  .week-layout .page-heading .small-button {
+    align-self: center;
+  }
+  .week-layout .month-heading {
+    margin-top: 0;
+  }
+  .week-layout .week-section {
+    order: 1;
+  }
+  .week-layout .summary-grid {
+    order: 2;
+    margin: 10px 0 0;
+  }
   .topbar {
     height: 60px;
     padding: 0 16px;
@@ -1362,14 +1393,14 @@ footer {
   }
   .summary-card {
     min-width: 0;
-    min-height: 118px;
-    padding: 15px;
+    min-height: 88px;
+    padding: 12px;
     box-shadow: none;
   }
   .summary-card.featured {
     grid-column: span 2;
-    min-height: 172px;
-    padding: 18px;
+    min-height: 0;
+    padding: 14px;
   }
   .card-top {
     font-size: 0.61rem;
@@ -1381,10 +1412,10 @@ footer {
     height: 18px;
   }
   .progress-main {
-    margin: 12px 0 10px;
+    margin: 7px 0;
   }
   .progress-main strong {
-    font-size: 2.8rem;
+    font-size: 2rem;
   }
   .progress-main span {
     font-size: 0.75rem;
@@ -1393,12 +1424,12 @@ footer {
     margin-bottom: 9px;
   }
   .week-total {
-    margin-top: 10px;
-    padding-top: 8px;
+    margin-top: 7px;
+    padding-top: 6px;
   }
   .stat-number {
-    font-size: 2.45rem;
-    margin: 12px 0 5px;
+    font-size: 1.8rem;
+    margin: 8px 0 3px;
   }
   .stat-number small {
     font-size: 0.9rem;
@@ -1748,6 +1779,12 @@ footer {
   }
 }
 @media (max-width: 480px) {
+  .week-layout .page-heading {
+    flex-direction: row;
+  }
+  .week-layout .page-heading .small-button {
+    align-self: center;
+  }
   .page-heading {
     flex-direction: column;
   }
