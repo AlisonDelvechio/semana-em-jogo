@@ -53,14 +53,18 @@ describe('local goal history', () => {
       goal_id: goal.id,
       local_date: '2026-09-26',
       note: '  Tudo bem  ',
-      meal_options: defaultMealOptions.filter(({ id }) => id !== 'cafe'),
+      meal_options: ['jantar', 'almoco', 'lanche'].map((id) =>
+        defaultMealOptions.find((option) => option.id === id)!,
+      ),
       meals: {
         almoco: { checked: true, description: '  Arroz e feijão  ' },
         lanche: { checked: false, description: '' },
         jantar: { checked: true, description: 'Salada' },
       },
     })
-    expect((await loadData()).dayDetails).toMatchObject([
+    const saved = (await loadData()).dayDetails
+    expect(saved[0]?.meal_options.map(({ id }) => id)).toEqual(['jantar', 'almoco', 'lanche'])
+    expect(saved).toMatchObject([
       {
         goal_id: goal.id,
         local_date: '2026-09-26',
