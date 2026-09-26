@@ -274,6 +274,12 @@ p {
   font-weight: 700;
   white-space: nowrap;
 }
+.report-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
 .summary-grid {
   display: grid;
   grid-template-columns: 1.45fr 1fr 1fr;
@@ -941,7 +947,7 @@ p {
   width: 17px;
   height: 17px;
 }
-.meal-row > input,
+.meal-description,
 .day-note textarea {
   width: 100%;
   border: 1px solid #dfe6dc;
@@ -950,9 +956,13 @@ p {
   padding: 10px;
   color: #25352b;
 }
-.meal-row > input {
+.meal-description {
   min-width: 0;
   font-size: 0.82rem;
+  line-height: 1.4;
+  min-height: 43px;
+  resize: vertical;
+  overflow-y: hidden;
 }
 .completion-check {
   margin: 18px 0;
@@ -1587,7 +1597,7 @@ footer {
   .goal-form select,
   .auth-card input,
   .meal-add input,
-  .meal-row > input,
+  .meal-description,
   .day-note textarea {
     font-size: 16px;
   }
@@ -1684,7 +1694,7 @@ footer {
   .meal-row .meal-check {
     grid-column: 1 / -1;
   }
-  .meal-row > input {
+  .meal-description {
     grid-column: 1;
     grid-row: 2;
   }
