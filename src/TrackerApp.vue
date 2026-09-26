@@ -613,6 +613,30 @@ onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
         </div>
       </div>
     </header>
+    <nav v-if="!cloudEnabled || session" class="mobile-nav" aria-label="Navegação principal">
+      <button
+        type="button"
+        :class="{ selected: tab === 'week' }"
+        :aria-current="tab === 'week' ? 'page' : undefined"
+        @click="tab = 'week'"
+      >
+        <CalendarDays :size="19" /> <span>Semana</span></button
+      ><button
+        type="button"
+        :class="{ selected: tab === 'month' }"
+        :aria-current="tab === 'month' ? 'page' : undefined"
+        @click="tab = 'month'"
+      >
+        <CalendarDays :size="19" /> <span>Mês</span></button
+      ><button
+        type="button"
+        :class="{ selected: tab === 'goals' }"
+        :aria-current="tab === 'goals' ? 'page' : undefined"
+        @click="tab = 'goals'"
+      >
+        <Target :size="19" /> <span>Metas</span>
+      </button>
+    </nav>
     <main v-if="cloudEnabled && !session" class="auth-layout">
       <div class="auth-intro">
         <span class="eyebrow">SEU RITMO, SUA SEMANA</span>
@@ -1323,26 +1347,5 @@ onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
         </form>
       </section>
     </div>
-    <nav v-if="!cloudEnabled || session" class="mobile-nav" aria-label="Navegação principal">
-      <button
-        :class="{ selected: tab === 'week' }"
-        :aria-current="tab === 'week' ? 'page' : undefined"
-        @click="tab = 'week'"
-      >
-        <CalendarDays :size="21" /> <span>Semana</span></button
-      ><button
-        :class="{ selected: tab === 'month' }"
-        :aria-current="tab === 'month' ? 'page' : undefined"
-        @click="tab = 'month'"
-      >
-        <CalendarDays :size="21" /> <span>Mês</span></button
-      ><button
-        :class="{ selected: tab === 'goals' }"
-        :aria-current="tab === 'goals' ? 'page' : undefined"
-        @click="tab = 'goals'"
-      >
-        <Target :size="21" /> <span>Metas</span>
-      </button>
-    </nav>
   </div>
 </template>
