@@ -9,6 +9,8 @@ export interface Goal {
   active: boolean
   meal_options: MealOption[]
   meal_options_by_weekday: Record<string, MealOption[]>
+  checklist_options?: MealOption[]
+  checklist_options_by_weekday?: Record<string, MealOption[]>
   created_at: string
 }
 export interface Completion {
@@ -36,6 +38,8 @@ export interface GoalDayDetail {
   local_date: string
   meals: MealEntries
   meal_options: MealOption[]
+  checklist_options?: MealOption[]
+  checklist?: MealEntries
   note: string
 }
 export interface GoalHistory {
@@ -49,6 +53,8 @@ export interface GoalHistory {
   active: boolean
   meal_options: MealOption[]
   meal_options_by_weekday: Record<string, MealOption[]>
+  checklist_options?: MealOption[]
+  checklist_options_by_weekday?: Record<string, MealOption[]>
 }
 export type GoalInput = Pick<
   Goal,
@@ -59,4 +65,7 @@ export type GoalInput = Pick<
   | 'active'
   | 'meal_options'
   | 'meal_options_by_weekday'
->
+> & {
+  checklist_options: MealOption[]
+  checklist_options_by_weekday: Record<string, MealOption[]>
+}

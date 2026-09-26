@@ -1,8 +1,64 @@
 import { describe, expect, it } from 'vitest'
-import { calendarDays, localKey, mealOptionsForDate, mondayOf, weekPace, weekStats } from './dates'
+import {
+  calendarDays,
+  checklistOptionsForDate,
+  localKey,
+  mealOptionsForDate,
+  mondayOf,
+  weekPace,
+  weekStats,
+} from './dates'
 import { defaultMealOptions, type Goal, type GoalDayDetail, type GoalHistory } from '../types'
 
 describe('weekly calculations', () => {
+  it('counts a generic checklist only when every saved item is checked, preserving the old simple check', () => {
+    const goal: Goal = {
+      id: 'training',
+      user_id: 'u',
+      title: 'Academia',
+      category: 'treino',
+      scheduled_weekdays: [1, 3],
+      points: 10,
+      active: true,
+      meal_options: defaultMealOptions,
+      meal_options_by_weekday: {},
+      checklist_options: [
+        { id: 'warmup', label: 'Aquecer' },
+        { id: 'lift', label: 'Treinar' },
+      ],
+      checklist_options_by_weekday: {},
+      created_at: '2026-09-01T12:00:00Z',
+    }
+    const old = [
+      { id: 'old', user_id: 'u', goal_id: goal.id, local_date: '2026-09-21', completed_at: '' },
+    ]
+    const detail: GoalDayDetail = {
+      goal_id: goal.id,
+      user_id: 'u',
+      local_date: '2026-09-23',
+      note: 'Carga leve',
+      meal_options: defaultMealOptions,
+      meals: {},
+      checklist_options: goal.checklist_options,
+      checklist: {
+        warmup: { checked: true, description: '' },
+        lift: { checked: false, description: '30 kg' },
+      },
+    }
+    const monday = new Date(2026, 8, 21)
+    expect(weekStats([goal], old, monday, [], [detail])).toMatchObject({
+      total: 2,
+      completed: 1,
+      percent: 50,
+    })
+    detail.checklist!.lift!.checked = true
+    expect(weekStats([goal], old, monday, [], [detail])).toMatchObject({
+      total: 2,
+      completed: 2,
+      percent: 100,
+    })
+    expect(checklistOptionsForDate(goal, new Date(2026, 8, 23))).toHaveLength(2)
+  })
   it('starts weeks on Monday across year boundaries', () => {
     expect(localKey(mondayOf(new Date(2027, 0, 1)))).toBe('2026-12-28')
   })

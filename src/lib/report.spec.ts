@@ -47,7 +47,7 @@ describe('goal report', () => {
     }
     const csv = createGoalReport([goal], [], history, [detail], new Date(2026, 8, 26))
     expect(csv).toContain(
-      '"26/09/2026";"Sábado";"Dieta anterior";"alimentacao";"Sim";"Não";"10";"0"',
+      '="26/09/2026";"Sábado";"Dieta anterior";"alimentacao";"Sim";"Não";"10";"0"',
     )
     expect(csv).toContain('"Rap10 com carne moída, mussarela; leite com chocolate"')
     expect(csv).toContain('"\'=1+1"')
@@ -66,8 +66,32 @@ describe('goal report', () => {
       note: 'Registro antigo',
     }
     const csv = createGoalReport([paused], [], [], [detail], new Date(2026, 8, 26))
-    expect(csv).toContain('"25/09/2026";"Sexta";"Pausada";"alimentacao";"Não"')
+    expect(csv).toContain('="25/09/2026";"Sexta";"Pausada";"alimentacao";"Não"')
     expect(csv).toContain('"Registro antigo"')
     expect(createGoalReport([paused], [], [], [], new Date(2026, 8, 26))).toContain('"Pausada"')
+  })
+
+  it('exports generic checklist items with optional descriptions', () => {
+    const training: Goal = {
+      ...goal,
+      id: 'training',
+      title: 'Academia',
+      category: 'treino',
+      checklist_options: [{ id: 'warmup', label: 'Aquecer' }],
+      checklist_options_by_weekday: {},
+    }
+    const detail: GoalDayDetail = {
+      goal_id: training.id,
+      user_id: training.user_id,
+      local_date: '2026-09-26',
+      meal_options: defaultMealOptions,
+      meals: {},
+      note: 'Treino tranquilo',
+      checklist_options: training.checklist_options,
+      checklist: { warmup: { checked: true, description: 'Esteira 10 minutos' } },
+    }
+    const csv = createGoalReport([training], [], [], [detail], new Date(2026, 8, 26))
+    expect(csv).toContain('="26/09/2026"')
+    expect(csv).toContain('"Aquecer";"Sim";"Esteira 10 minutos";"Treino tranquilo"')
   })
 })

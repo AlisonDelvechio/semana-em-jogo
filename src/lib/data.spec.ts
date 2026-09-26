@@ -6,6 +6,34 @@ import { addDays, localKey, mondayOf, weekStats } from './dates'
 describe('local goal history', () => {
   beforeEach(() => localStorage.clear())
 
+  it('saves generic checklist items and their descriptions for one day', async () => {
+    const goal = await createGoal({
+      title: 'Academia',
+      category: 'treino',
+      scheduled_weekdays: [6],
+      points: 10,
+      active: true,
+      meal_options: defaultMealOptions,
+      meal_options_by_weekday: {},
+      checklist_options: [{ id: 'warmup', label: 'Aquecer' }],
+      checklist_options_by_weekday: {},
+    })
+    await saveDayDetail({
+      goal_id: goal.id,
+      local_date: '2026-09-26',
+      note: 'Boa sessão',
+      meal_options: defaultMealOptions,
+      meals: {},
+      checklist_options: [{ id: 'warmup', label: 'Aquecer' }],
+      checklist: { warmup: { checked: true, description: '  10 minutos  ' } },
+    })
+    expect((await loadData()).dayDetails[0]).toMatchObject({
+      checklist_options: [{ id: 'warmup', label: 'Aquecer' }],
+      checklist: { warmup: { checked: true, description: '10 minutos' } },
+      note: 'Boa sessão',
+    })
+  })
+
   it('keeps the first plan for previous days after multiple edits on the same day', async () => {
     const today = new Date()
     const yesterday = addDays(today, -1)
@@ -18,6 +46,8 @@ describe('local goal history', () => {
       active: true,
       meal_options: defaultMealOptions,
       meal_options_by_weekday: {},
+      checklist_options: [],
+      checklist_options_by_weekday: {},
     }
     const goal = await createGoal(original)
     // A goal created yesterday can have a scheduled past day.
@@ -48,6 +78,8 @@ describe('local goal history', () => {
       active: true,
       meal_options: defaultMealOptions,
       meal_options_by_weekday: {},
+      checklist_options: [],
+      checklist_options_by_weekday: {},
     })
     await saveDayDetail({
       goal_id: goal.id,
@@ -86,6 +118,8 @@ describe('local goal history', () => {
       active: true,
       meal_options: defaultMealOptions,
       meal_options_by_weekday: {},
+      checklist_options: [],
+      checklist_options_by_weekday: {},
     })
     const oldData = JSON.parse(localStorage.getItem('semana-em-jogo-v1')!)
     oldData.dayDetails = [
