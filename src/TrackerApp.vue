@@ -98,6 +98,10 @@ const fresh = (): GoalInput => ({
   meal_options_by_weekday: {},
 })
 const form = ref<GoalInput>(fresh())
+watch(tab, async () => {
+  await nextTick()
+  window.scrollTo({ top: 0, behavior: 'instant' })
+})
 const days = computed(() => weekDays(monday.value))
 const monthDays = computed(() => calendarDays(monthDate.value))
 const monthTitle = computed(() =>
@@ -125,6 +129,10 @@ const label = computed(
   () =>
     `${days.value[0]!.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} – ${days.value[6]!.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}`,
 )
+const compactWeekLabel = computed(
+  () =>
+    `${days.value[0]!.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })} – ${days.value[6]!.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })}`,
+)
 const current = computed(() => localKey(monday.value) === localKey(mondayOf(new Date())))
 const future = computed(() => localKey(monday.value) > localKey(mondayOf(new Date())))
 const monthLabel = computed(() => {
@@ -133,6 +141,15 @@ const monthLabel = computed(() => {
   const format = (date: Date) =>
     date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
   return format(start) === format(end) ? format(start) : `${format(start)} · ${format(end)}`
+})
+const compactMonthLabel = computed(() => {
+  const start = days.value[0]!,
+    end = days.value[6]!
+  const short = (date: Date) =>
+    date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')
+  return start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()
+    ? `${short(start)} ${start.getFullYear()}`
+    : `${short(start)} · ${short(end)} ${end.getFullYear()}`
 })
 const profileName = computed(() => {
   const name = session.value?.user.user_metadata?.full_name
@@ -640,7 +657,10 @@ onMounted(async () => {
             <div>
               <span class="eyebrow">SEU PAINEL SEMANAL</span>
               <div class="month-heading">
-                <CalendarDays :size="17" aria-hidden="true" /> {{ monthLabel }}
+                <CalendarDays :size="17" aria-hidden="true" /><span class="desktop-date-label">{{
+                  monthLabel
+                }}</span
+                ><span class="mobile-date-label">{{ compactMonthLabel }}</span>
               </div>
               <h1>Uma semana de <em>cada vez.</em></h1>
               <p>O que importa é continuar no seu ritmo.</p>
@@ -692,7 +712,8 @@ onMounted(async () => {
               <div class="week-nav">
                 <button aria-label="Semana anterior" @click="monday = addDays(monday, -7)">
                   <ChevronLeft :size="19" /></button
-                ><span>{{ label }}</span
+                ><span class="desktop-date-label">{{ label }}</span
+                ><span class="mobile-date-label">{{ compactWeekLabel }}</span
                 ><button aria-label="Próxima semana" @click="monday = addDays(monday, 7)">
                   <ChevronRight :size="19" />
                 </button>
@@ -1288,11 +1309,23 @@ onMounted(async () => {
       </section>
     </div>
     <nav v-if="!cloudEnabled || session" class="mobile-nav" aria-label="Navegação principal">
-      <button :class="{ selected: tab === 'week' }" @click="tab = 'week'">
+      <button
+        :class="{ selected: tab === 'week' }"
+        :aria-current="tab === 'week' ? 'page' : undefined"
+        @click="tab = 'week'"
+      >
         <CalendarDays :size="21" /> <span>Semana</span></button
-      ><button :class="{ selected: tab === 'month' }" @click="tab = 'month'">
+      ><button
+        :class="{ selected: tab === 'month' }"
+        :aria-current="tab === 'month' ? 'page' : undefined"
+        @click="tab = 'month'"
+      >
         <CalendarDays :size="21" /> <span>Mês</span></button
-      ><button :class="{ selected: tab === 'goals' }" @click="tab = 'goals'">
+      ><button
+        :class="{ selected: tab === 'goals' }"
+        :aria-current="tab === 'goals' ? 'page' : undefined"
+        @click="tab = 'goals'"
+      >
         <Target :size="21" /> <span>Metas</span>
       </button>
     </nav>
