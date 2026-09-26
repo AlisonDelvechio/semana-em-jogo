@@ -35,6 +35,7 @@ import {
 import {
   addDays,
   calendarDays,
+  checklistOptionsForDate,
   fullWeekdays,
   localKey,
   mondayOf,
@@ -51,6 +52,7 @@ import { moveMeal } from './lib/meals'
 import { createGoalReport } from './lib/report'
 import {
   defaultMealOptions,
+  type Category,
   type Completion,
   type Goal,
   type GoalDayDetail,
@@ -86,9 +88,10 @@ const weekdayModalError = ref('')
 const weekdayDialog = ref<HTMLElement | null>(null)
 const weekdayCloseButton = ref<HTMLButtonElement | null>(null)
 let weekdayTrigger: HTMLElement | null = null
-type DayDraft = { meals: MealEntries; meal_options: MealOption[]; note: string; completed: boolean }
+type DayDraft = { items: MealEntries; options: MealOption[]; note: string; completed: boolean }
 const dayDrafts = ref<Record<string, DayDraft>>({})
 const newGoalMeal = ref('')
+const newGoalChecklist = ref('')
 const newDayMeals = ref<Record<string, string>>({})
 const fresh = (): GoalInput => ({
   title: '',
@@ -98,6 +101,8 @@ const fresh = (): GoalInput => ({
   active: true,
   meal_options: defaultMealOptions.map((option) => ({ ...option })),
   meal_options_by_weekday: {},
+  checklist_options: [],
+  checklist_options_by_weekday: {},
 })
 const form = ref<GoalInput>(fresh())
 watch(tab, async () => {
@@ -254,6 +259,22 @@ const mealCount = (goal: Goal, date: Date) => {
     total: options.length,
   }
 }
+const checklistCount = (goal: Goal, date: Date) => {
+  const detail = dayDetails.value.find(
+    (entry) => entry.goal_id === goal.id && entry.local_date === localKey(date),
+  )
+  const options = detail?.checklist_options?.length
+    ? detail.checklist_options
+    : checklistOptionsForDate(goal, date)
+  return {
+    checked: detail?.checklist_options?.length
+      ? options.filter(({ id }) => detail.checklist?.[id]?.checked).length
+      : isDone(goal, date)
+        ? options.length
+        : 0,
+    total: options.length,
+  }
+}
 function addOption(
   options: MealOption[],
   label: string,
@@ -270,7 +291,7 @@ function addOption(
       (item) => item.label.toLocaleLowerCase('pt-BR') === name.toLocaleLowerCase('pt-BR'),
     )
   ) {
-    report('Use um nome único de até 40 caracteres (máximo de 12 refeições).')
+    report('Use um nome único de até 40 caracteres (máximo de 12 itens).')
     return null
   }
   report('')
@@ -290,17 +311,38 @@ function removeGoalMeal(id: string) {
 function moveGoalMeal(id: string, offset: -1 | 1) {
   form.value.meal_options = moveMeal(form.value.meal_options, id, offset)
 }
+function addGoalChecklist() {
+  const option = addOption(form.value.checklist_options, newGoalChecklist.value)
+  if (option) {
+    form.value.checklist_options.push(option)
+    newGoalChecklist.value = ''
+  }
+}
+function removeGoalChecklist(id: string) {
+  form.value.checklist_options = form.value.checklist_options.filter((option) => option.id !== id)
+}
+function moveGoalChecklist(id: string, offset: -1 | 1) {
+  form.value.checklist_options = moveMeal(form.value.checklist_options, id, offset)
+}
+const formWeekdayOptions = computed(() =>
+  form.value.category === 'alimentacao'
+    ? form.value.meal_options_by_weekday
+    : form.value.checklist_options_by_weekday,
+)
+const formDefaultOptions = computed(() =>
+  form.value.category === 'alimentacao' ? form.value.meal_options : form.value.checklist_options,
+)
 function openWeekdayModal(day: number) {
   weekdayTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null
   editingWeekday.value = day
-  weekdayDraft.value = (
-    form.value.meal_options_by_weekday[String(day)] || form.value.meal_options
-  ).map((option) => ({ ...option }))
+  weekdayDraft.value = (formWeekdayOptions.value[String(day)] || formDefaultOptions.value).map(
+    (option) => ({ ...option }),
+  )
   weekdayMealInput.value = ''
   weekdayModalError.value = ''
 }
 function resetWeekday(day: number) {
-  delete form.value.meal_options_by_weekday[String(day)]
+  delete formWeekdayOptions.value[String(day)]
 }
 function addWeekdayMeal() {
   const option = addOption(weekdayDraft.value, weekdayMealInput.value, (error) => {
@@ -312,14 +354,14 @@ function addWeekdayMeal() {
   }
 }
 function removeWeekdayMeal(id: string) {
-  if (weekdayDraft.value.length > 1)
+  if (weekdayDraft.value.length > (form.value.category === 'alimentacao' ? 1 : 0))
     weekdayDraft.value = weekdayDraft.value.filter((option) => option.id !== id)
 }
 function saveWeekdayModal() {
   if (editingWeekday.value === null) return
-  form.value.meal_options_by_weekday[String(editingWeekday.value)] = weekdayDraft.value.map(
-    (option) => ({ ...option }),
-  )
+  formWeekdayOptions.value[String(editingWeekday.value)] = weekdayDraft.value.map((option) => ({
+    ...option,
+  }))
   editingWeekday.value = null
 }
 function moveWeekdayMeal(id: string, offset: -1 | 1) {
@@ -327,23 +369,23 @@ function moveWeekdayMeal(id: string, offset: -1 | 1) {
 }
 function addDayMeal(goalId: string) {
   const draft = dayDrafts.value[goalId]!
-  const option = addOption(draft.meal_options, newDayMeals.value[goalId] || '')
+  const option = addOption(draft.options, newDayMeals.value[goalId] || '')
   if (option) {
-    draft.meal_options.push(option)
-    draft.meals[option.id] = { checked: false, description: '' }
+    draft.options.push(option)
+    draft.items[option.id] = { checked: false, description: '' }
     newDayMeals.value[goalId] = ''
   }
 }
-function removeDayMeal(goalId: string, id: string) {
+function removeDayMeal(goalId: string, id: string, category: Category, hasTemplateItems: boolean) {
   const draft = dayDrafts.value[goalId]!
-  if (draft.meal_options.length > 1) {
-    draft.meal_options = draft.meal_options.filter((option) => option.id !== id)
-    delete draft.meals[id]
+  if (draft.options.length > (category === 'alimentacao' || hasTemplateItems ? 1 : 0)) {
+    draft.options = draft.options.filter((option) => option.id !== id)
+    delete draft.items[id]
   }
 }
 function moveDayMeal(goalId: string, id: string, offset: -1 | 1) {
   const draft = dayDrafts.value[goalId]!
-  draft.meal_options = moveMeal(draft.meal_options, id, offset)
+  draft.options = moveMeal(draft.options, id, offset)
 }
 function openDay(date: Date) {
   dayTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null
@@ -356,21 +398,27 @@ function openDay(date: Date) {
         (entry) => entry.goal_id === goal.id && entry.local_date === localKey(date),
       )
       const completed = isDone(goal, date)
-      const meal_options = (detail?.meal_options || mealOptionsForDate(goal, date)).map(
-        (option) => ({ ...option }),
-      )
-      const meals = Object.fromEntries(
-        meal_options.map(({ id }) => [
+      const options = (
+        goal.category === 'alimentacao'
+          ? detail?.meal_options || mealOptionsForDate(goal, date)
+          : detail?.checklist_options?.length
+            ? detail.checklist_options
+            : checklistOptionsForDate(goal, date)
+      ).map((option) => ({ ...option }))
+      const entries = goal.category === 'alimentacao' ? detail?.meals : detail?.checklist
+      const items = Object.fromEntries(
+        options.map(({ id }) => [
           id,
           {
-            checked: detail
-              ? Boolean(detail.meals[id]?.checked)
-              : goal.category === 'alimentacao' && completed,
-            description: detail?.meals[id]?.description || '',
+            checked:
+              entries?.[id]?.checked ??
+              (completed &&
+                (goal.category === 'alimentacao' || !detail?.checklist_options?.length)),
+            description: entries?.[id]?.description || '',
           },
         ]),
       ) as MealEntries
-      return [goal.id, { meals, meal_options, note: detail?.note || '', completed }]
+      return [goal.id, { items, options, note: detail?.note || '', completed }]
     }),
   )
 }
@@ -422,12 +470,25 @@ async function saveDay() {
       await saveDayDetail({
         goal_id: goal.id,
         local_date: localKey(date),
-        meals: draft.meals,
-        meal_options: draft.meal_options,
+        meals: goal.category === 'alimentacao' ? draft.items : {},
+        meal_options:
+          goal.category === 'alimentacao' ? draft.options : goal.meal_options || defaultMealOptions,
+        checklist: goal.category === 'alimentacao' ? {} : draft.items,
+        checklist_options: goal.category === 'alimentacao' ? [] : draft.options,
         note: draft.note,
       })
-      if (goal.category !== 'alimentacao' && draft.completed !== isDone(goal, date))
-        await setCompleted(goal.id, localKey(date), draft.completed)
+      if (goal.category !== 'alimentacao') {
+        const completed = draft.options.length
+          ? draft.options.every(({ id }) => draft.items[id]?.checked)
+          : draft.completed
+        if (
+          completed !==
+          completions.value.some(
+            (entry) => entry.goal_id === goal.id && entry.local_date === localKey(date),
+          )
+        )
+          await setCompleted(goal.id, localKey(date), completed)
+      }
     }
     selectedDay.value = null
     await refresh()
@@ -507,7 +568,10 @@ async function save() {
         input.meal_options.length > 12 ||
         Object.values(input.meal_options_by_weekday).some(
           (options) => !options.length || options.length > 12,
-        )))
+        ))) ||
+    (input.category !== 'alimentacao' &&
+      (input.checklist_options.length > 12 ||
+        Object.values(input.checklist_options_by_weekday).some((options) => options.length > 12)))
   ) {
     message.value = 'Informe nome, dias e pontos válidos.'
     return
@@ -537,6 +601,13 @@ function edit(goal: Goal) {
     meal_options: (goal.meal_options || defaultMealOptions).map((option) => ({ ...option })),
     meal_options_by_weekday: Object.fromEntries(
       Object.entries(goal.meal_options_by_weekday || {}).map(([day, options]) => [
+        day,
+        options.map((option) => ({ ...option })),
+      ]),
+    ),
+    checklist_options: (goal.checklist_options || []).map((option) => ({ ...option })),
+    checklist_options_by_weekday: Object.fromEntries(
+      Object.entries(goal.checklist_options_by_weekday || {}).map(([day, options]) => [
         day,
         options.map((option) => ({ ...option })),
       ]),
@@ -573,6 +644,8 @@ async function pause(goal: Goal) {
       active: !goal.active,
       meal_options: goal.meal_options || defaultMealOptions,
       meal_options_by_weekday: goal.meal_options_by_weekday || {},
+      checklist_options: goal.checklist_options || [],
+      checklist_options_by_weekday: goal.checklist_options_by_weekday || {},
     })
     await refresh()
   } catch (error) {
@@ -829,7 +902,9 @@ onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
                         >{{
                           goal.category === 'alimentacao'
                             ? `${mealCount(goal, date).checked}/${mealCount(goal, date).total} refeições`
-                            : categoryName(goal.category)
+                            : checklistCount(goal, date).total
+                              ? `${checklistCount(goal, date).checked}/${checklistCount(goal, date).total} itens`
+                              : categoryName(goal.category)
                         }}
                         · {{ goal.points }} pts</small
                       ></span
@@ -1027,6 +1102,52 @@ onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
                   </button>
                 </div>
               </fieldset>
+              <fieldset v-if="form.category !== 'alimentacao'" class="meal-options-field">
+                <legend>Checklist da meta (opcional)</legend>
+                <p>
+                  Adicione etapas para marcar em cada dia. Sem itens, a meta usa um check simples.
+                </p>
+                <div class="meal-option-list">
+                  <span
+                    v-for="(option, index) in form.checklist_options"
+                    :key="option.id"
+                    class="meal-option-chip"
+                    >{{ option.label
+                    }}<button
+                      type="button"
+                      :disabled="index === 0"
+                      :aria-label="`Subir ${option.label}`"
+                      @click="moveGoalChecklist(option.id, -1)"
+                    >
+                      <ArrowUp :size="14" /></button
+                    ><button
+                      type="button"
+                      :disabled="index === form.checklist_options.length - 1"
+                      :aria-label="`Descer ${option.label}`"
+                      @click="moveGoalChecklist(option.id, 1)"
+                    >
+                      <ArrowDown :size="14" /></button
+                    ><button
+                      type="button"
+                      :aria-label="`Remover ${option.label}`"
+                      @click="removeGoalChecklist(option.id)"
+                    >
+                      <X :size="14" /></button
+                  ></span>
+                </div>
+                <div class="meal-add">
+                  <input
+                    v-model="newGoalChecklist"
+                    type="text"
+                    maxlength="40"
+                    placeholder="Ex.: Aquecer, treinar, alongar"
+                    aria-label="Novo item do checklist"
+                    @keydown.enter.prevent="addGoalChecklist"
+                  /><button type="button" class="small-button" @click="addGoalChecklist">
+                    <Plus :size="16" /> Adicionar
+                  </button>
+                </div>
+              </fieldset>
               <fieldset>
                 <legend>Em quais dias?</legend>
                 <div class="day-picker">
@@ -1044,11 +1165,11 @@ onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
                 </div>
               </fieldset>
               <fieldset
-                v-if="form.category === 'alimentacao' && form.scheduled_weekdays.length"
+                v-if="form.scheduled_weekdays.length && formDefaultOptions.length"
                 class="weekday-meals-field"
               >
                 <legend>Opções em cada dia da semana</legend>
-                <p>Todos usam as refeições acima. Personalize apenas os dias que quiser.</p>
+                <p>Todos usam os itens acima. Personalize apenas os dias que quiser.</p>
                 <div
                   v-for="day in [1, 2, 3, 4, 5, 6, 0].filter((value) =>
                     form.scheduled_weekdays.includes(value),
@@ -1061,12 +1182,10 @@ onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
                     <div>
                       <button type="button" class="text-button" @click="openWeekdayModal(day)">
                         {{
-                          form.meal_options_by_weekday[String(day)]
-                            ? 'Editar opções'
-                            : 'Personalizar'
+                          formWeekdayOptions[String(day)] ? 'Editar opções' : 'Personalizar'
                         }}</button
                       ><button
-                        v-if="form.meal_options_by_weekday[String(day)]"
+                        v-if="formWeekdayOptions[String(day)]"
                         type="button"
                         class="text-button"
                         @click="resetWeekday(day)"
@@ -1076,7 +1195,7 @@ onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
                     </div>
                   </div>
                   <small>{{
-                    (form.meal_options_by_weekday[String(day)] || form.meal_options)
+                    (formWeekdayOptions[String(day)] || formDefaultOptions)
                       .map((option) => option.label)
                       .join(' · ')
                   }}</small>
@@ -1175,7 +1294,7 @@ onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
           </button>
         </div>
         <p class="weekday-dialog-hint">
-          Escolha as refeições e ajuste a ordem para este dia da semana. As alterações entram no
+          Escolha os itens e ajuste a ordem para este dia da semana. As alterações entram no
           cadastro da meta quando você salvá-la.
         </p>
         <ol class="weekday-editor-list">
@@ -1201,7 +1320,7 @@ onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
             <button
               type="button"
               class="meal-remove"
-              :disabled="weekdayDraft.length === 1"
+              :disabled="form.category === 'alimentacao' && weekdayDraft.length === 1"
               :aria-label="`Remover ${option.label}`"
               @click="removeWeekdayMeal(option.id)"
             >
@@ -1214,8 +1333,8 @@ onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
             v-model="weekdayMealInput"
             type="text"
             maxlength="40"
-            placeholder="Ex.: Ceia"
-            aria-label="Nova refeição neste dia da semana"
+            :placeholder="form.category === 'alimentacao' ? 'Ex.: Ceia' : 'Ex.: Alongar'"
+            aria-label="Novo item neste dia da semana"
             @keydown.enter.prevent="addWeekdayMeal"
           /><button type="button" class="small-button" @click="addWeekdayMeal">
             <Plus :size="16" /> Adicionar
@@ -1291,28 +1410,34 @@ onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
                 ><small>{{ categoryName(goal.category) }} · {{ goal.points }} pts</small>
               </div>
             </div>
-            <template v-if="goal.category === 'alimentacao'">
-              <p class="meal-hint">
-                Marque todas as refeições escolhidas para concluir esta meta do dia.
-              </p>
+            <template v-if="goal.category === 'alimentacao' || dayDrafts[goal.id]!.options.length">
+              <p class="meal-hint">Marque todos os itens para concluir esta meta do dia.</p>
               <div
-                v-for="(option, index) in dayDrafts[goal.id]!.meal_options"
+                v-for="(option, index) in dayDrafts[goal.id]!.options"
                 :key="option.id"
                 class="meal-row"
               >
                 <label class="meal-check"
                   ><input
-                    v-model="dayDrafts[goal.id]!.meals[option.id]!.checked"
+                    v-model="dayDrafts[goal.id]!.items[option.id]!.checked"
                     type="checkbox"
                   />{{ option.label }}</label
                 >
                 <textarea
-                  v-model="dayDrafts[goal.id]!.meals[option.id]!.description"
+                  v-model="dayDrafts[goal.id]!.items[option.id]!.description"
                   class="meal-description"
                   rows="1"
                   maxlength="300"
-                  :aria-label="`O que você comeu em ${option.label}`"
-                  placeholder="O que você comeu? (opcional)"
+                  :aria-label="
+                    goal.category === 'alimentacao'
+                      ? `O que você comeu em ${option.label}`
+                      : `Detalhes de ${option.label}`
+                  "
+                  :placeholder="
+                    goal.category === 'alimentacao'
+                      ? 'O que você comeu? (opcional)'
+                      : 'Detalhe opcional'
+                  "
                   @input="resizeMealDescription($event.target as HTMLTextAreaElement)"
                 ></textarea>
                 <div class="meal-order-actions">
@@ -1325,7 +1450,7 @@ onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
                     <ArrowUp :size="15" /></button
                   ><button
                     type="button"
-                    :disabled="index === dayDrafts[goal.id]!.meal_options.length - 1"
+                    :disabled="index === dayDrafts[goal.id]!.options.length - 1"
                     :aria-label="`Descer ${option.label}`"
                     @click="moveDayMeal(goal.id, option.id, 1)"
                   >
@@ -1335,23 +1460,22 @@ onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
                 <button
                   type="button"
                   class="meal-remove"
-                  :disabled="dayDrafts[goal.id]!.meal_options.length === 1"
+                  :disabled="
+                    dayDrafts[goal.id]!.options.length === 1 &&
+                    (goal.category === 'alimentacao' ||
+                      checklistOptionsForDate(goal, selectedDay).length > 0)
+                  "
                   :aria-label="`Remover ${option.label} deste dia`"
-                  @click="removeDayMeal(goal.id, option.id)"
+                  @click="
+                    removeDayMeal(
+                      goal.id,
+                      option.id,
+                      goal.category,
+                      checklistOptionsForDate(goal, selectedDay).length > 0,
+                    )
+                  "
                 >
                   <X :size="16" />
-                </button>
-              </div>
-              <div class="meal-add">
-                <input
-                  v-model="newDayMeals[goal.id]"
-                  type="text"
-                  maxlength="40"
-                  placeholder="Outra refeição neste dia"
-                  :aria-label="`Nova refeição de ${goal.title} neste dia`"
-                  @keydown.enter.prevent="addDayMeal(goal.id)"
-                /><button type="button" class="small-button" @click="addDayMeal(goal.id)">
-                  <Plus :size="16" /> Adicionar
                 </button>
               </div>
             </template>
@@ -1359,6 +1483,22 @@ onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
               ><input v-model="dayDrafts[goal.id]!.completed" type="checkbox" />Meta
               concluída</label
             >
+            <div class="meal-add">
+              <input
+                v-model="newDayMeals[goal.id]"
+                type="text"
+                maxlength="40"
+                :placeholder="
+                  goal.category === 'alimentacao'
+                    ? 'Outra refeição neste dia'
+                    : 'Novo item neste dia'
+                "
+                :aria-label="`Novo item de ${goal.title} neste dia`"
+                @keydown.enter.prevent="addDayMeal(goal.id)"
+              /><button type="button" class="small-button" @click="addDayMeal(goal.id)">
+                <Plus :size="16" /> Adicionar
+              </button>
+            </div>
             <label class="day-note"
               >Observação do dia (opcional)<textarea
                 v-model="dayDrafts[goal.id]!.note"

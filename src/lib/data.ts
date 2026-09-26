@@ -36,16 +36,22 @@ function readLocal(): LocalData {
         ...goal,
         meal_options: goal.meal_options || defaultMealOptions,
         meal_options_by_weekday: goal.meal_options_by_weekday || {},
+        checklist_options: goal.checklist_options || [],
+        checklist_options_by_weekday: goal.checklist_options_by_weekday || {},
       })),
       completions: data.completions || [],
       history: (data.history || []).map((entry) => ({
         ...entry,
         meal_options: entry.meal_options || legacyMealOptions,
         meal_options_by_weekday: entry.meal_options_by_weekday || {},
+        checklist_options: entry.checklist_options || [],
+        checklist_options_by_weekday: entry.checklist_options_by_weekday || {},
       })),
       dayDetails: (data.dayDetails || []).map((entry) => ({
         ...entry,
         meal_options: entry.meal_options || legacyMealOptions,
+        checklist_options: entry.checklist_options || [],
+        checklist: entry.checklist || {},
       })),
     }
   } catch {
@@ -91,6 +97,8 @@ function snapshot(goal: Goal, validUntil: string): GoalHistory {
     active: goal.active,
     meal_options: goal.meal_options || defaultMealOptions,
     meal_options_by_weekday: goal.meal_options_by_weekday || {},
+    checklist_options: goal.checklist_options || [],
+    checklist_options_by_weekday: goal.checklist_options_by_weekday || {},
   }
 }
 
@@ -164,6 +172,10 @@ export async function deleteGoal(id: string): Promise<void> {
 
 export async function saveDayDetail(detail: Omit<GoalDayDetail, 'user_id'>): Promise<void> {
   const meal_options = detail.meal_options.map(({ id, label }) => ({ id, label: label.trim() }))
+  const checklist_options = (detail.checklist_options || []).map(({ id, label }) => ({
+    id,
+    label: label.trim(),
+  }))
   if (
     meal_options.length < 1 ||
     meal_options.length > 12 ||
@@ -171,12 +183,27 @@ export async function saveDayDetail(detail: Omit<GoalDayDetail, 'user_id'>): Pro
     new Set(meal_options.map(({ id }) => id)).size !== meal_options.length
   )
     throw new Error('Escolha de 1 a 12 refeições com nomes de até 40 caracteres.')
+  if (
+    checklist_options.length > 12 ||
+    checklist_options.some(({ id, label }) => !id || !label || label.length > 40) ||
+    new Set(checklist_options.map(({ id }) => id)).size !== checklist_options.length
+  )
+    throw new Error('Escolha até 12 itens de checklist com nomes de até 40 caracteres.')
   const meals = Object.fromEntries(
     meal_options.map(({ id }) => [
       id,
       {
         checked: Boolean(detail.meals[id]?.checked),
         description: detail.meals[id]?.description.trim().slice(0, 300) || '',
+      },
+    ]),
+  ) as MealEntries
+  const checklist = Object.fromEntries(
+    checklist_options.map(({ id }) => [
+      id,
+      {
+        checked: Boolean(detail.checklist?.[id]?.checked),
+        description: detail.checklist?.[id]?.description.trim().slice(0, 300) || '',
       },
     ]),
   ) as MealEntries
@@ -188,19 +215,33 @@ export async function saveDayDetail(detail: Omit<GoalDayDetail, 'user_id'>): Pro
     data.dayDetails = data.dayDetails.filter(
       (entry) => !(entry.goal_id === detail.goal_id && entry.local_date === detail.local_date),
     )
-    data.dayDetails.push({ ...detail, meal_options, meals, note, user_id: 'local' })
+    data.dayDetails.push({
+      ...detail,
+      meal_options,
+      meals,
+      checklist_options,
+      checklist,
+      note,
+      user_id: 'local',
+    })
     saveLocal(data)
     return
   }
   const { data: userData, error: userError } = await supabase.auth.getUser()
   errorIfPresent(userError)
   if (!userData.user) throw new Error('Sua sessão expirou. Entre novamente.')
-  const { error } = await supabase
-    .from('goal_day_details')
-    .upsert(
-      { ...detail, meal_options, meals, note, user_id: userData.user.id },
-      { onConflict: 'goal_id,local_date' },
-    )
+  const { error } = await supabase.from('goal_day_details').upsert(
+    {
+      ...detail,
+      meal_options,
+      meals,
+      checklist_options,
+      checklist,
+      note,
+      user_id: userData.user.id,
+    },
+    { onConflict: 'goal_id,local_date' },
+  )
   errorIfPresent(error)
 }
 

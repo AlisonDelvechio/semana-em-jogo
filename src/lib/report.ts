@@ -1,6 +1,7 @@
 import type { Completion, Goal, GoalDayDetail, GoalHistory } from '../types'
 import {
   addDays,
+  checklistOptionsForDate,
   fullWeekdays,
   goalForDate,
   isGoalDone,
@@ -19,8 +20,8 @@ const columns = [
   'Concluída',
   'Pontos da meta',
   'Pontos ganhos',
-  'Refeição',
-  'Refeição marcada',
+  'Item do checklist',
+  'Item marcado',
   'Descrição',
   'Observação do dia',
 ]
@@ -79,17 +80,24 @@ export function createGoalReport(
         version.points,
         scheduled && done ? version.points : 0,
       ]
-      const options =
-        version.category === 'alimentacao'
-          ? detail?.meal_options || mealOptionsForDate(version, date)
-          : []
+      const food = version.category === 'alimentacao'
+      const options = food
+        ? detail?.meal_options || mealOptionsForDate(version, date)
+        : detail?.checklist_options?.length
+          ? detail.checklist_options
+          : checklistOptionsForDate(version, date)
+      const itemEntries = food ? detail?.meals : detail?.checklist
       if (options.length) {
         for (const option of options) {
           rows.push([
             ...common,
             option.label,
-            detail?.meals[option.id]?.checked ? 'Sim' : !detail && done ? 'Sim' : 'Não',
-            detail?.meals[option.id]?.description || '',
+            itemEntries?.[option.id]?.checked
+              ? 'Sim'
+              : done && (!detail || (!food && !detail.checklist_options?.length))
+                ? 'Sim'
+                : 'Não',
+            itemEntries?.[option.id]?.description || '',
             detail?.note || '',
           ])
         }
@@ -102,5 +110,15 @@ export function createGoalReport(
       rows.push(['', '', goal.title, goal.category, 'Não', 'Não', goal.points, 0, '', '', '', ''])
   }
 
-  return `\uFEFF${rows.map((row) => row.map(csvCell).join(';')).join('\r\n')}\r\n`
+  return `\uFEFF${rows
+    .map((row, rowIndex) =>
+      row
+        .map((value, columnIndex) =>
+          // Excel displays dates as #### in a narrow CSV column. A generated text formula
+          // keeps the full date visible without interpreting user-entered text as a formula.
+          rowIndex > 0 && columnIndex === 0 && value ? `="${value}"` : csvCell(value),
+        )
+        .join(';'),
+    )
+    .join('\r\n')}\r\n`
 }

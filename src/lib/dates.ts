@@ -65,6 +65,10 @@ export function mealOptionsForDate(goal: Goal, date: Date) {
   )
 }
 
+export function checklistOptionsForDate(goal: Goal, date: Date) {
+  return goal.checklist_options_by_weekday?.[String(date.getDay())] || goal.checklist_options || []
+}
+
 export function isGoalDone(
   goal: Goal,
   day: string,
@@ -75,6 +79,9 @@ export function isGoalDone(
   if (goal.category === 'alimentacao' && detail) {
     const options = detail.meal_options || goal.meal_options || []
     return options.length > 0 && options.every(({ id }) => detail.meals[id]?.checked)
+  }
+  if (goal.category !== 'alimentacao' && detail?.checklist_options?.length) {
+    return detail.checklist_options.every(({ id }) => detail.checklist?.[id]?.checked)
   }
   return completions.some((entry) => entry.goal_id === goal.id && entry.local_date === day)
 }
