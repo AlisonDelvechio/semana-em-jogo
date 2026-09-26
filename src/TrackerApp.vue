@@ -665,152 +665,144 @@ onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
           <p>O progresso acontece um dia de cada vez.</p>
         </div>
       </aside>
-      <main class="content">
+      <main :class="['content', { 'week-layout': tab === 'week' }]">
         <div v-if="loading" role="status" class="loading">Carregando sua semana...</div>
-        <template v-else-if="tab === 'week'"
-          ><div class="week-layout">
-            <div class="page-heading">
+        <template v-else-if="tab === 'week'">
+          <div class="page-heading">
+            <div>
+              <span class="eyebrow">SEU PAINEL SEMANAL</span>
+              <div class="month-heading">
+                <CalendarDays :size="17" aria-hidden="true" /><span class="desktop-date-label">{{
+                  monthLabel
+                }}</span
+                ><span class="mobile-date-label">{{ compactMonthLabel }}</span>
+              </div>
+              <h1>Uma semana de <em>cada vez.</em></h1>
+              <p>O que importa é continuar no seu ritmo.</p>
+            </div>
+            <button class="small-button" @click="tab = 'goals'">
+              <Plus :size="17" aria-hidden="true" /> Nova meta
+            </button>
+          </div>
+          <div class="summary-grid">
+            <div class="summary-card featured">
+              <div class="card-top">
+                {{
+                  future ? 'PRÓXIMA SEMANA' : current ? 'PROGRESSO ATÉ HOJE' : 'RESULTADO DA SEMANA'
+                }}
+                <Sparkles :size="23" aria-hidden="true" />
+              </div>
+              <div class="progress-main">
+                <strong>{{ future ? 0 : pace.percent }}%</strong
+                ><span>{{ future ? 'sem atividades vencidas' : 'do previsto até este dia' }}</span>
+              </div>
+              <div class="progress-track"><div :style="{ width: `${pace.percent}%` }"></div></div>
+              <small
+                >{{ pace.completed }} de {{ pace.total }} atividades previstas até esta data
+                <template v-if="pace.upcoming"> · {{ pace.upcoming }} por vir</template></small
+              >
+              <div class="week-total">
+                Plano completo: {{ stats.completed }} de {{ stats.total }} · {{ stats.percent }}%
+              </div>
+            </div>
+            <div class="summary-card">
+              <div class="card-top">
+                PONTOS CONQUISTADOS <Sparkles :size="22" aria-hidden="true" />
+              </div>
+              <strong class="stat-number">{{ stats.points }} <small>pts</small></strong>
+              <p>Cada passo conta.</p>
+            </div>
+            <div class="summary-card">
+              <div class="card-top">METAS NA SEMANA <Target :size="22" aria-hidden="true" /></div>
+              <strong class="stat-number">{{ activeThisWeek }}</strong>
+              <p>Um plano feito por você.</p>
+            </div>
+          </div>
+          <section class="week-section">
+            <div class="section-heading">
               <div>
-                <span class="eyebrow">SEU PAINEL SEMANAL</span>
-                <div class="month-heading">
-                  <CalendarDays :size="17" aria-hidden="true" /><span class="desktop-date-label">{{
-                    monthLabel
-                  }}</span
-                  ><span class="mobile-date-label">{{ compactMonthLabel }}</span>
-                </div>
-                <h1>Uma semana de <em>cada vez.</em></h1>
-                <p>O que importa é continuar no seu ritmo.</p>
+                <span class="eyebrow">CHECKLIST</span>
+                <h2>Seu plano da semana</h2>
               </div>
-              <button class="small-button" @click="tab = 'goals'">
-                <Plus :size="17" aria-hidden="true" /> Nova meta
-              </button>
-            </div>
-            <div class="summary-grid">
-              <div class="summary-card featured">
-                <div class="card-top">
-                  {{
-                    future
-                      ? 'PRÓXIMA SEMANA'
-                      : current
-                        ? 'PROGRESSO ATÉ HOJE'
-                        : 'RESULTADO DA SEMANA'
-                  }}
-                  <Sparkles :size="23" aria-hidden="true" />
-                </div>
-                <div class="progress-main">
-                  <strong>{{ future ? 0 : pace.percent }}%</strong
-                  ><span>{{
-                    future ? 'sem atividades vencidas' : 'do previsto até este dia'
-                  }}</span>
-                </div>
-                <div class="progress-track"><div :style="{ width: `${pace.percent}%` }"></div></div>
-                <small
-                  >{{ pace.completed }} de {{ pace.total }} atividades previstas até esta data
-                  <template v-if="pace.upcoming"> · {{ pace.upcoming }} por vir</template></small
-                >
-                <div class="week-total">
-                  Plano completo: {{ stats.completed }} de {{ stats.total }} · {{ stats.percent }}%
-                </div>
-              </div>
-              <div class="summary-card">
-                <div class="card-top">
-                  PONTOS CONQUISTADOS <Sparkles :size="22" aria-hidden="true" />
-                </div>
-                <strong class="stat-number">{{ stats.points }} <small>pts</small></strong>
-                <p>Cada passo conta.</p>
-              </div>
-              <div class="summary-card">
-                <div class="card-top">METAS NA SEMANA <Target :size="22" aria-hidden="true" /></div>
-                <strong class="stat-number">{{ activeThisWeek }}</strong>
-                <p>Um plano feito por você.</p>
+              <div class="week-nav">
+                <button aria-label="Semana anterior" @click="monday = addDays(monday, -7)">
+                  <ChevronLeft :size="19" /></button
+                ><span class="desktop-date-label">{{ label }}</span
+                ><span class="mobile-date-label">{{ compactWeekLabel }}</span
+                ><button aria-label="Próxima semana" @click="monday = addDays(monday, 7)">
+                  <ChevronRight :size="19" />
+                </button>
               </div>
             </div>
-            <section class="week-section">
-              <div class="section-heading">
-                <div>
-                  <span class="eyebrow">CHECKLIST</span>
-                  <h2>Seu plano da semana</h2>
-                </div>
-                <div class="week-nav">
-                  <button aria-label="Semana anterior" @click="monday = addDays(monday, -7)">
-                    <ChevronLeft :size="19" /></button
-                  ><span class="desktop-date-label">{{ label }}</span
-                  ><span class="mobile-date-label">{{ compactWeekLabel }}</span
-                  ><button aria-label="Próxima semana" @click="monday = addDays(monday, 7)">
-                    <ChevronRight :size="19" />
-                  </button>
-                </div>
-              </div>
-              <button v-if="!current" class="today-link" @click="monday = mondayOf(new Date())">
-                Voltar para esta semana
-              </button>
-              <div v-if="!days.some((date) => planned(date).length)" class="empty-state">
-                <Sparkles :size="32" aria-hidden="true" />
-                <h3>Nenhuma meta nesta semana</h3>
-                <p>Crie uma meta para montar seu checklist semanal.</p>
-                <button class="primary-button" @click="tab = 'goals'">Ver minhas metas</button>
-              </div>
-              <div v-else class="days-grid">
-                <article
-                  v-for="date in visibleDays"
-                  :key="localKey(date)"
-                  :class="['day-card', { 'is-today': localKey(date) === localKey(new Date()) }]"
-                >
-                  <div class="day-heading">
-                    <button
-                      type="button"
-                      class="day-open"
-                      :aria-label="`Abrir registros de ${date.toLocaleDateString('pt-BR')}`"
-                      @click="openDay(date)"
-                    >
-                      <span>{{ fullWeekdays[date.getDay()] }}</span
-                      ><strong
-                        >{{ date.getDate() }}
-                        <small>{{
-                          date.toLocaleDateString('pt-BR', { month: 'short' })
-                        }}</small></strong
-                      >
-                    </button>
-                    <span v-if="localKey(date) === localKey(new Date())" class="today-pill"
-                      >HOJE</span
-                    >
-                  </div>
-                  <div v-if="planned(date).length" class="tasks">
-                    <button
-                      type="button"
-                      v-for="goal in planned(date)"
-                      :key="goal.id"
-                      :class="['task', goal.category, { done: isDone(goal, date) }]"
-                      :aria-label="`Detalhar ${goal.title} em ${date.toLocaleDateString('pt-BR')}`"
-                      @click="openDay(date)"
-                    >
-                      <span class="check-visual" aria-hidden="true"><Check :size="13" /></span
-                      ><span class="task-title"
-                        >{{ goal.title
-                        }}<small
-                          >{{
-                            goal.category === 'alimentacao'
-                              ? `${mealCount(goal, date).checked}/${mealCount(goal, date).total} refeições`
-                              : categoryName(goal.category)
-                          }}
-                          · {{ goal.points }} pts</small
-                        ></span
-                      >
-                    </button>
-                  </div>
-                  <p v-else class="rest-day">Dia livre para respirar ☀</p>
+            <button v-if="!current" class="today-link" @click="monday = mondayOf(new Date())">
+              Voltar para esta semana
+            </button>
+            <div v-if="!days.some((date) => planned(date).length)" class="empty-state">
+              <Sparkles :size="32" aria-hidden="true" />
+              <h3>Nenhuma meta nesta semana</h3>
+              <p>Crie uma meta para montar seu checklist semanal.</p>
+              <button class="primary-button" @click="tab = 'goals'">Ver minhas metas</button>
+            </div>
+            <div v-else class="days-grid">
+              <article
+                v-for="date in visibleDays"
+                :key="localKey(date)"
+                :class="['day-card', { 'is-today': localKey(date) === localKey(new Date()) }]"
+              >
+                <div class="day-heading">
                   <button
-                    v-if="planned(date).length"
                     type="button"
-                    class="day-edit-action"
+                    class="day-open"
+                    :aria-label="`Abrir registros de ${date.toLocaleDateString('pt-BR')}`"
                     @click="openDay(date)"
                   >
-                    <Pencil :size="14" /> Editar dia
+                    <span>{{ fullWeekdays[date.getDay()] }}</span
+                    ><strong
+                      >{{ date.getDate() }}
+                      <small>{{
+                        date.toLocaleDateString('pt-BR', { month: 'short' })
+                      }}</small></strong
+                    >
                   </button>
-                </article>
-              </div>
-            </section>
-          </div></template
+                  <span v-if="localKey(date) === localKey(new Date())" class="today-pill"
+                    >HOJE</span
+                  >
+                </div>
+                <div v-if="planned(date).length" class="tasks">
+                  <button
+                    type="button"
+                    v-for="goal in planned(date)"
+                    :key="goal.id"
+                    :class="['task', goal.category, { done: isDone(goal, date) }]"
+                    :aria-label="`Detalhar ${goal.title} em ${date.toLocaleDateString('pt-BR')}`"
+                    @click="openDay(date)"
+                  >
+                    <span class="check-visual" aria-hidden="true"><Check :size="13" /></span
+                    ><span class="task-title"
+                      >{{ goal.title
+                      }}<small
+                        >{{
+                          goal.category === 'alimentacao'
+                            ? `${mealCount(goal, date).checked}/${mealCount(goal, date).total} refeições`
+                            : categoryName(goal.category)
+                        }}
+                        · {{ goal.points }} pts</small
+                      ></span
+                    >
+                  </button>
+                </div>
+                <p v-else class="rest-day">Dia livre para respirar ☀</p>
+                <button
+                  v-if="planned(date).length"
+                  type="button"
+                  class="day-edit-action"
+                  @click="openDay(date)"
+                >
+                  <Pencil :size="14" /> Editar dia
+                </button>
+              </article>
+            </div>
+          </section> </template
         ><template v-else-if="tab === 'month'">
           <div class="page-heading month-page-heading">
             <div>
