@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import type { Session } from '@supabase/supabase-js'
 import {
   CalendarDays,
@@ -31,6 +31,7 @@ import {
 } from './lib/data'
 import {
   addDays,
+  calendarDays,
   fullWeekdays,
   localKey,
   mondayOf,
@@ -59,7 +60,8 @@ const goals = ref<Goal[]>([]),
   history = ref<GoalHistory[]>([])
 const dayDetails = ref<GoalDayDetail[]>([])
 const monday = ref(mondayOf(new Date())),
-  tab = ref<'week' | 'goals'>('week')
+  tab = ref<'week' | 'month' | 'goals'>('week')
+const monthDate = ref(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
 const loading = ref(true),
   busy = ref(false),
   message = ref('')
@@ -69,6 +71,9 @@ const session = ref<Session | null>(null),
   signUp = ref(false)
 const editing = ref<string | null>(null)
 const selectedDay = ref<Date | null>(null)
+const dialogCloseButton = ref<HTMLButtonElement | null>(null)
+const dayDialog = ref<HTMLElement | null>(null)
+let dayTrigger: HTMLElement | null = null
 type DayDraft = { meals: MealEntries; meal_options: MealOption[]; note: string; completed: boolean }
 const dayDrafts = ref<Record<string, DayDraft>>({})
 const newGoalMeal = ref('')
@@ -85,6 +90,15 @@ const fresh = (): GoalInput => ({
 })
 const form = ref<GoalInput>(fresh())
 const days = computed(() => weekDays(monday.value))
+const monthDays = computed(() => calendarDays(monthDate.value))
+const monthTitle = computed(() =>
+  monthDate.value.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
+)
+const isCurrentMonth = computed(
+  () =>
+    monthDate.value.getFullYear() === new Date().getFullYear() &&
+    monthDate.value.getMonth() === new Date().getMonth(),
+)
 const stats = computed(() =>
   weekStats(goals.value, completions.value, monday.value, history.value, dayDetails.value),
 )
@@ -140,6 +154,37 @@ const activeThisWeek = computed(
 )
 const isDone = (goal: Goal, date: Date) =>
   isGoalDone(goal, localKey(date), completions.value, dayDetails.value)
+const daySummary = (date: Date) => {
+  const entries = planned(date)
+  return { total: entries.length, completed: entries.filter((goal) => isDone(goal, date)).length }
+}
+const monthProgress = computed(() => {
+  const inMonth = monthDays.value.filter((date) => date.getMonth() === monthDate.value.getMonth())
+  const total = inMonth.reduce((sum, date) => sum + daySummary(date).total, 0)
+  const completed = inMonth.reduce((sum, date) => sum + daySummary(date).completed, 0)
+  const due = inMonth.filter((date) => localKey(date) <= localKey(new Date()))
+  const dueTotal = due.reduce((sum, date) => sum + daySummary(date).total, 0)
+  const dueCompleted = due.reduce((sum, date) => sum + daySummary(date).completed, 0)
+  return {
+    total,
+    completed,
+    dueTotal,
+    dueCompleted,
+    percent: dueTotal ? Math.round((dueCompleted / dueTotal) * 100) : 0,
+  }
+})
+function shiftMonth(amount: number) {
+  monthDate.value = new Date(monthDate.value.getFullYear(), monthDate.value.getMonth() + amount, 1)
+}
+function openWeekOf(date: Date) {
+  monday.value = mondayOf(date)
+  selectedDay.value = null
+  tab.value = 'week'
+}
+function goToCurrentWeek() {
+  monday.value = mondayOf(new Date())
+  tab.value = 'week'
+}
 const mealCount = (goal: Goal, date: Date) => {
   const detail = dayDetails.value.find(
     (entry) => entry.goal_id === goal.id && entry.local_date === localKey(date),
@@ -219,6 +264,7 @@ function removeDayMeal(goalId: string, id: string) {
   }
 }
 function openDay(date: Date) {
+  dayTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null
   selectedDay.value = date
   message.value = ''
   newDayMeals.value = {}
@@ -245,6 +291,28 @@ function openDay(date: Date) {
       return [goal.id, { meals, meal_options, note: detail?.note || '', completed }]
     }),
   )
+}
+watch(selectedDay, async (date) => {
+  await nextTick()
+  if (date) dialogCloseButton.value?.focus()
+  else dayTrigger?.focus()
+})
+function keepDialogFocus(event: KeyboardEvent) {
+  if (event.key !== 'Tab' || !dayDialog.value) return
+  const controls = [
+    ...dayDialog.value.querySelectorAll<HTMLElement>(
+      'button:not(:disabled), input:not(:disabled), textarea:not(:disabled)',
+    ),
+  ]
+  const first = controls[0],
+    last = controls.at(-1)
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault()
+    last?.focus()
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault()
+    first?.focus()
+  }
 }
 async function saveDay() {
   if (!selectedDay.value) return
@@ -447,7 +515,23 @@ onMounted(async () => {
         >
       </div>
       <div class="top-actions">
-        <span v-if="!cloudEnabled" class="local-badge">Modo local</span>
+        <div v-if="!cloudEnabled || session" class="profile-corner">
+          <div class="profile-avatar" aria-hidden="true">{{ session ? profileInitials : 'V' }}</div>
+          <div class="profile-copy">
+            <strong>{{ profileName }}</strong
+            ><small>{{ session?.user.email || 'Modo local' }}</small>
+          </div>
+          <button
+            v-if="session"
+            type="button"
+            class="profile-exit"
+            aria-label="Sair da conta"
+            title="Sair da conta"
+            @click="supabase?.auth.signOut()"
+          >
+            <LogOut :size="16" />
+          </button>
+        </div>
       </div>
     </header>
     <main v-if="cloudEnabled && !session" class="auth-layout">
@@ -492,6 +576,8 @@ onMounted(async () => {
         <span class="eyebrow">MEU ESPAÇO</span
         ><button :class="['nav-button', { selected: tab === 'week' }]" @click="tab = 'week'">
           <CalendarDays :size="18" aria-hidden="true" /> Minha semana</button
+        ><button :class="['nav-button', { selected: tab === 'month' }]" @click="tab = 'month'">
+          <CalendarDays :size="18" aria-hidden="true" /> Calendário</button
         ><button :class="['nav-button', { selected: tab === 'goals' }]" @click="tab = 'goals'">
           <Target :size="18" aria-hidden="true" /> Minhas metas
         </button>
@@ -501,22 +587,6 @@ onMounted(async () => {
         </div>
       </aside>
       <main class="content">
-        <div class="profile-strip">
-          <div class="profile-avatar" aria-hidden="true">{{ session ? profileInitials : 'V' }}</div>
-          <div class="profile-copy">
-            <strong>{{ profileName }}</strong
-            ><small>{{ session?.user.email || 'Seus dados estão neste navegador' }}</small>
-          </div>
-          <span class="profile-state">{{ session ? 'Conta conectada' : 'Modo local' }}</span>
-          <button
-            v-if="session"
-            class="profile-exit"
-            aria-label="Sair da conta"
-            @click="supabase?.auth.signOut()"
-          >
-            <LogOut :size="17" />
-          </button>
-        </div>
         <div v-if="loading" role="status" class="loading">Carregando sua semana...</div>
         <template v-else-if="tab === 'week'"
           ><div class="page-heading">
@@ -614,15 +684,6 @@ onMounted(async () => {
                   <span v-if="localKey(date) === localKey(new Date())" class="today-pill"
                     >HOJE</span
                   >
-                  <button
-                    v-else
-                    type="button"
-                    class="day-detail-icon"
-                    :aria-label="`Abrir ${date.toLocaleDateString('pt-BR')}`"
-                    @click="openDay(date)"
-                  >
-                    <Pencil :size="15" />
-                  </button>
                 </div>
                 <div v-if="planned(date).length" class="tasks">
                   <button
@@ -648,9 +709,104 @@ onMounted(async () => {
                   </button>
                 </div>
                 <p v-else class="rest-day">Dia livre para respirar ☀</p>
+                <button
+                  v-if="planned(date).length"
+                  type="button"
+                  class="day-edit-action"
+                  @click="openDay(date)"
+                >
+                  <Pencil :size="14" /> Editar dia
+                </button>
               </article>
             </div>
           </section></template
+        ><template v-else-if="tab === 'month'">
+          <div class="page-heading month-page-heading">
+            <div>
+              <span class="eyebrow">VISÃO DO MÊS</span>
+              <h1>Seu mês, <em>dia a dia.</em></h1>
+              <p>Escolha uma data para ver e editar suas metas.</p>
+            </div>
+            <button class="small-button" @click="goToCurrentWeek">
+              <CalendarDays :size="17" /> Ver esta semana
+            </button>
+          </div>
+          <div class="month-overview">
+            <div>
+              <span class="eyebrow">PROGRESSO ATÉ HOJE</span
+              ><strong>{{ monthProgress.percent }}%</strong
+              ><small
+                >{{ monthProgress.dueCompleted }} de {{ monthProgress.dueTotal }} atividades
+                previstas até hoje</small
+              >
+            </div>
+            <div>
+              <span class="eyebrow">PLANO DO MÊS</span
+              ><strong
+                >{{ monthProgress.completed }} <span>/ {{ monthProgress.total }}</span></strong
+              ><small>atividades concluídas no mês</small>
+            </div>
+            <div class="month-overview-tip">
+              <CalendarDays :size="25" />
+              <p>
+                Toque em um dia para abrir seu registro. As alterações ficam salvas naquela data.
+              </p>
+            </div>
+          </div>
+          <section class="calendar-panel" aria-label="Calendário mensal">
+            <div class="calendar-header">
+              <div>
+                <span class="eyebrow">CALENDÁRIO</span>
+                <h2>{{ monthTitle }}</h2>
+              </div>
+              <div class="calendar-nav">
+                <button
+                  v-if="!isCurrentMonth"
+                  type="button"
+                  class="today-link"
+                  @click="monthDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1)"
+                >
+                  Mês atual</button
+                ><button type="button" aria-label="Mês anterior" @click="shiftMonth(-1)">
+                  <ChevronLeft :size="19" /></button
+                ><button type="button" aria-label="Próximo mês" @click="shiftMonth(1)">
+                  <ChevronRight :size="19" />
+                </button>
+              </div>
+            </div>
+            <div class="calendar-grid">
+              <div v-for="weekday in [1, 2, 3, 4, 5, 6, 0]" :key="weekday" class="calendar-weekday">
+                {{ weekdays[weekday] }}
+              </div>
+              <button
+                v-for="date in monthDays"
+                :key="localKey(date)"
+                type="button"
+                class="calendar-day"
+                :class="{
+                  'outside-month': date.getMonth() !== monthDate.getMonth(),
+                  'is-today': localKey(date) === localKey(new Date()),
+                  'has-goals': daySummary(date).total > 0,
+                }"
+                :aria-label="`${date.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}: ${daySummary(date).completed} de ${daySummary(date).total} metas concluídas. Abrir registro`"
+                @click="openDay(date)"
+              >
+                <span class="calendar-date">{{ date.getDate() }}</span>
+                <span v-if="daySummary(date).total" class="calendar-day-content"
+                  ><span class="calendar-count"
+                    >{{ daySummary(date).completed }}/{{ daySummary(date).total }}</span
+                  ><span class="calendar-progress"
+                    ><span
+                      :style="{
+                        width: `${(daySummary(date).completed / daySummary(date).total) * 100}%`,
+                      }"
+                    ></span></span
+                  ><small>{{ daySummary(date).total === 1 ? 'meta' : 'metas' }}</small></span
+                >
+                <span v-else class="calendar-free">Livre</span>
+              </button>
+            </div>
+          </section> </template
         ><template v-else
           ><div class="page-heading">
             <div>
@@ -867,14 +1023,16 @@ onMounted(async () => {
       @keydown.esc="selectedDay = null"
     >
       <section
+        ref="dayDialog"
         class="day-dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby="day-dialog-title"
+        @keydown="keepDialogFocus"
       >
         <div class="dialog-header">
           <div>
-            <span class="eyebrow">REGISTRO DO DIA</span>
+            <span class="eyebrow">EDITAR DIA</span>
             <h2 id="day-dialog-title">
               {{
                 selectedDay.toLocaleDateString('pt-BR', {
@@ -887,11 +1045,20 @@ onMounted(async () => {
           </div>
           <button
             type="button"
+            ref="dialogCloseButton"
             class="dialog-close"
             aria-label="Fechar"
             @click="selectedDay = null"
           >
             <X :size="21" />
+          </button>
+        </div>
+        <div v-if="planned(selectedDay).length" class="dialog-summary">
+          <span
+            >{{ daySummary(selectedDay).completed }} de {{ daySummary(selectedDay).total }} metas
+            concluídas</span
+          ><button type="button" @click="openWeekOf(selectedDay)">
+            Ver na semana <ChevronRight :size="15" />
           </button>
         </div>
         <p v-if="!planned(selectedDay).length" class="dialog-empty">
@@ -981,6 +1148,8 @@ onMounted(async () => {
     <nav v-if="!cloudEnabled || session" class="mobile-nav" aria-label="Navegação principal">
       <button :class="{ selected: tab === 'week' }" @click="tab = 'week'">
         <CalendarDays :size="21" /> <span>Semana</span></button
+      ><button :class="{ selected: tab === 'month' }" @click="tab = 'month'">
+        <CalendarDays :size="21" /> <span>Mês</span></button
       ><button :class="{ selected: tab === 'goals' }" @click="tab = 'goals'">
         <Target :size="21" /> <span>Metas</span>
       </button>
