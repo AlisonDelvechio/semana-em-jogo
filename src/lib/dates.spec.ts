@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { localKey, mealOptionsForDate, mondayOf, weekPace, weekStats } from './dates'
+import { calendarDays, localKey, mealOptionsForDate, mondayOf, weekPace, weekStats } from './dates'
 import { defaultMealOptions, type Goal, type GoalDayDetail, type GoalHistory } from '../types'
 
 describe('weekly calculations', () => {
   it('starts weeks on Monday across year boundaries', () => {
     expect(localKey(mondayOf(new Date(2027, 0, 1)))).toBe('2026-12-28')
+  })
+  it('builds a full monthly calendar including adjacent days', () => {
+    const days = calendarDays(new Date(2026, 8, 1)).map(localKey)
+    expect(days).toHaveLength(35)
+    expect(days[0]).toBe('2026-08-31')
+    expect(days.at(-1)).toBe('2026-10-04')
+    expect(days).toContain('2026-09-26')
   })
   it('returns zero percent when no goals are scheduled', () => {
     expect(weekStats([], [], new Date(2026, 8, 21))).toEqual({

@@ -32,6 +32,17 @@ export function weekDays(monday: Date): Date[] {
   return Array.from({ length: 7 }, (_, index) => addDays(monday, index))
 }
 
+export function calendarDays(month: Date): Date[] {
+  const first = new Date(month.getFullYear(), month.getMonth(), 1)
+  const last = new Date(month.getFullYear(), month.getMonth() + 1, 0)
+  const start = mondayOf(first)
+  const count = Math.max(
+    35,
+    Math.ceil((Math.round((last.getTime() - start.getTime()) / 86400000) + 1) / 7) * 7,
+  )
+  return Array.from({ length: count }, (_, index) => addDays(start, index))
+}
+
 export function goalForDate(goal: Goal, history: GoalHistory[], date: Date): Goal {
   const day = localKey(date)
   const version = history
