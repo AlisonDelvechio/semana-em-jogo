@@ -2,6 +2,8 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import type { Session } from '@supabase/supabase-js'
 import {
+  ArrowDown,
+  ArrowUp,
   CalendarDays,
   Check,
   ChevronLeft,
@@ -44,6 +46,7 @@ import {
   weekdays,
   weekStats,
 } from './lib/dates'
+import { moveMeal } from './lib/meals'
 import {
   defaultMealOptions,
   type Completion,
@@ -74,11 +77,17 @@ const selectedDay = ref<Date | null>(null)
 const dialogCloseButton = ref<HTMLButtonElement | null>(null)
 const dayDialog = ref<HTMLElement | null>(null)
 let dayTrigger: HTMLElement | null = null
+const editingWeekday = ref<number | null>(null)
+const weekdayDraft = ref<MealOption[]>([])
+const weekdayMealInput = ref('')
+const weekdayModalError = ref('')
+const weekdayDialog = ref<HTMLElement | null>(null)
+const weekdayCloseButton = ref<HTMLButtonElement | null>(null)
+let weekdayTrigger: HTMLElement | null = null
 type DayDraft = { meals: MealEntries; meal_options: MealOption[]; note: string; completed: boolean }
 const dayDrafts = ref<Record<string, DayDraft>>({})
 const newGoalMeal = ref('')
 const newDayMeals = ref<Record<string, string>>({})
-const newWeekdayMeals = ref<Record<string, string>>({})
 const fresh = (): GoalInput => ({
   title: '',
   category: 'treino',
@@ -199,7 +208,13 @@ const mealCount = (goal: Goal, date: Date) => {
     total: options.length,
   }
 }
-function addOption(options: MealOption[], label: string): MealOption | null {
+function addOption(
+  options: MealOption[],
+  label: string,
+  report = (error: string) => {
+    message.value = error
+  },
+): MealOption | null {
   const name = label.trim()
   if (
     !name ||
@@ -209,10 +224,10 @@ function addOption(options: MealOption[], label: string): MealOption | null {
       (item) => item.label.toLocaleLowerCase('pt-BR') === name.toLocaleLowerCase('pt-BR'),
     )
   ) {
-    message.value = 'Use um nome único de até 40 caracteres (máximo de 12 refeições).'
+    report('Use um nome único de até 40 caracteres (máximo de 12 refeições).')
     return null
   }
-  message.value = ''
+  report('')
   return { id: crypto.randomUUID(), label: name }
 }
 function addGoalMeal() {
@@ -226,26 +241,43 @@ function removeGoalMeal(id: string) {
   if (form.value.meal_options.length > 1)
     form.value.meal_options = form.value.meal_options.filter((option) => option.id !== id)
 }
-function customizeWeekday(day: number) {
-  form.value.meal_options_by_weekday[String(day)] = form.value.meal_options.map((option) => ({
-    ...option,
-  }))
+function moveGoalMeal(id: string, offset: -1 | 1) {
+  form.value.meal_options = moveMeal(form.value.meal_options, id, offset)
+}
+function openWeekdayModal(day: number) {
+  weekdayTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null
+  editingWeekday.value = day
+  weekdayDraft.value = (
+    form.value.meal_options_by_weekday[String(day)] || form.value.meal_options
+  ).map((option) => ({ ...option }))
+  weekdayMealInput.value = ''
+  weekdayModalError.value = ''
 }
 function resetWeekday(day: number) {
   delete form.value.meal_options_by_weekday[String(day)]
 }
-function addWeekdayMeal(day: number) {
-  const options = form.value.meal_options_by_weekday[String(day)]!
-  const option = addOption(options, newWeekdayMeals.value[String(day)] || '')
+function addWeekdayMeal() {
+  const option = addOption(weekdayDraft.value, weekdayMealInput.value, (error) => {
+    weekdayModalError.value = error
+  })
   if (option) {
-    options.push(option)
-    newWeekdayMeals.value[String(day)] = ''
+    weekdayDraft.value.push(option)
+    weekdayMealInput.value = ''
   }
 }
-function removeWeekdayMeal(day: number, id: string) {
-  const options = form.value.meal_options_by_weekday[String(day)]!
-  if (options.length > 1)
-    form.value.meal_options_by_weekday[String(day)] = options.filter((option) => option.id !== id)
+function removeWeekdayMeal(id: string) {
+  if (weekdayDraft.value.length > 1)
+    weekdayDraft.value = weekdayDraft.value.filter((option) => option.id !== id)
+}
+function saveWeekdayModal() {
+  if (editingWeekday.value === null) return
+  form.value.meal_options_by_weekday[String(editingWeekday.value)] = weekdayDraft.value.map(
+    (option) => ({ ...option }),
+  )
+  editingWeekday.value = null
+}
+function moveWeekdayMeal(id: string, offset: -1 | 1) {
+  weekdayDraft.value = moveMeal(weekdayDraft.value, id, offset)
 }
 function addDayMeal(goalId: string) {
   const draft = dayDrafts.value[goalId]!
@@ -262,6 +294,10 @@ function removeDayMeal(goalId: string, id: string) {
     draft.meal_options = draft.meal_options.filter((option) => option.id !== id)
     delete draft.meals[id]
   }
+}
+function moveDayMeal(goalId: string, id: string, offset: -1 | 1) {
+  const draft = dayDrafts.value[goalId]!
+  draft.meal_options = moveMeal(draft.meal_options, id, offset)
 }
 function openDay(date: Date) {
   dayTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null
@@ -297,10 +333,15 @@ watch(selectedDay, async (date) => {
   if (date) dialogCloseButton.value?.focus()
   else dayTrigger?.focus()
 })
-function keepDialogFocus(event: KeyboardEvent) {
-  if (event.key !== 'Tab' || !dayDialog.value) return
+watch(editingWeekday, async (day) => {
+  await nextTick()
+  if (day !== null) weekdayCloseButton.value?.focus()
+  else weekdayTrigger?.focus()
+})
+function keepModalFocus(event: KeyboardEvent, root: HTMLElement | null) {
+  if (event.key !== 'Tab' || !root) return
   const controls = [
-    ...dayDialog.value.querySelectorAll<HTMLElement>(
+    ...root.querySelectorAll<HTMLElement>(
       'button:not(:disabled), input:not(:disabled), textarea:not(:disabled)',
     ),
   ]
@@ -313,6 +354,12 @@ function keepDialogFocus(event: KeyboardEvent) {
     event.preventDefault()
     first?.focus()
   }
+}
+function keepDialogFocus(event: KeyboardEvent) {
+  keepModalFocus(event, dayDialog.value)
+}
+function keepWeekdayFocus(event: KeyboardEvent) {
+  keepModalFocus(event, weekdayDialog.value)
 }
 async function saveDay() {
   if (!selectedDay.value) return
@@ -851,11 +898,25 @@ onMounted(async () => {
                 </p>
                 <div class="meal-option-list">
                   <span
-                    v-for="option in form.meal_options"
+                    v-for="(option, index) in form.meal_options"
                     :key="option.id"
                     class="meal-option-chip"
                     >{{ option.label
                     }}<button
+                      type="button"
+                      :disabled="index === 0"
+                      :aria-label="`Subir ${option.label}`"
+                      @click="moveGoalMeal(option.id, -1)"
+                    >
+                      <ArrowUp :size="14" /></button
+                    ><button
+                      type="button"
+                      :disabled="index === form.meal_options.length - 1"
+                      :aria-label="`Descer ${option.label}`"
+                      @click="moveGoalMeal(option.id, 1)"
+                    >
+                      <ArrowDown :size="14" /></button
+                    ><button
                       type="button"
                       :aria-label="`Remover ${option.label}`"
                       :disabled="form.meal_options.length === 1"
@@ -907,49 +968,28 @@ onMounted(async () => {
                   class="weekday-meals-card"
                 >
                   <div class="weekday-meals-header">
-                    <strong>{{ fullWeekdays[day] }}</strong
-                    ><button
-                      v-if="!form.meal_options_by_weekday[String(day)]"
-                      type="button"
-                      class="text-button"
-                      @click="customizeWeekday(day)"
-                    >
-                      Personalizar</button
-                    ><button v-else type="button" class="text-button" @click="resetWeekday(day)">
-                      Usar padrão
-                    </button>
-                  </div>
-                  <template v-if="form.meal_options_by_weekday[String(day)]">
-                    <div class="meal-option-list">
-                      <span
-                        v-for="option in form.meal_options_by_weekday[String(day)]"
-                        :key="option.id"
-                        class="meal-option-chip"
-                        >{{ option.label
-                        }}<button
-                          type="button"
-                          :disabled="form.meal_options_by_weekday[String(day)]!.length === 1"
-                          :aria-label="`Remover ${option.label} de ${fullWeekdays[day]}`"
-                          @click="removeWeekdayMeal(day, option.id)"
-                        >
-                          <X :size="14" /></button
-                      ></span>
-                    </div>
-                    <div class="meal-add">
-                      <input
-                        v-model="newWeekdayMeals[String(day)]"
-                        type="text"
-                        maxlength="40"
-                        :placeholder="`Outra refeição em ${fullWeekdays[day]}`"
-                        :aria-label="`Nova refeição em ${fullWeekdays[day]}`"
-                        @keydown.enter.prevent="addWeekdayMeal(day)"
-                      /><button type="button" class="small-button" @click="addWeekdayMeal(day)">
-                        <Plus :size="16" /> Adicionar
+                    <strong>{{ fullWeekdays[day] }}</strong>
+                    <div>
+                      <button type="button" class="text-button" @click="openWeekdayModal(day)">
+                        {{
+                          form.meal_options_by_weekday[String(day)]
+                            ? 'Editar opções'
+                            : 'Personalizar'
+                        }}</button
+                      ><button
+                        v-if="form.meal_options_by_weekday[String(day)]"
+                        type="button"
+                        class="text-button"
+                        @click="resetWeekday(day)"
+                      >
+                        Usar padrão
                       </button>
                     </div>
-                  </template>
-                  <small v-else>{{
-                    form.meal_options.map((option) => option.label).join(' · ')
+                  </div>
+                  <small>{{
+                    (form.meal_options_by_weekday[String(day)] || form.meal_options)
+                      .map((option) => option.label)
+                      .join(' · ')
                   }}</small>
                 </div>
               </fieldset>
@@ -1017,6 +1057,91 @@ onMounted(async () => {
       </main>
     </div>
     <div
+      v-if="editingWeekday !== null"
+      class="dialog-backdrop"
+      @click.self="editingWeekday = null"
+      @keydown.esc="editingWeekday = null"
+    >
+      <section
+        ref="weekdayDialog"
+        class="day-dialog weekday-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="weekday-dialog-title"
+        @keydown="keepWeekdayFocus"
+      >
+        <div class="dialog-header">
+          <div>
+            <span class="eyebrow">OPÇÕES DA META</span>
+            <h2 id="weekday-dialog-title">{{ fullWeekdays[editingWeekday] }}</h2>
+          </div>
+          <button
+            ref="weekdayCloseButton"
+            type="button"
+            class="dialog-close"
+            aria-label="Fechar"
+            @click="editingWeekday = null"
+          >
+            <X :size="21" />
+          </button>
+        </div>
+        <p class="weekday-dialog-hint">
+          Escolha as refeições e ajuste a ordem para este dia da semana. As alterações entram no
+          cadastro da meta quando você salvá-la.
+        </p>
+        <ol class="weekday-editor-list">
+          <li v-for="(option, index) in weekdayDraft" :key="option.id">
+            <span>{{ option.label }}</span>
+            <div class="meal-order-actions">
+              <button
+                type="button"
+                :disabled="index === 0"
+                :aria-label="`Subir ${option.label}`"
+                @click="moveWeekdayMeal(option.id, -1)"
+              >
+                <ArrowUp :size="16" /></button
+              ><button
+                type="button"
+                :disabled="index === weekdayDraft.length - 1"
+                :aria-label="`Descer ${option.label}`"
+                @click="moveWeekdayMeal(option.id, 1)"
+              >
+                <ArrowDown :size="16" />
+              </button>
+            </div>
+            <button
+              type="button"
+              class="meal-remove"
+              :disabled="weekdayDraft.length === 1"
+              :aria-label="`Remover ${option.label}`"
+              @click="removeWeekdayMeal(option.id)"
+            >
+              <X :size="16" />
+            </button>
+          </li>
+        </ol>
+        <div class="meal-add">
+          <input
+            v-model="weekdayMealInput"
+            type="text"
+            maxlength="40"
+            placeholder="Ex.: Ceia"
+            aria-label="Nova refeição neste dia da semana"
+            @keydown.enter.prevent="addWeekdayMeal"
+          /><button type="button" class="small-button" @click="addWeekdayMeal">
+            <Plus :size="16" /> Adicionar
+          </button>
+        </div>
+        <p v-if="weekdayModalError" class="notice" role="alert">{{ weekdayModalError }}</p>
+        <div class="dialog-actions">
+          <button type="button" class="text-button" @click="editingWeekday = null">Cancelar</button
+          ><button type="button" class="primary-button" @click="saveWeekdayModal">
+            Aplicar opções
+          </button>
+        </div>
+      </section>
+    </div>
+    <div
       v-if="selectedDay"
       class="dialog-backdrop"
       @click.self="selectedDay = null"
@@ -1082,7 +1207,7 @@ onMounted(async () => {
                 Marque todas as refeições escolhidas para concluir esta meta do dia.
               </p>
               <div
-                v-for="option in dayDrafts[goal.id]!.meal_options"
+                v-for="(option, index) in dayDrafts[goal.id]!.meal_options"
                 :key="option.id"
                 class="meal-row"
               >
@@ -1099,6 +1224,23 @@ onMounted(async () => {
                   :aria-label="`O que você comeu em ${option.label}`"
                   placeholder="O que você comeu? (opcional)"
                 />
+                <div class="meal-order-actions">
+                  <button
+                    type="button"
+                    :disabled="index === 0"
+                    :aria-label="`Subir ${option.label}`"
+                    @click="moveDayMeal(goal.id, option.id, -1)"
+                  >
+                    <ArrowUp :size="15" /></button
+                  ><button
+                    type="button"
+                    :disabled="index === dayDrafts[goal.id]!.meal_options.length - 1"
+                    :aria-label="`Descer ${option.label}`"
+                    @click="moveDayMeal(goal.id, option.id, 1)"
+                  >
+                    <ArrowDown :size="15" />
+                  </button>
+                </div>
                 <button
                   type="button"
                   class="meal-remove"
