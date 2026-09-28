@@ -1,10 +1,13 @@
 export type Category = 'alimentacao' | 'treino' | 'outro'
+export type GoalMode = 'fixed' | 'weekly'
 export interface Goal {
   id: string
   user_id: string
   title: string
   category: Category
   scheduled_weekdays: number[]
+  goal_mode?: GoalMode
+  weekly_target?: number
   points: number
   active: boolean
   meal_options: MealOption[]
@@ -49,6 +52,8 @@ export interface GoalHistory {
   title: string
   category: Category
   scheduled_weekdays: number[]
+  goal_mode?: GoalMode
+  weekly_target?: number
   points: number
   active: boolean
   meal_options: MealOption[]
@@ -66,6 +71,8 @@ export type GoalInput = Pick<
   | 'meal_options'
   | 'meal_options_by_weekday'
 > & {
+  goal_mode: GoalMode
+  weekly_target: number
   checklist_options: MealOption[]
   checklist_options_by_weekday: Record<string, MealOption[]>
 }

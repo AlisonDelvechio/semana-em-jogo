@@ -9,6 +9,7 @@ import {
   mealOptionsForDate,
   mondayOf,
   scheduledFor,
+  weeklyEntries,
 } from './dates'
 
 const columns = [
@@ -70,6 +71,19 @@ export function createGoalReport(
       if (!scheduled && !detail && !completedDates.has(`${goal.id}:${day}`)) continue
       recorded = true
       const done = isGoalDone(version, day, completions, dayDetails)
+      const earned =
+        version.goal_mode === 'weekly' && done
+          ? (() => {
+              const monday = mondayOf(date)
+              const count = (through: Date) =>
+                weeklyEntries([goal], completions, monday, history, dayDetails, through)[0]
+              const now = count(date)
+              const before = count(addDays(date, -1))
+              return Boolean(
+                now && now.completed >= now.target && (!before || before.completed < now.target),
+              )
+            })()
+          : scheduled && done
       const common = [
         date.toLocaleDateString('pt-BR'),
         fullWeekdays[date.getDay()]!,
@@ -78,7 +92,7 @@ export function createGoalReport(
         scheduled ? 'Sim' : 'Não',
         done ? 'Sim' : 'Não',
         version.points,
-        scheduled && done ? version.points : 0,
+        earned ? version.points : 0,
       ]
       const food = version.category === 'alimentacao'
       const options = food
@@ -88,9 +102,10 @@ export function createGoalReport(
           : checklistOptionsForDate(version, date)
       const itemEntries = food ? detail?.meals : detail?.checklist
       if (options.length) {
-        for (const option of options) {
+        for (const [index, option] of options.entries()) {
           rows.push([
-            ...common,
+            ...common.slice(0, 7),
+            index === 0 ? common[7]! : 0,
             option.label,
             itemEntries?.[option.id]?.checked
               ? 'Sim'

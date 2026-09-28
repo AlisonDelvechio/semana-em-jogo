@@ -54,7 +54,7 @@ export function goalForDate(goal: Goal, history: GoalHistory[], date: Date): Goa
 export function scheduledFor(goal: Goal, date: Date): boolean {
   return (
     goal.active &&
-    goal.scheduled_weekdays.includes(date.getDay()) &&
+    (goal.goal_mode === 'weekly' || goal.scheduled_weekdays.includes(date.getDay())) &&
     localKey(date) >= localKey(new Date(goal.created_at))
   )
 }
@@ -90,9 +90,34 @@ function scheduledEntries(goals: Goal[], monday: Date, history: GoalHistory[]) {
   return weekDays(monday).flatMap((day) =>
     goals
       .map((goal) => goalForDate(goal, history, day))
-      .filter((goal) => scheduledFor(goal, day))
+      .filter((goal) => goal.goal_mode !== 'weekly' && scheduledFor(goal, day))
       .map((goal) => ({ goal, day: localKey(day) })),
   )
+}
+
+// Weekly-frequency goals count visits, not assigned weekdays. Keep each day's
+// historical version so changes to a goal never rewrite earlier weeks.
+export function weeklyEntries(
+  goals: Goal[],
+  completions: Completion[],
+  monday: Date,
+  history: GoalHistory[] = [],
+  dayDetails: GoalDayDetail[] = [],
+  through?: Date,
+) {
+  return goals.flatMap((original) => {
+    const eligible = weekDays(monday)
+      .map((date) => ({ date, goal: goalForDate(original, history, date) }))
+      .filter(({ date, goal }) => goal.goal_mode === 'weekly' && scheduledFor(goal, date))
+    if (!eligible.length) return []
+    const latest = eligible.at(-1)!.goal
+    const completed = eligible.filter(
+      ({ date, goal }) =>
+        (!through || localKey(date) <= localKey(through)) &&
+        isGoalDone(goal, localKey(date), completions, dayDetails),
+    ).length
+    return [{ goal: latest, target: latest.weekly_target || 1, completed }]
+  })
 }
 
 export function weekStats(
@@ -104,11 +129,19 @@ export function weekStats(
 ) {
   const scheduled = scheduledEntries(goals, monday, history)
   const done = scheduled.filter(({ goal, day }) => isGoalDone(goal, day, completions, dayDetails))
+  const weekly = weeklyEntries(goals, completions, monday, history, dayDetails)
+  const total = scheduled.length + weekly.reduce((sum, entry) => sum + entry.target, 0)
+  const completed =
+    done.length + weekly.reduce((sum, entry) => sum + Math.min(entry.completed, entry.target), 0)
   return {
-    total: scheduled.length,
-    completed: done.length,
-    percent: scheduled.length ? Math.round((done.length / scheduled.length) * 100) : 0,
-    points: done.reduce((sum, entry) => sum + entry.goal.points, 0),
+    total,
+    completed,
+    percent: total ? Math.round((completed / total) * 100) : 0,
+    points:
+      done.reduce((sum, entry) => sum + entry.goal.points, 0) +
+      weekly
+        .filter((entry) => entry.completed >= entry.target)
+        .reduce((sum, entry) => sum + entry.goal.points, 0),
   }
 }
 
@@ -122,13 +155,26 @@ export function weekPace(
 ) {
   const entries = scheduledEntries(goals, monday, history)
   const due = entries.filter(({ day }) => day <= localKey(today))
-  const completed = due.filter(({ goal, day }) =>
-    isGoalDone(goal, day, completions, dayDetails),
-  ).length
+  const weekly =
+    localKey(monday) <= localKey(today)
+      ? weeklyEntries(goals, completions, monday, history, dayDetails, today)
+      : []
+  const completed =
+    due.filter(({ goal, day }) => isGoalDone(goal, day, completions, dayDetails)).length +
+    weekly.reduce((sum, entry) => sum + Math.min(entry.completed, entry.target), 0)
+  const total = due.length + weekly.reduce((sum, entry) => sum + entry.target, 0)
   return {
-    total: due.length,
+    total,
     completed,
-    percent: due.length ? Math.round((completed / due.length) * 100) : 0,
-    upcoming: entries.length - due.length,
+    percent: total ? Math.round((completed / total) * 100) : 0,
+    upcoming:
+      entries.length -
+      due.length +
+      (localKey(monday) > localKey(today)
+        ? weeklyEntries(goals, completions, monday, history, dayDetails).reduce(
+            (sum, entry) => sum + entry.target,
+            0,
+          )
+        : 0),
   }
 }
