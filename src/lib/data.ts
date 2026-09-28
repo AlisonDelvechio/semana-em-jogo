@@ -38,6 +38,8 @@ function readLocal(): LocalData {
         meal_options_by_weekday: goal.meal_options_by_weekday || {},
         checklist_options: goal.checklist_options || [],
         checklist_options_by_weekday: goal.checklist_options_by_weekday || {},
+        goal_mode: goal.goal_mode || 'fixed',
+        weekly_target: goal.weekly_target || 1,
       })),
       completions: data.completions || [],
       history: (data.history || []).map((entry) => ({
@@ -46,6 +48,8 @@ function readLocal(): LocalData {
         meal_options_by_weekday: entry.meal_options_by_weekday || {},
         checklist_options: entry.checklist_options || [],
         checklist_options_by_weekday: entry.checklist_options_by_weekday || {},
+        goal_mode: entry.goal_mode || 'fixed',
+        weekly_target: entry.weekly_target || 1,
       })),
       dayDetails: (data.dayDetails || []).map((entry) => ({
         ...entry,
@@ -93,6 +97,8 @@ function snapshot(goal: Goal, validUntil: string): GoalHistory {
     title: goal.title,
     category: goal.category,
     scheduled_weekdays: [...goal.scheduled_weekdays],
+    goal_mode: goal.goal_mode || 'fixed',
+    weekly_target: goal.weekly_target || 1,
     points: goal.points,
     active: goal.active,
     meal_options: goal.meal_options || defaultMealOptions,

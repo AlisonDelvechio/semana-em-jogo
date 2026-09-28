@@ -34,7 +34,6 @@ import {
 } from './lib/data'
 import {
   addDays,
-  calendarDays,
   checklistOptionsForDate,
   fullWeekdays,
   localKey,
@@ -47,9 +46,11 @@ import {
   weekPace,
   weekdays,
   weekStats,
+  weeklyEntries,
 } from './lib/dates'
 import { moveMeal } from './lib/meals'
 import { createGoalReport } from './lib/report'
+import MonthView from './views/MonthView.vue'
 import {
   defaultMealOptions,
   type Category,
@@ -68,7 +69,6 @@ const goals = ref<Goal[]>([]),
 const dayDetails = ref<GoalDayDetail[]>([])
 const monday = ref(mondayOf(new Date())),
   tab = ref<'week' | 'month' | 'goals'>('week')
-const monthDate = ref(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
 const loading = ref(true),
   busy = ref(false),
   message = ref('')
@@ -97,6 +97,8 @@ const fresh = (): GoalInput => ({
   title: '',
   category: 'treino',
   scheduled_weekdays: [],
+  goal_mode: 'fixed',
+  weekly_target: 3,
   points: 10,
   active: true,
   meal_options: defaultMealOptions.map((option) => ({ ...option })),
@@ -122,15 +124,6 @@ const visibleDays = computed(() => {
     (a, b) => Number(localKey(b) === today) - Number(localKey(a) === today),
   )
 })
-const monthDays = computed(() => calendarDays(monthDate.value))
-const monthTitle = computed(() =>
-  monthDate.value.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
-)
-const isCurrentMonth = computed(
-  () =>
-    monthDate.value.getFullYear() === new Date().getFullYear() &&
-    monthDate.value.getMonth() === new Date().getMonth(),
-)
 const stats = computed(() =>
   weekStats(goals.value, completions.value, monday.value, history.value, dayDetails.value),
 )
@@ -200,24 +193,23 @@ const activeThisWeek = computed(
 const isDone = (goal: Goal, date: Date) =>
   isGoalDone(goal, localKey(date), completions.value, dayDetails.value)
 const daySummary = (date: Date) => {
-  const entries = planned(date)
+  const day = localKey(date)
+  const entries = planned(date).filter(
+    (goal) =>
+      goal.goal_mode !== 'weekly' ||
+      completions.value.some((entry) => entry.goal_id === goal.id && entry.local_date === day) ||
+      dayDetails.value.some((entry) => entry.goal_id === goal.id && entry.local_date === day),
+  )
   return { total: entries.length, completed: entries.filter((goal) => isDone(goal, date)).length }
 }
-const monthProgress = computed(() => {
-  const inMonth = monthDays.value.filter((date) => date.getMonth() === monthDate.value.getMonth())
-  const total = inMonth.reduce((sum, date) => sum + daySummary(date).total, 0)
-  const completed = inMonth.reduce((sum, date) => sum + daySummary(date).completed, 0)
-  const due = inMonth.filter((date) => localKey(date) <= localKey(new Date()))
-  const dueTotal = due.reduce((sum, date) => sum + daySummary(date).total, 0)
-  const dueCompleted = due.reduce((sum, date) => sum + daySummary(date).completed, 0)
-  return {
-    total,
-    completed,
-    dueTotal,
-    dueCompleted,
-    percent: dueTotal ? Math.round((dueCompleted / dueTotal) * 100) : 0,
-  }
-})
+const weeklyCount = (goal: Goal, date: Date) =>
+  weeklyEntries(
+    [goals.value.find((entry) => entry.id === goal.id) || goal],
+    completions.value,
+    mondayOf(date),
+    history.value,
+    dayDetails.value,
+  )[0]
 function downloadReport() {
   const csv = createGoalReport(goals.value, completions.value, history.value, dayDetails.value)
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
@@ -232,9 +224,6 @@ function downloadReport() {
 function resizeMealDescription(input: HTMLTextAreaElement) {
   input.style.height = 'auto'
   input.style.height = `${input.scrollHeight + 2}px`
-}
-function shiftMonth(amount: number) {
-  monthDate.value = new Date(monthDate.value.getFullYear(), monthDate.value.getMonth() + amount, 1)
 }
 function openWeekOf(date: Date) {
   monday.value = mondayOf(date)
@@ -543,6 +532,11 @@ function changeDay(day: number) {
     ? form.value.scheduled_weekdays.filter((value) => value !== day)
     : [...form.value.scheduled_weekdays, day].sort()
 }
+function changeMode(event: Event) {
+  const mode = (event.target as HTMLSelectElement).value
+  form.value.goal_mode = mode === 'weekly' ? 'weekly' : 'fixed'
+  form.value.scheduled_weekdays = mode === 'weekly' ? [0, 1, 2, 3, 4, 5, 6] : []
+}
 function switchAuth() {
   signUp.value = !signUp.value
   message.value = ''
@@ -556,11 +550,18 @@ async function save() {
   const input = {
     ...form.value,
     title: form.value.title.trim(),
-    scheduled_weekdays: [...form.value.scheduled_weekdays],
+    goal_mode: form.value.category === 'alimentacao' ? ('fixed' as const) : form.value.goal_mode,
+    scheduled_weekdays:
+      form.value.goal_mode === 'weekly' && form.value.category !== 'alimentacao'
+        ? [0, 1, 2, 3, 4, 5, 6]
+        : [...form.value.scheduled_weekdays],
   }
   if (
     !input.title ||
     !input.scheduled_weekdays.length ||
+    !Number.isInteger(input.weekly_target) ||
+    input.weekly_target < 1 ||
+    input.weekly_target > 7 ||
     !Number.isInteger(input.points) ||
     input.points < 1 ||
     (input.category === 'alimentacao' &&
@@ -573,7 +574,7 @@ async function save() {
       (input.checklist_options.length > 12 ||
         Object.values(input.checklist_options_by_weekday).some((options) => options.length > 12)))
   ) {
-    message.value = 'Informe nome, dias e pontos válidos.'
+    message.value = 'Informe nome, frequência, dias e pontos válidos.'
     return
   }
   busy.value = true
@@ -596,6 +597,8 @@ function edit(goal: Goal) {
     title: goal.title,
     category: goal.category,
     scheduled_weekdays: [...goal.scheduled_weekdays],
+    goal_mode: goal.goal_mode || 'fixed',
+    weekly_target: goal.weekly_target || 3,
     points: goal.points,
     active: goal.active,
     meal_options: (goal.meal_options || defaultMealOptions).map((option) => ({ ...option })),
@@ -640,6 +643,8 @@ async function pause(goal: Goal) {
       title: goal.title,
       category: goal.category,
       scheduled_weekdays: goal.scheduled_weekdays,
+      goal_mode: goal.goal_mode || 'fixed',
+      weekly_target: goal.weekly_target || 1,
       points: goal.points,
       active: !goal.active,
       meal_options: goal.meal_options || defaultMealOptions,
@@ -902,11 +907,15 @@ onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
                         >{{
                           goal.category === 'alimentacao'
                             ? `${mealCount(goal, date).checked}/${mealCount(goal, date).total} refeições`
-                            : checklistCount(goal, date).total
-                              ? `${checklistCount(goal, date).checked}/${checklistCount(goal, date).total} itens`
-                              : categoryName(goal.category)
+                            : goal.goal_mode === 'weekly'
+                              ? `${Math.min(weeklyCount(goal, date)?.completed || 0, weeklyCount(goal, date)?.target || 1)}/${weeklyCount(goal, date)?.target || 1} idas na semana`
+                              : checklistCount(goal, date).total
+                                ? `${checklistCount(goal, date).checked}/${checklistCount(goal, date).total} itens`
+                                : categoryName(goal.category)
                         }}
-                        · {{ goal.points }} pts</small
+                        · {{ goal.points }} pts{{
+                          goal.goal_mode === 'weekly' ? '/semana' : ''
+                        }}</small
                       ></span
                     >
                   </button>
@@ -924,92 +933,14 @@ onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
             </div>
           </section> </template
         ><template v-else-if="tab === 'month'">
-          <div class="page-heading month-page-heading">
-            <div>
-              <span class="eyebrow">VISÃO DO MÊS</span>
-              <h1>Seu mês, <em>dia a dia.</em></h1>
-              <p>Escolha uma data para ver e editar suas metas.</p>
-            </div>
-            <button class="small-button" @click="goToCurrentWeek">
-              <CalendarDays :size="17" /> Ver esta semana
-            </button>
-          </div>
-          <div class="month-overview">
-            <div>
-              <span class="eyebrow">PROGRESSO ATÉ HOJE</span
-              ><strong>{{ monthProgress.percent }}%</strong
-              ><small
-                >{{ monthProgress.dueCompleted }} de {{ monthProgress.dueTotal }} atividades
-                previstas até hoje</small
-              >
-            </div>
-            <div>
-              <span class="eyebrow">PLANO DO MÊS</span
-              ><strong
-                >{{ monthProgress.completed }} <span>/ {{ monthProgress.total }}</span></strong
-              ><small>atividades concluídas no mês</small>
-            </div>
-            <div class="month-overview-tip">
-              <CalendarDays :size="25" />
-              <p>
-                Toque em um dia para abrir seu registro. As alterações ficam salvas naquela data.
-              </p>
-            </div>
-          </div>
-          <section class="calendar-panel" aria-label="Calendário mensal">
-            <div class="calendar-header">
-              <div>
-                <span class="eyebrow">CALENDÁRIO</span>
-                <h2>{{ monthTitle }}</h2>
-              </div>
-              <div class="calendar-nav">
-                <button
-                  v-if="!isCurrentMonth"
-                  type="button"
-                  class="today-link"
-                  @click="monthDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1)"
-                >
-                  Mês atual</button
-                ><button type="button" aria-label="Mês anterior" @click="shiftMonth(-1)">
-                  <ChevronLeft :size="19" /></button
-                ><button type="button" aria-label="Próximo mês" @click="shiftMonth(1)">
-                  <ChevronRight :size="19" />
-                </button>
-              </div>
-            </div>
-            <div class="calendar-grid">
-              <div v-for="weekday in [1, 2, 3, 4, 5, 6, 0]" :key="weekday" class="calendar-weekday">
-                {{ weekdays[weekday] }}
-              </div>
-              <button
-                v-for="date in monthDays"
-                :key="localKey(date)"
-                type="button"
-                class="calendar-day"
-                :class="{
-                  'outside-month': date.getMonth() !== monthDate.getMonth(),
-                  'is-today': localKey(date) === localKey(new Date()),
-                  'has-goals': daySummary(date).total > 0,
-                }"
-                :aria-label="`${date.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}: ${daySummary(date).completed} de ${daySummary(date).total} metas concluídas. Abrir registro`"
-                @click="openDay(date)"
-              >
-                <span class="calendar-date">{{ date.getDate() }}</span>
-                <span v-if="daySummary(date).total" class="calendar-day-content"
-                  ><span class="calendar-count"
-                    >{{ daySummary(date).completed }}/{{ daySummary(date).total }}</span
-                  ><span class="calendar-progress"
-                    ><span
-                      :style="{
-                        width: `${(daySummary(date).completed / daySummary(date).total) * 100}%`,
-                      }"
-                    ></span></span
-                  ><small>{{ daySummary(date).total === 1 ? 'meta' : 'metas' }}</small></span
-                >
-                <span v-else class="calendar-free">Livre</span>
-              </button>
-            </div>
-          </section> </template
+          <MonthView
+            :goals="goals"
+            :completions="completions"
+            :history="history"
+            :day-details="dayDetails"
+            @open-day="openDay"
+            @current-week="goToCurrentWeek"
+          /> </template
         ><template v-else
           ><div class="page-heading">
             <div>
@@ -1054,6 +985,31 @@ onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
                     required
                 /></label>
               </div>
+              <fieldset v-if="form.category !== 'alimentacao'">
+                <legend>Como contar esta meta?</legend>
+                <label
+                  >Tipo de meta
+                  <select :value="form.goal_mode" @change="changeMode">
+                    <option value="fixed">Dias fixos</option>
+                    <option value="weekly">Frequência semanal (dias livres)</option>
+                  </select>
+                </label>
+                <label v-if="form.goal_mode === 'weekly'"
+                  >Quantas vezes na semana?
+                  <input
+                    v-model.number="form.weekly_target"
+                    type="number"
+                    min="1"
+                    max="7"
+                    step="1"
+                    required
+                  />
+                </label>
+                <p v-if="form.goal_mode === 'weekly'">
+                  Marque os dias em que fez a atividade. Os pontos são ganhos uma vez ao atingir a
+                  frequência.
+                </p>
+              </fieldset>
               <fieldset v-if="form.category === 'alimentacao'" class="meal-options-field">
                 <legend>Refeições para acompanhar</legend>
                 <p>
@@ -1148,7 +1104,7 @@ onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
                   </button>
                 </div>
               </fieldset>
-              <fieldset>
+              <fieldset v-if="form.category === 'alimentacao' || form.goal_mode === 'fixed'">
                 <legend>Em quais dias?</legend>
                 <div class="day-picker">
                   <button
@@ -1165,7 +1121,11 @@ onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
                 </div>
               </fieldset>
               <fieldset
-                v-if="form.scheduled_weekdays.length && formDefaultOptions.length"
+                v-if="
+                  form.goal_mode === 'fixed' &&
+                  form.scheduled_weekdays.length &&
+                  formDefaultOptions.length
+                "
                 class="weekday-meals-field"
               >
                 <legend>Opções em cada dia da semana</legend>
@@ -1234,7 +1194,11 @@ onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
                   <strong>{{ goal.title }}</strong
                   ><span
                     >{{ categoryName(goal.category) }} · {{ goal.points }} pts ·
-                    {{ goal.scheduled_weekdays.map((day) => weekdays[day]).join(', ') }}</span
+                    {{
+                      goal.goal_mode === 'weekly'
+                        ? `${goal.weekly_target || 1}x por semana · dias livres`
+                        : goal.scheduled_weekdays.map((day) => weekdays[day]).join(', ')
+                    }}</span
                   ><small v-if="!goal.active">Pausada</small>
                 </div>
                 <div class="goal-actions">
@@ -1407,7 +1371,11 @@ onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
               /></span>
               <div>
                 <strong>{{ goal.title }}</strong
-                ><small>{{ categoryName(goal.category) }} · {{ goal.points }} pts</small>
+                ><small
+                  >{{ categoryName(goal.category) }} · {{ goal.points }} pts{{
+                    goal.goal_mode === 'weekly' ? '/semana' : ''
+                  }}</small
+                >
               </div>
             </div>
             <template v-if="goal.category === 'alimentacao' || dayDrafts[goal.id]!.options.length">
@@ -1480,8 +1448,9 @@ onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
               </div>
             </template>
             <label v-else class="meal-check completion-check"
-              ><input v-model="dayDrafts[goal.id]!.completed" type="checkbox" />Meta
-              concluída</label
+              ><input v-model="dayDrafts[goal.id]!.completed" type="checkbox" />{{
+                goal.goal_mode === 'weekly' ? 'Fiz esta atividade hoje' : 'Meta concluída'
+              }}</label
             >
             <div class="meal-add">
               <input

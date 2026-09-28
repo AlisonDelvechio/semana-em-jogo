@@ -11,6 +11,8 @@ describe('local goal history', () => {
       title: 'Academia',
       category: 'treino',
       scheduled_weekdays: [6],
+      goal_mode: 'fixed',
+      weekly_target: 1,
       points: 10,
       active: true,
       meal_options: defaultMealOptions,
@@ -42,6 +44,8 @@ describe('local goal history', () => {
       title: 'Treino',
       category: 'treino' as const,
       scheduled_weekdays: [weekday],
+      goal_mode: 'fixed' as const,
+      weekly_target: 1,
       points: 10,
       active: true,
       meal_options: defaultMealOptions,
@@ -74,6 +78,8 @@ describe('local goal history', () => {
       title: 'Dieta',
       category: 'alimentacao',
       scheduled_weekdays: [6],
+      goal_mode: 'fixed',
+      weekly_target: 1,
       points: 10,
       active: true,
       meal_options: defaultMealOptions,
@@ -114,6 +120,8 @@ describe('local goal history', () => {
       title: 'Dieta',
       category: 'alimentacao',
       scheduled_weekdays: [6],
+      goal_mode: 'fixed',
+      weekly_target: 1,
       points: 10,
       active: true,
       meal_options: defaultMealOptions,
@@ -122,6 +130,7 @@ describe('local goal history', () => {
       checklist_options_by_weekday: {},
     })
     const oldData = JSON.parse(localStorage.getItem('semana-em-jogo-v1')!)
+    oldData.goals[0].created_at = '2026-09-01T12:00:00Z'
     oldData.dayDetails = [
       {
         goal_id: goal.id,
