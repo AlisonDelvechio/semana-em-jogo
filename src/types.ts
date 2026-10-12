@@ -8,6 +8,8 @@ export interface Goal {
   scheduled_weekdays: number[]
   goal_mode?: GoalMode
   weekly_target?: number
+  start_date?: string | null
+  duration_days?: number | null
   points: number
   active: boolean
   meal_options: MealOption[]
@@ -34,7 +36,10 @@ export const defaultMealOptions: MealOption[] = [
   { id: 'jantar', label: 'Jantar' },
 ]
 export const legacyMealOptions = defaultMealOptions.filter(({ id }) => id !== 'cafe')
-export type MealEntries = Record<string, { checked: boolean; description: string }>
+export type MealEntries = Record<
+  string,
+  { checked: boolean; description: string; adherent?: boolean | null }
+>
 export interface GoalDayDetail {
   goal_id: string
   user_id: string
@@ -43,6 +48,7 @@ export interface GoalDayDetail {
   meal_options: MealOption[]
   checklist_options?: MealOption[]
   checklist?: MealEntries
+  adherence_recorded?: boolean
   note: string
 }
 export interface GoalHistory {
@@ -54,6 +60,8 @@ export interface GoalHistory {
   scheduled_weekdays: number[]
   goal_mode?: GoalMode
   weekly_target?: number
+  start_date?: string | null
+  duration_days?: number | null
   points: number
   active: boolean
   meal_options: MealOption[]
@@ -73,6 +81,8 @@ export type GoalInput = Pick<
 > & {
   goal_mode: GoalMode
   weekly_target: number
+  start_date: string | null
+  duration_days: number | null
   checklist_options: MealOption[]
   checklist_options_by_weekday: Record<string, MealOption[]>
 }

@@ -11,6 +11,7 @@ import {
   type MealOption,
 } from '../types'
 import { localKey } from './dates'
+import type { BackupRecord } from './report'
 
 const url = import.meta.env.VITE_SUPABASE_URL
 const key = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -40,6 +41,8 @@ function readLocal(): LocalData {
         checklist_options_by_weekday: goal.checklist_options_by_weekday || {},
         goal_mode: goal.goal_mode || 'fixed',
         weekly_target: goal.weekly_target || 1,
+        start_date: goal.start_date || null,
+        duration_days: goal.duration_days || null,
       })),
       completions: data.completions || [],
       history: (data.history || []).map((entry) => ({
@@ -50,12 +53,15 @@ function readLocal(): LocalData {
         checklist_options_by_weekday: entry.checklist_options_by_weekday || {},
         goal_mode: entry.goal_mode || 'fixed',
         weekly_target: entry.weekly_target || 1,
+        start_date: entry.start_date || null,
+        duration_days: entry.duration_days || null,
       })),
       dayDetails: (data.dayDetails || []).map((entry) => ({
         ...entry,
         meal_options: entry.meal_options || legacyMealOptions,
         checklist_options: entry.checklist_options || [],
         checklist: entry.checklist || {},
+        adherence_recorded: entry.adherence_recorded || false,
       })),
     }
   } catch {
@@ -99,6 +105,8 @@ function snapshot(goal: Goal, validUntil: string): GoalHistory {
     scheduled_weekdays: [...goal.scheduled_weekdays],
     goal_mode: goal.goal_mode || 'fixed',
     weekly_target: goal.weekly_target || 1,
+    start_date: goal.start_date || null,
+    duration_days: goal.duration_days || null,
     points: goal.points,
     active: goal.active,
     meal_options: goal.meal_options || defaultMealOptions,
@@ -201,6 +209,9 @@ export async function saveDayDetail(detail: Omit<GoalDayDetail, 'user_id'>): Pro
       {
         checked: Boolean(detail.meals[id]?.checked),
         description: detail.meals[id]?.description.trim().slice(0, 300) || '',
+        ...(detail.adherence_recorded
+          ? { adherent: detail.meals[id]?.checked ? (detail.meals[id]?.adherent ?? null) : null }
+          : {}),
       },
     ]),
   ) as MealEntries
@@ -225,6 +236,7 @@ export async function saveDayDetail(detail: Omit<GoalDayDetail, 'user_id'>): Pro
       ...detail,
       meal_options,
       meals,
+      adherence_recorded: Boolean(detail.adherence_recorded),
       checklist_options,
       checklist,
       note,
@@ -241,6 +253,7 @@ export async function saveDayDetail(detail: Omit<GoalDayDetail, 'user_id'>): Pro
       ...detail,
       meal_options,
       meals,
+      adherence_recorded: Boolean(detail.adherence_recorded),
       checklist_options,
       checklist,
       note,
@@ -291,4 +304,72 @@ export async function setCompleted(
       .eq('local_date', date)
     errorIfPresent(error)
   }
+}
+
+// Merge only missing records. An older backup cannot overwrite newer account data.
+export async function importGoalBackup(records: BackupRecord[]) {
+  const existing = await loadData()
+  const goals = new Set(existing.goals.map((item) => item.id))
+  const history = new Set(existing.history.map((item) => `${item.goal_id}:${item.valid_until}`))
+  const details = new Set(existing.dayDetails.map((item) => `${item.goal_id}:${item.local_date}`))
+  const completions = new Set(
+    existing.completions.map((item) => `${item.goal_id}:${item.local_date}`),
+  )
+  const counts = { goals: 0, history: 0, dayDetails: 0, completions: 0 }
+  const userId = supabase ? (await supabase.auth.getUser()).data.user?.id : 'local'
+  if (!userId) throw new Error('Entre na sua conta antes de importar.')
+  for (const record of records) {
+    const goal = { ...record.goal, user_id: userId }
+    if (!goals.has(goal.id)) {
+      if (supabase) errorIfPresent((await supabase.from('goal_templates').insert(goal)).error)
+      else {
+        existing.goals.push(goal)
+        saveLocal(existing)
+      }
+      goals.add(goal.id)
+      counts.goals++
+    }
+    for (const entry of record.history) {
+      const key = `${goal.id}:${entry.valid_until}`
+      if (history.has(key)) continue
+      const value = { ...entry, user_id: userId }
+      if (supabase) errorIfPresent((await supabase.from('goal_history').insert(value)).error)
+      else {
+        existing.history.push(value)
+        saveLocal(existing)
+      }
+      history.add(key)
+      counts.history++
+    }
+    for (const entry of record.dayDetails) {
+      const key = `${goal.id}:${entry.local_date}`
+      if (details.has(key)) continue
+      const value = { ...entry, user_id: userId }
+      if (supabase) errorIfPresent((await supabase.from('goal_day_details').insert(value)).error)
+      else {
+        existing.dayDetails.push(value)
+        saveLocal(existing)
+      }
+      details.add(key)
+      counts.dayDetails++
+    }
+    for (const entry of record.completions) {
+      const key = `${goal.id}:${entry.local_date}`
+      if (completions.has(key)) continue
+      const value = {
+        goal_id: goal.id,
+        local_date: entry.local_date,
+        user_id: userId,
+        completed_at: entry.completed_at,
+      }
+      if (supabase) errorIfPresent((await supabase.from('goal_completions').insert(value)).error)
+      else {
+        existing.completions.push({ ...value, id: crypto.randomUUID() })
+        saveLocal(existing)
+      }
+      completions.add(key)
+      counts.completions++
+    }
+  }
+  return counts
 }

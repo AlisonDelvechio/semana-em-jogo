@@ -52,10 +52,17 @@ export function goalForDate(goal: Goal, history: GoalHistory[], date: Date): Goa
 }
 
 export function scheduledFor(goal: Goal, date: Date): boolean {
+  const day = localKey(date)
+  const start = goal.start_date || localKey(new Date(goal.created_at))
+  const end =
+    goal.start_date && goal.duration_days
+      ? localKey(addDays(new Date(`${goal.start_date}T12:00:00`), goal.duration_days - 1))
+      : null
   return (
     goal.active &&
     (goal.goal_mode === 'weekly' || goal.scheduled_weekdays.includes(date.getDay())) &&
-    localKey(date) >= localKey(new Date(goal.created_at))
+    day >= start &&
+    (!end || day <= end)
   )
 }
 
@@ -78,7 +85,14 @@ export function isGoalDone(
   const detail = dayDetails.find((entry) => entry.goal_id === goal.id && entry.local_date === day)
   if (goal.category === 'alimentacao' && detail) {
     const options = detail.meal_options || goal.meal_options || []
-    return options.length > 0 && options.every(({ id }) => detail.meals[id]?.checked)
+    return (
+      options.length > 0 &&
+      options.every(
+        ({ id }) =>
+          detail.meals[id]?.checked &&
+          (!detail.adherence_recorded || detail.meals[id]?.adherent === true),
+      )
+    )
   }
   if (goal.category !== 'alimentacao' && detail?.checklist_options?.length) {
     return detail.checklist_options.every(({ id }) => detail.checklist?.[id]?.checked)
@@ -116,7 +130,9 @@ export function weeklyEntries(
         (!through || localKey(date) <= localKey(through)) &&
         isGoalDone(goal, localKey(date), completions, dayDetails),
     ).length
-    return [{ goal: latest, target: latest.weekly_target || 1, completed }]
+    return [
+      { goal: latest, target: Math.min(latest.weekly_target || 1, eligible.length), completed },
+    ]
   })
 }
 
