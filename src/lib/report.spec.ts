@@ -52,7 +52,7 @@ describe('goal report', () => {
     expect(csv).toContain('"Rap10 com carne moída, mussarela; leite com chocolate"')
     expect(csv).toContain('"\'=1+1"')
     expect(csv).toContain('"Treino leve, depois descanso"')
-    expect(csv).not.toContain('"Jantar"')
+    expect(csv.split('\r\n').filter((row) => row.includes('="26/09/2026"'))).toHaveLength(2)
   })
 
   it('includes saved entries outside the current schedule and goals without scheduled occurrences', () => {
@@ -92,6 +92,6 @@ describe('goal report', () => {
     }
     const csv = createGoalReport([training], [], [], [detail], new Date(2026, 8, 26))
     expect(csv).toContain('="26/09/2026"')
-    expect(csv).toContain('"Aquecer";"Sim";"Esteira 10 minutos";"Treino tranquilo"')
+    expect(csv).toContain('"Aquecer";"Sim";"Não informado";"Esteira 10 minutos";"Treino tranquilo"')
   })
 })

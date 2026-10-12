@@ -109,6 +109,20 @@ p {
   align-items: center;
   gap: 20px;
 }
+.theme-button {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  border: 1px solid #e6ebe2;
+  border-radius: 10px;
+  background: #fafcf9;
+  color: #547a52;
+}
+.theme-button:hover {
+  background: #eaf2e7;
+}
 .local-badge {
   background: #eaf2e7;
   color: #547a52;
@@ -789,6 +803,29 @@ p {
   gap: 12px;
   margin: 10px 0;
 }
+.meal-row.food-row {
+  grid-template-columns: minmax(0, 1fr) 72px 36px;
+}
+.meal-row.food-row .meal-check {
+  grid-column: 1;
+  grid-row: 1;
+}
+.meal-row.food-row .meal-order-actions {
+  grid-column: 2;
+  grid-row: 1;
+}
+.meal-row.food-row .meal-remove {
+  grid-column: 3;
+  grid-row: 1;
+}
+.meal-row.food-row .meal-adherence {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+.meal-row.food-row .meal-description {
+  grid-column: 1 / -1;
+  grid-row: 3;
+}
 .meal-order-actions {
   display: flex;
   align-items: center;
@@ -1062,6 +1099,69 @@ p {
   display: grid;
   grid-template-columns: 1fr 100px;
   gap: 14px;
+}
+.period-fields {
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 1fr);
+}
+.report-panel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  margin-bottom: 22px;
+}
+.report-panel strong {
+  display: block;
+  margin-bottom: 10px;
+}
+.report-panel label {
+  display: block;
+  margin: 10px 0;
+  font-size: 0.8rem;
+  color: #4e5e51;
+}
+.report-panel input,
+.report-panel select {
+  display: block;
+  width: 100%;
+  min-height: 42px;
+  margin-top: 5px;
+  padding: 8px;
+  border: 1px solid #dfe6dc;
+  border-radius: 8px;
+  background: #fafbf9;
+}
+.report-panel p {
+  font-size: 0.78rem;
+  color: #697a6c;
+}
+.report-panel .report-notice {
+  grid-column: 1 / -1;
+}
+.report-dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 720px) {
+  .report-panel {
+    grid-template-columns: 1fr;
+    padding: 18px;
+  }
+}
+.meal-adherence {
+  display: grid;
+  gap: 5px;
+  font-size: 0.73rem;
+  color: #526754;
+}
+.meal-adherence select {
+  max-width: 100%;
+  min-height: 38px;
+  border: 1px solid #dfe6dc;
+  border-radius: 8px;
+  background: #fafbf9;
+  color: #25352b;
+  padding: 6px;
 }
 .goal-form fieldset {
   border: 0;
@@ -1881,4 +1981,183 @@ footer {
   .day-dialog {
     padding-inline: 12px;
   }
+}
+
+/* Cores aplicadas em todas as telas e nos modais, inclusive em telas pequenas. */
+html[data-theme='dark'] {
+  color-scheme: dark;
+  color: #e9f0e8;
+  background: #151d19;
+}
+html[data-theme='dark'] p,
+html[data-theme='dark'] .eyebrow,
+html[data-theme='dark'] .card-top,
+html[data-theme='dark'] .month-overview small,
+html[data-theme='dark'] .calendar-weekday,
+html[data-theme='dark'] .calendar-day-content small,
+html[data-theme='dark'] .calendar-free,
+html[data-theme='dark'] .day-open > span,
+html[data-theme='dark'] .day-heading small,
+html[data-theme='dark'] .task-title small,
+html[data-theme='dark'] .day-goal-title small,
+html[data-theme='dark'] .goal-details span,
+html[data-theme='dark'] .goal-details small,
+html[data-theme='dark'] .profile-copy small,
+html[data-theme='dark'] .list-empty,
+html[data-theme='dark'] footer {
+  color: #b5c7b6;
+}
+html[data-theme='dark'] h1 em,
+html[data-theme='dark'] .brand > span:last-child,
+html[data-theme='dark'] .month-heading,
+html[data-theme='dark'] .today-link,
+html[data-theme='dark'] .text-button,
+html[data-theme='dark'] .auth-switch,
+html[data-theme='dark'] .dialog-summary button,
+html[data-theme='dark'] .day-edit-action,
+html[data-theme='dark'] .task:hover .task-title {
+  color: #b8dda7;
+}
+html[data-theme='dark'] .topbar,
+html[data-theme='dark'] .mobile-nav,
+html[data-theme='dark'] .summary-card:not(.featured),
+html[data-theme='dark'] .month-overview > div,
+html[data-theme='dark'] .calendar-panel,
+html[data-theme='dark'] .day-card,
+html[data-theme='dark'] .day-dialog,
+html[data-theme='dark'] .panel,
+html[data-theme='dark'] .empty-state,
+html[data-theme='dark'] .auth-card,
+html[data-theme='dark'] .dialog-header,
+html[data-theme='dark'] .dialog-actions {
+  background: #202d25;
+  border-color: #3d5141;
+}
+html[data-theme='dark'] .sidebar,
+html[data-theme='dark'] .day-heading,
+html[data-theme='dark'] .dialog-summary,
+html[data-theme='dark'] .day-goal,
+html[data-theme='dark'] .goal-item,
+html[data-theme='dark'] footer {
+  border-color: #3d5141;
+}
+html[data-theme='dark'] .profile-corner,
+html[data-theme='dark'] .theme-button,
+html[data-theme='dark'] .calendar-nav > button:not(.today-link),
+html[data-theme='dark'] .week-nav button,
+html[data-theme='dark'] .weekday-meals-card,
+html[data-theme='dark'] .weekday-editor-list li,
+html[data-theme='dark'] .meal-order-actions button,
+html[data-theme='dark'] .goal-actions button,
+html[data-theme='dark'] .day-detail-icon,
+html[data-theme='dark'] .day-picker button,
+html[data-theme='dark'] .calendar-day,
+html[data-theme='dark'] .decoration {
+  background: #293a2e;
+  border-color: #4a604d;
+  color: #e1ebde;
+}
+html[data-theme='dark'] .calendar-day:hover,
+html[data-theme='dark'] .calendar-day.is-today,
+html[data-theme='dark'] .nav-button.selected,
+html[data-theme='dark'] .mobile-nav button.selected,
+html[data-theme='dark'] .day-picker button.active,
+html[data-theme='dark'] .theme-button:hover,
+html[data-theme='dark'] .profile-exit:hover,
+html[data-theme='dark'] .dialog-close:hover {
+  background: #36503a;
+  color: #e8f5de;
+  border-color: #8bb57e;
+}
+html[data-theme='dark'] .calendar-day.outside-month {
+  background: #202b23;
+  opacity: 0.65;
+}
+html[data-theme='dark'] .calendar-day.is-today .calendar-date,
+html[data-theme='dark'] .month-overview strong,
+html[data-theme='dark'] .month-overview-tip p,
+html[data-theme='dark'] .meal-check,
+html[data-theme='dark'] .meal-adherence,
+html[data-theme='dark'] .day-note,
+html[data-theme='dark'] .goal-form label,
+html[data-theme='dark'] .goal-form legend,
+html[data-theme='dark'] .auth-card label,
+html[data-theme='dark'] .report-panel label {
+  color: #e2eedf;
+}
+html[data-theme='dark'] .nav-button,
+html[data-theme='dark'] .mobile-nav button,
+html[data-theme='dark'] .profile-exit,
+html[data-theme='dark'] .dialog-close,
+html[data-theme='dark'] .meal-remove,
+html[data-theme='dark'] .meal-option-chip button {
+  color: #b5c7b6;
+}
+html[data-theme='dark'] .sidebar-note,
+html[data-theme='dark'] .month-overview .month-overview-tip,
+html[data-theme='dark'] .meal-option-chip,
+html[data-theme='dark'] .goal-icon,
+html[data-theme='dark'] .goal-list h2 span,
+html[data-theme='dark'] .local-badge,
+html[data-theme='dark'] .today-pill {
+  background: #314634;
+  border-color: #506c50;
+  color: #d3edcc;
+}
+html[data-theme='dark'] .sidebar-note p,
+html[data-theme='dark'] .stat-number small,
+html[data-theme='dark'] .month-overview strong span,
+html[data-theme='dark'] .weekday-meals-card > small,
+html[data-theme='dark'] .report-panel p,
+html[data-theme='dark'] .dialog-summary,
+html[data-theme='dark'] .week-nav {
+  color: #b8cbb8;
+}
+html[data-theme='dark'] .goal-icon.alimentacao {
+  background: #513b2b;
+  color: #f2c79b;
+}
+html[data-theme='dark'] .goal-icon.outro {
+  background: #40344f;
+  color: #dac5f1;
+}
+html[data-theme='dark'] .calendar-progress {
+  background: #415844;
+}
+html[data-theme='dark'] .small-button,
+html[data-theme='dark'] .notice {
+  background: #36503a;
+  border-color: #638962;
+  color: #e5f3dd;
+}
+html[data-theme='dark'] .primary-button {
+  background: #679260;
+  color: #fff;
+}
+html[data-theme='dark'] .goal-form input:not([type='checkbox']),
+html[data-theme='dark'] .goal-form select,
+html[data-theme='dark'] .auth-card input,
+html[data-theme='dark'] .report-panel input,
+html[data-theme='dark'] .report-panel select,
+html[data-theme='dark'] .meal-add input,
+html[data-theme='dark'] .meal-description,
+html[data-theme='dark'] .meal-adherence select,
+html[data-theme='dark'] .day-note textarea {
+  background: #18231c;
+  border-color: #506451;
+  color: #eff5eb;
+}
+html[data-theme='dark'] input::placeholder,
+html[data-theme='dark'] textarea::placeholder {
+  color: #a9baa9;
+}
+html[data-theme='dark'] .summary-card.featured {
+  background: #476f49;
+  border-color: #709a69;
+  color: #fff;
+}
+html[data-theme='dark'] .featured .card-top,
+html[data-theme='dark'] .featured small,
+html[data-theme='dark'] .featured .progress-main span {
+  color: #e5f0e2;
 }

@@ -14,9 +14,11 @@ import {
   Dumbbell,
   Download,
   LogOut,
+  Moon,
   Pencil,
   Plus,
   Sparkles,
+  Sun,
   Target,
   Trash2,
   Utensils,
@@ -26,6 +28,7 @@ import {
   cloudEnabled,
   createGoal,
   deleteGoal,
+  importGoalBackup,
   loadData,
   saveDayDetail,
   setCompleted,
@@ -49,7 +52,8 @@ import {
   weeklyEntries,
 } from './lib/dates'
 import { moveMeal } from './lib/meals'
-import { createGoalReport } from './lib/report'
+import { parseGoalBackup } from './lib/backup'
+import { createGoalReport, type BackupRecord, type ReportRange } from './lib/report'
 import MonthView from './views/MonthView.vue'
 import {
   defaultMealOptions,
@@ -88,10 +92,48 @@ const weekdayModalError = ref('')
 const weekdayDialog = ref<HTMLElement | null>(null)
 const weekdayCloseButton = ref<HTMLButtonElement | null>(null)
 let weekdayTrigger: HTMLElement | null = null
-type DayDraft = { items: MealEntries; options: MealOption[]; note: string; completed: boolean }
+type DayDraft = {
+  items: MealEntries
+  options: MealOption[]
+  note: string
+  completed: boolean
+  trackAdherence: boolean
+}
 const dayDrafts = ref<Record<string, DayDraft>>({})
 const newGoalMeal = ref('')
 const newGoalChecklist = ref('')
+const reportMode = ref<'all' | 'month' | 'range'>('all')
+const reportMonth = ref(localKey(new Date()).slice(0, 7))
+const reportFrom = ref(localKey(new Date()))
+const reportTo = ref(localKey(new Date()))
+const pendingBackup = ref<BackupRecord[] | null>(null)
+const pendingBackupName = ref('')
+const reportMessage = ref('')
+const darkMode = ref(document.documentElement.dataset.theme === 'dark')
+const systemTheme = window.matchMedia('(prefers-color-scheme: dark)')
+const applyTheme = (dark: boolean) => {
+  darkMode.value = dark
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+  document
+    .querySelector('meta[name="theme-color"]')
+    ?.setAttribute('content', dark ? '#151d19' : '#f8f7f3')
+}
+const syncSystemTheme = () => {
+  try {
+    if (localStorage.getItem('semana-em-jogo-theme')) return
+  } catch {
+    // Mesmo sem armazenamento, a preferência do sistema continua funcionando.
+  }
+  applyTheme(systemTheme.matches)
+}
+const toggleTheme = () => {
+  applyTheme(!darkMode.value)
+  try {
+    localStorage.setItem('semana-em-jogo-theme', darkMode.value ? 'dark' : 'light')
+  } catch {
+    // O tema ainda muda durante esta visita.
+  }
+}
 const newDayMeals = ref<Record<string, string>>({})
 const fresh = (): GoalInput => ({
   title: '',
@@ -99,6 +141,8 @@ const fresh = (): GoalInput => ({
   scheduled_weekdays: [],
   goal_mode: 'fixed',
   weekly_target: 3,
+  start_date: null,
+  duration_days: null,
   points: 10,
   active: true,
   meal_options: defaultMealOptions.map((option) => ({ ...option })),
@@ -211,7 +255,30 @@ const weeklyCount = (goal: Goal, date: Date) =>
     dayDetails.value,
   )[0]
 function downloadReport() {
-  const csv = createGoalReport(goals.value, completions.value, history.value, dayDetails.value)
+  let range: ReportRange = {}
+  if (reportMode.value === 'month') {
+    if (!/^\d{4}-\d{2}$/.test(reportMonth.value)) {
+      reportMessage.value = 'Escolha um mês válido.'
+      return
+    }
+    const [year, month] = reportMonth.value.split('-').map(Number)
+    range = { from: `${reportMonth.value}-01`, to: localKey(new Date(year!, month!, 0)) }
+  } else if (reportMode.value === 'range') {
+    if (!reportFrom.value || !reportTo.value || reportFrom.value > reportTo.value) {
+      reportMessage.value = 'Escolha um intervalo de datas válido.'
+      return
+    }
+    range = { from: reportFrom.value, to: reportTo.value }
+  }
+  reportMessage.value = ''
+  const csv = createGoalReport(
+    goals.value,
+    completions.value,
+    history.value,
+    dayDetails.value,
+    new Date(),
+    range,
+  )
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
   const link = document.createElement('a')
   link.href = url
@@ -220,6 +287,36 @@ function downloadReport() {
   link.click()
   link.remove()
   window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+async function selectBackup(event: Event) {
+  pendingBackup.value = null
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  try {
+    if (file.size > 20_000_000) throw new Error('Arquivo muito grande (máximo de 20 MB).')
+    pendingBackup.value = parseGoalBackup(await file.text())
+    pendingBackupName.value = file.name
+    reportMessage.value = ''
+  } catch (error) {
+    reportMessage.value = error instanceof Error ? error.message : 'Não foi possível ler o CSV.'
+  }
+  input.value = ''
+}
+async function restoreBackup() {
+  if (!pendingBackup.value) return
+  busy.value = true
+  try {
+    const result = await importGoalBackup(pendingBackup.value)
+    pendingBackup.value = null
+    await refresh()
+    reportMessage.value = `Importação concluída: ${result.goals} metas, ${result.dayDetails} dias, ${result.completions} conclusões e ${result.history} versões adicionadas.`
+  } catch (error) {
+    reportMessage.value =
+      error instanceof Error ? error.message : 'Não foi possível importar o CSV.'
+  } finally {
+    busy.value = false
+  }
 }
 function resizeMealDescription(input: HTMLTextAreaElement) {
   input.style.height = 'auto'
@@ -246,6 +343,10 @@ const mealCount = (goal: Goal, date: Date) => {
         ? options.length
         : 0,
     total: options.length,
+    adherent: detail?.adherence_recorded
+      ? options.filter(({ id }) => detail.meals[id]?.checked && detail.meals[id]?.adherent === true)
+          .length
+      : null,
   }
 }
 const checklistCount = (goal: Goal, date: Date) => {
@@ -404,10 +505,20 @@ function openDay(date: Date) {
               (completed &&
                 (goal.category === 'alimentacao' || !detail?.checklist_options?.length)),
             description: entries?.[id]?.description || '',
+            adherent: entries?.[id]?.adherent ?? null,
           },
         ]),
       ) as MealEntries
-      return [goal.id, { items, options, note: detail?.note || '', completed }]
+      return [
+        goal.id,
+        {
+          items,
+          options,
+          note: detail?.note || '',
+          completed,
+          trackAdherence: detail?.adherence_recorded ?? !detail,
+        },
+      ]
     }),
   )
 }
@@ -460,6 +571,7 @@ async function saveDay() {
         goal_id: goal.id,
         local_date: localKey(date),
         meals: goal.category === 'alimentacao' ? draft.items : {},
+        adherence_recorded: goal.category === 'alimentacao' && draft.trackAdherence,
         meal_options:
           goal.category === 'alimentacao' ? draft.options : goal.meal_options || defaultMealOptions,
         checklist: goal.category === 'alimentacao' ? {} : draft.items,
@@ -537,6 +649,17 @@ function changeMode(event: Event) {
   form.value.goal_mode = mode === 'weekly' ? 'weekly' : 'fixed'
   form.value.scheduled_weekdays = mode === 'weekly' ? [0, 1, 2, 3, 4, 5, 6] : []
 }
+function togglePeriod(event: Event) {
+  if ((event.target as HTMLInputElement).checked) {
+    form.value.start_date = localKey(new Date())
+    form.value.duration_days = 14
+    if (form.value.goal_mode === 'fixed' && !form.value.scheduled_weekdays.length)
+      form.value.scheduled_weekdays = [0, 1, 2, 3, 4, 5, 6]
+  } else {
+    form.value.start_date = null
+    form.value.duration_days = null
+  }
+}
 function switchAuth() {
   signUp.value = !signUp.value
   message.value = ''
@@ -562,6 +685,16 @@ async function save() {
     !Number.isInteger(input.weekly_target) ||
     input.weekly_target < 1 ||
     input.weekly_target > 7 ||
+    (input.duration_days !== null &&
+      (!input.start_date ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(input.start_date) ||
+        !Number.isInteger(input.duration_days) ||
+        input.duration_days < 1 ||
+        input.duration_days > 365)) ||
+    (input.start_date !== null && input.duration_days === null) ||
+    (input.goal_mode === 'weekly' &&
+      input.duration_days !== null &&
+      input.duration_days < input.weekly_target) ||
     !Number.isInteger(input.points) ||
     input.points < 1 ||
     (input.category === 'alimentacao' &&
@@ -599,6 +732,8 @@ function edit(goal: Goal) {
     scheduled_weekdays: [...goal.scheduled_weekdays],
     goal_mode: goal.goal_mode || 'fixed',
     weekly_target: goal.weekly_target || 3,
+    start_date: goal.start_date || null,
+    duration_days: goal.duration_days || null,
     points: goal.points,
     active: goal.active,
     meal_options: (goal.meal_options || defaultMealOptions).map((option) => ({ ...option })),
@@ -645,6 +780,8 @@ async function pause(goal: Goal) {
       scheduled_weekdays: goal.scheduled_weekdays,
       goal_mode: goal.goal_mode || 'fixed',
       weekly_target: goal.weekly_target || 1,
+      start_date: goal.start_date || null,
+      duration_days: goal.duration_days || null,
       points: goal.points,
       active: !goal.active,
       meal_options: goal.meal_options || defaultMealOptions,
@@ -660,6 +797,7 @@ async function pause(goal: Goal) {
   }
 }
 onMounted(async () => {
+  systemTheme.addEventListener('change', syncSystemTheme)
   syncMobileWeek()
   mobileQuery.addEventListener('change', syncMobileWeek)
   if (supabase) {
@@ -681,7 +819,10 @@ onMounted(async () => {
   if (!cloudEnabled || session.value) await refresh()
   else loading.value = false
 })
-onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
+onUnmounted(() => {
+  mobileQuery.removeEventListener('change', syncMobileWeek)
+  systemTheme.removeEventListener('change', syncSystemTheme)
+})
 </script>
 
 <template>
@@ -693,6 +834,17 @@ onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
         >
       </div>
       <div class="top-actions">
+        <button
+          type="button"
+          class="theme-button"
+          :aria-label="darkMode ? 'Ativar tema claro' : 'Ativar tema escuro'"
+          :title="darkMode ? 'Tema claro' : 'Tema escuro'"
+          :aria-pressed="darkMode"
+          @click="toggleTheme"
+        >
+          <Sun v-if="darkMode" :size="19" aria-hidden="true" />
+          <Moon v-else :size="19" aria-hidden="true" />
+        </button>
         <div v-if="!cloudEnabled || session" class="profile-corner">
           <div class="profile-avatar" aria-hidden="true">{{ session ? profileInitials : 'V' }}</div>
           <div class="profile-copy">
@@ -906,7 +1058,7 @@ onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
                       }}<small
                         >{{
                           goal.category === 'alimentacao'
-                            ? `${mealCount(goal, date).checked}/${mealCount(goal, date).total} refeições`
+                            ? `${mealCount(goal, date).checked}/${mealCount(goal, date).total} registradas${mealCount(goal, date).adherent === null ? '' : ` · ${mealCount(goal, date).adherent} no plano`}`
                             : goal.goal_mode === 'weekly'
                               ? `${Math.min(weeklyCount(goal, date)?.completed || 0, weeklyCount(goal, date)?.target || 1)}/${weeklyCount(goal, date)?.target || 1} idas na semana`
                               : checklistCount(goal, date).total
@@ -954,9 +1106,58 @@ onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
               :disabled="!goals.length"
               @click="downloadReport"
             >
-              <Download :size="17" aria-hidden="true" /> Exportar relatório CSV
+              <Download :size="17" aria-hidden="true" /> Exportar CSV
             </button>
           </div>
+          <section class="panel report-panel" aria-label="Exportar e importar registros">
+            <div>
+              <strong>Período do relatório</strong>
+              <label
+                >Exportar
+                <select v-model="reportMode">
+                  <option value="all">Tudo desde o início</option>
+                  <option value="month">Um mês</option>
+                  <option value="range">Intervalo de datas</option>
+                </select>
+              </label>
+              <label v-if="reportMode === 'month'"
+                >Mês<input v-model="reportMonth" type="month"
+              /></label>
+              <div v-if="reportMode === 'range'" class="report-dates">
+                <label>De<input v-model="reportFrom" type="date" /></label>
+                <label>Até<input v-model="reportTo" type="date" /></label>
+              </div>
+            </div>
+            <div>
+              <strong>Restaurar registros</strong>
+              <label
+                >Selecione um CSV exportado por esta versão<input
+                  type="file"
+                  accept=".csv,text/csv"
+                  @change="selectBackup"
+              /></label>
+              <p v-if="pendingBackup">
+                {{ pendingBackupName }} · {{ pendingBackup.length }} metas reconhecidas. A
+                importação adiciona apenas registros ausentes.
+              </p>
+              <button
+                v-if="pendingBackup"
+                type="button"
+                class="small-button"
+                :disabled="busy"
+                @click="restoreBackup"
+              >
+                {{ busy ? 'Importando...' : 'Importar registros' }}
+              </button>
+              <p v-else>
+                Arquivos antigos sem a coluna de restauração continuam legíveis, mas não podem ser
+                importados com segurança.
+              </p>
+            </div>
+            <p v-if="reportMessage" role="status" class="notice report-notice">
+              {{ reportMessage }}
+            </p>
+          </section>
           <div class="goals-layout">
             <form class="goal-form panel" @submit.prevent="save">
               <span class="eyebrow">{{ editing ? 'AJUSTAR META' : 'NOVA META' }}</span>
@@ -985,6 +1186,31 @@ onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
                     required
                 /></label>
               </div>
+              <fieldset>
+                <legend>Período da meta</legend>
+                <label class="active-switch"
+                  ><input
+                    type="checkbox"
+                    :checked="form.duration_days !== null"
+                    @change="togglePeriod"
+                  />Duração definida</label
+                >
+                <div v-if="form.duration_days !== null" class="form-row period-fields">
+                  <label>Começa em<input v-model="form.start_date" type="date" required /></label>
+                  <label
+                    >Por quantos dias?<input
+                      v-model.number="form.duration_days"
+                      type="number"
+                      min="1"
+                      max="365"
+                      step="1"
+                      required
+                  /></label>
+                </div>
+                <p v-if="form.duration_days !== null">
+                  Para 14 marcações diárias, escolha todos os dias da semana.
+                </p>
+              </fieldset>
               <fieldset v-if="form.category !== 'alimentacao'">
                 <legend>Como contar esta meta?</legend>
                 <label
@@ -1198,6 +1424,10 @@ onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
                       goal.goal_mode === 'weekly'
                         ? `${goal.weekly_target || 1}x por semana · dias livres`
                         : goal.scheduled_weekdays.map((day) => weekdays[day]).join(', ')
+                    }}{{
+                      goal.start_date && goal.duration_days
+                        ? ` · ${goal.duration_days} dias desde ${new Date(`${goal.start_date}T12:00:00`).toLocaleDateString('pt-BR')}`
+                        : ''
                     }}</span
                   ><small v-if="!goal.active">Pausada</small>
                 </div>
@@ -1379,11 +1609,17 @@ onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
               </div>
             </div>
             <template v-if="goal.category === 'alimentacao' || dayDrafts[goal.id]!.options.length">
-              <p class="meal-hint">Marque todos os itens para concluir esta meta do dia.</p>
+              <p class="meal-hint">
+                {{
+                  goal.category === 'alimentacao'
+                    ? 'Registre o que comeu e indique se seguiu o plano. Só refeições dentro do plano concluem a meta alimentar.'
+                    : 'Marque todos os itens para concluir esta meta do dia.'
+                }}
+              </p>
               <div
                 v-for="(option, index) in dayDrafts[goal.id]!.options"
                 :key="option.id"
-                class="meal-row"
+                :class="['meal-row', { 'food-row': goal.category === 'alimentacao' }]"
               >
                 <label class="meal-check"
                   ><input
@@ -1391,6 +1627,18 @@ onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
                     type="checkbox"
                   />{{ option.label }}</label
                 >
+                <label v-if="goal.category === 'alimentacao'" class="meal-adherence"
+                  >Aderência ao plano
+                  <select
+                    v-model="dayDrafts[goal.id]!.items[option.id]!.adherent"
+                    :disabled="!dayDrafts[goal.id]!.items[option.id]!.checked"
+                    @change="dayDrafts[goal.id]!.trackAdherence = true"
+                  >
+                    <option :value="null">Não informada</option>
+                    <option :value="true">Segui o plano</option>
+                    <option :value="false">Fora do plano / refeição livre</option>
+                  </select>
+                </label>
                 <textarea
                   v-model="dayDrafts[goal.id]!.items[option.id]!.description"
                   class="meal-description"
@@ -1447,6 +1695,13 @@ onUnmounted(() => mobileQuery.removeEventListener('change', syncMobileWeek))
                 </button>
               </div>
             </template>
+            <p
+              v-if="goal.category === 'alimentacao' && !dayDrafts[goal.id]!.trackAdherence"
+              class="meal-hint"
+            >
+              Registro antigo sem avaliação de aderência. Classifique as refeições para atualizar
+              este dia.
+            </p>
             <label v-else class="meal-check completion-check"
               ><input v-model="dayDrafts[goal.id]!.completed" type="checkbox" />{{
                 goal.goal_mode === 'weekly' ? 'Fiz esta atividade hoje' : 'Meta concluída'
