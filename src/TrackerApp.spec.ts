@@ -68,6 +68,7 @@ it('lets a past day use the current limit only after explicitly applying and sav
   try {
     await flushPromises()
     const openPastDay = async () => {
+      await wrapper.get('[aria-label="Selecionar dia 15/10/2026"]').trigger('click')
       await wrapper.get('[aria-label="Abrir registros de 15/10/2026"]').trigger('click')
       await wrapper.get('.day-limit-correction summary').trigger('click')
     }
@@ -292,6 +293,80 @@ it('labels completed tasks explicitly and preserves the weekly frequency control
     await wrapper.get('.confirmation-actions .primary-button').trigger('click')
     await flushPromises()
     expect((await loadData()).goals[0]?.weekly_target).toBe(4)
+  } finally {
+    wrapper.unmount()
+  }
+})
+
+it('shows one selected day on mobile, navigates weeks and omits the footer', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-10-16T12:00:00'))
+  await createGoal({
+    title: 'Treinar',
+    category: 'treino',
+    scheduled_weekdays: [0, 1, 2, 3, 4, 5, 6],
+    goal_mode: 'fixed',
+    weekly_target: 3,
+    points: 10,
+    active: true,
+    meal_options: [],
+    meal_options_by_weekday: {},
+    checklist_options: [],
+    checklist_options_by_weekday: {},
+    start_date: '2026-10-01',
+    duration_days: null,
+  })
+  const wrapper = mount(TrackerApp)
+  try {
+    await flushPromises()
+    expect(wrapper.findAll('.week-strip button')).toHaveLength(7)
+    expect(wrapper.findAll('.days-grid .day-card')).toHaveLength(1)
+    expect(wrapper.get('.week-strip [aria-pressed="true"]').attributes('aria-label')).toContain(
+      '16/10/2026',
+    )
+    expect(wrapper.find('footer').exists()).toBe(false)
+    await wrapper.get('[aria-label="Selecionar dia 15/10/2026"]').trigger('click')
+    expect(wrapper.findAll('.days-grid .day-card')).toHaveLength(1)
+    expect(wrapper.get('.day-open').attributes('aria-label')).toContain('15/10/2026')
+    await wrapper.get('[aria-label="Semana anterior"]').trigger('click')
+    expect(wrapper.get('.week-strip [aria-pressed="true"]').attributes('aria-label')).toContain(
+      '05/10/2026',
+    )
+    await wrapper.get('.week-section > .today-link').trigger('click')
+    expect(wrapper.get('.day-open').attributes('aria-label')).toContain('16/10/2026')
+  } finally {
+    wrapper.unmount()
+  }
+})
+
+it('keeps all seven day cards visible on desktop', async () => {
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: false,
+    media: query,
+    addEventListener: vi.fn<() => void>(),
+    removeEventListener: vi.fn<() => void>(),
+  }))
+  await createGoal({
+    title: 'Treinar',
+    category: 'treino',
+    scheduled_weekdays: [0, 1, 2, 3, 4, 5, 6],
+    goal_mode: 'fixed',
+    weekly_target: 3,
+    points: 10,
+    active: true,
+    meal_options: [],
+    meal_options_by_weekday: {},
+    checklist_options: [],
+    checklist_options_by_weekday: {},
+    start_date: null,
+    duration_days: null,
+  })
+  const wrapper = mount(TrackerApp)
+  try {
+    await flushPromises()
+    expect(wrapper.findAll('.days-grid .day-card')).toHaveLength(7)
+    expect(wrapper.find('.week-strip').exists()).toBe(false)
+    expect(wrapper.find('footer').exists()).toBe(true)
   } finally {
     wrapper.unmount()
   }

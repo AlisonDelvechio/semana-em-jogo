@@ -315,11 +315,13 @@ html[data-theme='dark'] .meal-order-actions button {
   min-height: 56px;
   padding: 10px 0;
   gap: 12px;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 26px 22px minmax(0, 1fr);
+  align-items: center;
 }
 .task-title {
   flex: 1;
-  min-width: 100px;
+  min-width: 0;
   font-size: 0.9rem;
   line-height: 1.45;
 }
@@ -359,7 +361,7 @@ html[data-theme='dark'] .task.done .task-title small {
 }
 .day-edit-action {
   width: 100%;
-  margin-top: 14px;
+  margin-top: auto;
   padding: 10px 14px;
   min-height: 44px;
   font-size: 0.84rem;
@@ -391,24 +393,6 @@ html[data-theme='dark'] .period-progress-bar {
 html[data-theme='dark'] .period-progress-heading > span,
 html[data-theme='dark'] .period-progress-date {
   color: var(--ui-muted);
-}
-.calendar-day,
-html[data-theme='dark'] .calendar-day {
-  border-radius: 10px;
-}
-.calendar-day.is-today,
-html[data-theme='dark'] .calendar-day.is-today {
-  background: var(--ui-accent);
-  border-color: var(--ui-accent);
-  color: var(--ui-on-accent);
-}
-.calendar-day.is-today .calendar-date,
-html[data-theme='dark'] .calendar-day.is-today .calendar-date {
-  color: var(--ui-on-accent);
-}
-.calendar-day.is-today .calendar-count,
-.calendar-day.is-today .calendar-day-content small {
-  color: var(--ui-on-accent);
 }
 @media (max-width: 720px) {
   .app-shell {
@@ -475,9 +459,6 @@ html[data-theme='dark'] .calendar-day.is-today .calendar-date {
   .task-title {
     font-size: 0.88rem;
   }
-  .task-state {
-    margin-left: 38px;
-  }
   .goal-editor-dialog {
     border-radius: 20px 20px 0 0;
   }
@@ -536,7 +517,9 @@ html[data-theme='dark'] .calendar-day.is-today .calendar-date {
   }
 }
 .task-state {
-  margin-inline-start: 38px;
+  grid-column: 3;
+  justify-self: start;
+  margin: -4px 0 0;
 }
 .meal-check,
 .active-switch {
@@ -632,4 +615,425 @@ input[type='file']::file-selector-button {
   align-items: center;
   min-height: 44px;
   cursor: pointer;
+}
+
+/* Shared rhythm for summaries, daily cards and calendar selection. */
+.period-progress-card {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+}
+.period-progress-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--ui-secondary);
+  color: var(--ui-text);
+}
+.period-progress-meta h2 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+}
+.period-progress-caption {
+  display: none;
+}
+.period-progress-date {
+  margin: 0;
+  min-height: 0;
+  font-size: 0.8rem;
+}
+.period-progress-result {
+  text-align: right;
+}
+.period-progress-result > span {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.76rem;
+  color: var(--ui-muted);
+}
+.period-progress-value {
+  font-size: 2rem;
+}
+.period-progress-value > span {
+  font-size: 1rem;
+}
+.period-progress-bar {
+  grid-column: 1 / -1;
+  margin: 0;
+  height: 8px;
+}
+.days-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: 1fr;
+  align-items: stretch;
+  gap: 16px;
+}
+.days-grid .day-card {
+  min-height: 290px;
+  padding: 18px;
+}
+.days-grid .day-card.is-today {
+  padding: 17px;
+}
+.day-heading {
+  min-height: 76px;
+  flex: none;
+}
+.day-card .tasks {
+  align-content: start;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+.day-card .day-edit-action {
+  flex: none;
+  margin-top: auto;
+  height: 44px;
+}
+.task-category-icon {
+  display: grid;
+  place-items: center;
+  color: var(--ui-muted);
+}
+.task-category-icon.alimentacao {
+  color: #a35730;
+}
+html[data-theme='dark'] .task-category-icon.alimentacao {
+  color: #f3b48b;
+}
+.task-category-icon.treino {
+  color: #466b37;
+}
+html[data-theme='dark'] .task-category-icon.treino {
+  color: var(--ui-accent);
+}
+.free-meal-overview {
+  margin-top: 16px;
+}
+.week-strip {
+  display: none;
+}
+.month-progress-summary {
+  margin-bottom: 20px;
+}
+.calendar-grid {
+  gap: 8px;
+}
+.calendar-day,
+html[data-theme='dark'] .calendar-day {
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 4px;
+  min-height: 74px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ui-text);
+  opacity: 1;
+}
+.calendar-day.outside-month,
+html[data-theme='dark'] .calendar-day.outside-month {
+  background: transparent;
+  color: var(--ui-muted);
+}
+.calendar-day.is-today,
+html[data-theme='dark'] .calendar-day.is-today {
+  border-color: var(--ui-border);
+}
+.calendar-day:hover,
+html[data-theme='dark'] .calendar-day:hover {
+  background: var(--ui-secondary);
+}
+.calendar-day .calendar-date,
+.calendar-day.is-today .calendar-date,
+.calendar-day.selected .calendar-date,
+html[data-theme='dark'] .calendar-day .calendar-date,
+html[data-theme='dark'] .calendar-day.is-today .calendar-date,
+html[data-theme='dark'] .calendar-day.selected .calendar-date {
+  color: inherit;
+}
+.calendar-day.selected,
+html[data-theme='dark'] .calendar-day.selected {
+  background: var(--ui-accent);
+  border-color: var(--ui-accent);
+  color: var(--ui-on-accent);
+}
+.calendar-status {
+  --status-fill: var(--ui-focus);
+  --status-empty: var(--ui-secondary);
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border-radius: 50%;
+  border: 1px solid var(--ui-muted);
+  color: var(--ui-on-accent);
+}
+.calendar-status.complete {
+  border-color: var(--ui-accent);
+  background: var(--ui-accent);
+}
+.calendar-status.partial {
+  background: conic-gradient(var(--status-fill) var(--day-progress), var(--status-empty) 0);
+}
+.calendar-day.selected .calendar-status {
+  --status-fill: #25462c;
+  --status-empty: #d7ebcc;
+  border-color: #25462c;
+}
+.calendar-day.selected .calendar-status.complete {
+  background: #25462c;
+  color: #fff;
+}
+.calendar-no-goals {
+  height: 18px;
+}
+.calendar-legend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  margin-top: 20px;
+  color: var(--ui-muted);
+  font-size: 0.8rem;
+}
+.calendar-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.calendar-nav > button:not(.today-link) {
+  width: 44px;
+  height: 44px;
+}
+.selected-day-card {
+  margin-top: 20px;
+  min-height: 0;
+}
+.selected-day-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 12px;
+}
+.selected-day-heading h2 {
+  margin: 0;
+  font-size: 1rem;
+  text-transform: capitalize;
+}
+.selected-day-heading > span {
+  font-size: 0.8rem;
+  color: var(--ui-muted);
+}
+.selected-day-card .task {
+  grid-template-columns: 26px 22px minmax(0, 1fr) auto;
+}
+.selected-day-card .task-state {
+  grid-column: 4;
+  margin: 0;
+}
+@media (min-width: 721px) and (max-width: 1200px) {
+  .days-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 720px) {
+  .week-layout {
+    display: block;
+  }
+  .content footer {
+    display: none;
+  }
+  .progress-overview {
+    gap: 12px;
+  }
+  .progress-overview .period-progress-card {
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 10px;
+    padding: 14px;
+  }
+  .progress-overview .period-progress-icon {
+    width: 34px;
+    height: 38px;
+    border-radius: 9px;
+  }
+  .progress-overview .period-progress-meta h2 {
+    font-size: 0.88rem;
+    margin-bottom: 3px;
+  }
+  .progress-overview .period-progress-caption {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--ui-muted);
+  }
+  .progress-overview .period-progress-date,
+  .progress-overview .period-progress-result > span {
+    display: none;
+  }
+  .progress-overview .period-progress-result {
+    grid-column: 2;
+    text-align: left;
+  }
+  .period-progress-value {
+    font-size: 1.8rem;
+  }
+  .period-progress-bar {
+    margin: 0;
+  }
+  .week-section .section-heading .eyebrow,
+  .week-section .section-heading h2 {
+    display: none;
+  }
+  .week-section .section-heading {
+    margin-bottom: 12px;
+  }
+  .week-strip {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(44px, 1fr));
+    gap: 6px;
+    overflow-x: auto;
+    padding: 3px 3px 6px;
+    margin: 0 -3px 10px;
+  }
+  .week-strip button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 80px;
+    padding: 8px 2px;
+    border-radius: 12px;
+    border: 1px solid var(--ui-border);
+    background: var(--ui-surface);
+    color: var(--ui-text);
+  }
+  .week-strip button > span {
+    font-size: 0.74rem;
+  }
+  .week-strip button > strong {
+    font-size: 1rem;
+  }
+  .week-strip button > small {
+    font-size: 0.62rem;
+    line-height: 1;
+    min-height: 0.65rem;
+  }
+  .week-strip button.selected {
+    background: var(--ui-accent);
+    color: var(--ui-on-accent);
+    border-color: var(--ui-accent);
+    font-weight: 700;
+  }
+  .days-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: auto;
+  }
+  .days-grid .day-card,
+  .days-grid .day-card.is-today {
+    padding: 16px;
+    min-height: 0;
+  }
+  .day-heading {
+    min-height: 0;
+    align-items: center;
+  }
+  .day-open > span,
+  .day-open strong,
+  .day-heading small {
+    display: inline;
+    font-size: 0.96rem;
+    font-weight: 700;
+    color: var(--ui-text);
+  }
+  .day-open > span::after {
+    content: ', ';
+  }
+  .day-heading small {
+    text-transform: none;
+  }
+  .day-card .task {
+    grid-template-columns: 26px 22px minmax(0, 1fr) auto;
+    gap: 9px;
+    min-height: 62px;
+  }
+  .day-card .task-state {
+    grid-column: 4;
+    margin: 0;
+    padding: 4px 7px;
+    font-size: 0.62rem;
+  }
+  .month-progress-summary .period-progress-card {
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    padding: 14px;
+    gap: 10px;
+  }
+  .month-progress-summary .period-progress-icon {
+    width: 38px;
+    height: 42px;
+  }
+  .month-progress-summary .period-progress-meta h2 {
+    display: none;
+  }
+  .month-progress-summary .period-progress-date {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--ui-text);
+    text-transform: capitalize;
+  }
+  .month-progress-summary .period-progress-result > span {
+    font-size: 0.7rem;
+  }
+  .calendar-panel {
+    padding: 12px;
+  }
+  .calendar-grid {
+    gap: 1px;
+    min-width: 314px;
+  }
+  .calendar-day,
+  html[data-theme='dark'] .calendar-day {
+    min-height: 60px;
+    min-width: 44px;
+    gap: 5px;
+    padding: 6px 2px;
+  }
+  .calendar-header {
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .calendar-header h2 {
+    font-size: 1.1rem;
+  }
+  .calendar-nav .today-link {
+    display: inline-flex;
+    align-items: center;
+  }
+  .calendar-header .eyebrow {
+    display: none;
+  }
+  .calendar-legend {
+    gap: 10px 14px;
+    font-size: 0.72rem;
+    margin-top: 16px;
+  }
+  .selected-day-heading {
+    align-items: flex-start;
+  }
+}
+@media (max-width: 360px) {
+  .day-card .task {
+    grid-template-columns: 26px 22px minmax(0, 1fr);
+  }
+  .day-card .task-state {
+    grid-column: 3;
+    margin-top: -4px;
+  }
 }
