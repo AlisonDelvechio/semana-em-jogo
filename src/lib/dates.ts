@@ -144,6 +144,53 @@ export function isGoalDone(
   return completions.some((entry) => entry.goal_id === goal.id && entry.local_date === day)
 }
 
+// Each meal has the same weight, including meals added to a specific day.
+// Legacy records keep their original interpretation until explicitly classified.
+export function goalProgressCounts(
+  goal: Goal,
+  day: string,
+  completions: Completion[],
+  details: GoalDayDetail[] = [],
+) {
+  const detail = details.find((entry) => entry.goal_id === goal.id && entry.local_date === day)
+  if (goal.category !== 'alimentacao')
+    return { total: 1, completed: isGoalDone(goal, day, completions, details) ? 1 : 0 }
+  const options = detail?.meal_options || mealOptionsForDate(goal, new Date(`${day}T12:00:00`))
+  const legacyDone = !detail && isGoalDone(goal, day, completions, details)
+  return {
+    total: options.length,
+    completed: legacyDone
+      ? options.length
+      : options.filter(({ id }) => isMealAllowed(goal, day, id, details)).length,
+  }
+}
+
+export function goalProgress(
+  goal: Goal,
+  day: string,
+  completions: Completion[],
+  details: GoalDayDetail[] = [],
+) {
+  const counts = goalProgressCounts(goal, day, completions, details)
+  return counts.total ? counts.completed / counts.total : 0
+}
+
+function progressPercent(
+  entries: { goal: Goal; day: string }[],
+  weekly: { target: number; completed: number }[],
+  completions: Completion[],
+  details: GoalDayDetail[],
+) {
+  const counts = entries.map(({ goal, day }) => goalProgressCounts(goal, day, completions, details))
+  const total =
+    counts.reduce((sum, entry) => sum + entry.total, 0) +
+    weekly.reduce((sum, entry) => sum + entry.target, 0)
+  const completed =
+    counts.reduce((sum, entry) => sum + entry.completed, 0) +
+    weekly.reduce((sum, entry) => sum + Math.min(entry.completed, entry.target), 0)
+  return total ? Math.round((completed / total) * 100) : 0
+}
+
 function scheduledEntries(goals: Goal[], monday: Date, history: GoalHistory[]) {
   return weekDays(monday).flatMap((day) =>
     goals
@@ -196,7 +243,7 @@ export function weekStats(
   return {
     total,
     completed,
-    percent: total ? Math.round((completed / total) * 100) : 0,
+    percent: progressPercent(scheduled, weekly, completions, dayDetails),
     points:
       done.reduce((sum, entry) => sum + entry.goal.points, 0) +
       weekly
@@ -226,7 +273,7 @@ export function weekPace(
   return {
     total,
     completed,
-    percent: total ? Math.round((completed / total) * 100) : 0,
+    percent: progressPercent(due, weekly, completions, dayDetails),
     upcoming:
       entries.length -
       due.length +

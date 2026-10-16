@@ -120,6 +120,7 @@ it('edits the allowance and saves a compliant day with an optional free meal on 
     await wrapper.get('[aria-label="Editar Minha dieta"]').trigger('click')
     await wrapper.get('[aria-describedby="free-meal-help"]').setValue('1')
     await wrapper.get('.goal-form').trigger('submit')
+    await wrapper.get('.confirmation-actions .primary-button').trigger('click')
     await flushPromises()
     expect((await loadData()).goals[0]?.free_meals_per_week).toBe(1)
 
@@ -143,6 +144,48 @@ it('edits the allowance and saves a compliant day with an optional free meal on 
     expect(isGoalDone(data.goals[0]!, data.dayDetails[0]!.local_date, [], data.dayDetails)).toBe(
       true,
     )
+  } finally {
+    wrapper.unmount()
+  }
+})
+
+it('confirms deletion, supports Escape and restores focus without deleting on cancel', async () => {
+  const goal = await createGoal({
+    title: 'Academia',
+    category: 'treino',
+    scheduled_weekdays: [1],
+    goal_mode: 'fixed',
+    weekly_target: 3,
+    points: 10,
+    active: true,
+    meal_options: [],
+    meal_options_by_weekday: {},
+    checklist_options: [],
+    checklist_options_by_weekday: {},
+    start_date: null,
+    duration_days: null,
+  })
+  const wrapper = mount(TrackerApp, { attachTo: document.body })
+  try {
+    await flushPromises()
+    await wrapper.findAll('.mobile-nav button')[2]!.trigger('click')
+    const trigger = wrapper.get('[aria-label="Excluir Academia"]')
+    ;(trigger.element as HTMLButtonElement).focus()
+    await trigger.trigger('click')
+    expect(wrapper.get('[role="alertdialog"]').text()).toContain('não pode ser desfeita')
+    expect(document.activeElement?.textContent).toBe('Cancelar')
+    expect((await loadData()).goals[0]?.id).toBe(goal.id)
+    await wrapper.get('[role="alertdialog"]').trigger('keydown', { key: 'Escape' })
+    expect(wrapper.find('[role="alertdialog"]').exists()).toBe(false)
+    expect(document.activeElement).toBe(trigger.element)
+    expect((await loadData()).goals).toHaveLength(1)
+    await trigger.trigger('click')
+    await wrapper.get('.confirmation-actions .primary-button').trigger('click')
+    await flushPromises()
+    expect((await loadData()).goals).toHaveLength(0)
+    expect(wrapper.get('.app-notice').text()).toContain('Meta excluída')
+    await wrapper.get('[aria-label="Fechar mensagem"]').trigger('click')
+    expect(wrapper.find('.app-notice').exists()).toBe(false)
   } finally {
     wrapper.unmount()
   }

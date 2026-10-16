@@ -43,6 +43,7 @@ import {
   localKey,
   mondayOf,
   goalForDate,
+  goalProgress,
   isGoalDone,
   isMealAllowed,
   mealOptionsForDate,
@@ -57,6 +58,8 @@ import { moveMeal } from './lib/meals'
 import { parseGoalBackup } from './lib/backup'
 import { createGoalReport, type BackupRecord, type ReportRange } from './lib/report'
 import MonthView from './views/MonthView.vue'
+import ConfirmDialog from './components/ConfirmDialog.vue'
+import AppNotice from './components/AppNotice.vue'
 import {
   defaultMealOptions,
   type Category,
@@ -78,6 +81,32 @@ const monday = ref(mondayOf(new Date())),
 const loading = ref(true),
   busy = ref(false),
   message = ref('')
+const messageIsError = ref(false)
+const confirmation = ref<{
+  title: string
+  description: string
+  confirmLabel: string
+  danger?: boolean
+} | null>(null)
+let resolveConfirmation: ((confirmed: boolean) => void) | null = null
+function askConfirmation(options: NonNullable<typeof confirmation.value>): Promise<boolean> {
+  confirmation.value = options
+  return new Promise((resolve) => {
+    resolveConfirmation = resolve
+  })
+}
+function finishConfirmation(confirmed: boolean) {
+  confirmation.value = null
+  resolveConfirmation?.(confirmed)
+  resolveConfirmation = null
+}
+watch(
+  message,
+  () => {
+    messageIsError.value = false
+  },
+  { flush: 'sync' },
+)
 const session = ref<Session | null>(null),
   email = ref(''),
   password = ref(''),
@@ -230,6 +259,7 @@ const categoryName = (name: string) =>
   ]
 const errorMessage = (error: unknown) => {
   message.value = error instanceof Error ? error.message : 'Algo deu errado. Tente novamente.'
+  messageIsError.value = true
 }
 const planned = (date: Date) =>
   goals.value
@@ -768,6 +798,16 @@ async function save() {
     message.value = 'Informe nome, frequência, dias e pontos válidos.'
     return
   }
+  if (
+    editing.value &&
+    !(await askConfirmation({
+      title: 'Salvar alterações da meta?',
+      description:
+        'A nova configuração será usada a partir de hoje. Os registros e as configurações anteriores serão preservados.',
+      confirmLabel: 'Salvar alterações',
+    }))
+  )
+    return
   busy.value = true
   try {
     if (editing.value) await updateGoal(editing.value, input)
@@ -813,12 +853,21 @@ function edit(goal: Goal) {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 async function remove(goal: Goal) {
-  if (!confirm(`Excluir “${goal.title}” e todo o histórico dessa meta?`)) return
+  if (
+    !(await askConfirmation({
+      title: 'Excluir meta?',
+      description: `“${goal.title}” e todos os seus registros serão excluídos. Esta ação não pode ser desfeita.`,
+      confirmLabel: 'Excluir meta',
+      danger: true,
+    }))
+  )
+    return
   busy.value = true
   message.value = ''
   try {
     await deleteGoal(goal.id)
     await refresh()
+    message.value = 'Meta excluída.'
     if (editing.value === goal.id) {
       editing.value = null
       form.value = fresh()
@@ -830,6 +879,16 @@ async function remove(goal: Goal) {
   }
 }
 async function pause(goal: Goal) {
+  if (
+    !(await askConfirmation({
+      title: goal.active ? 'Pausar meta?' : 'Retomar meta?',
+      description: goal.active
+        ? `“${goal.title}” deixará de aparecer nos próximos dias. Os registros anteriores serão preservados.`
+        : `“${goal.title}” voltará a aparecer conforme a frequência configurada.`,
+      confirmLabel: goal.active ? 'Pausar meta' : 'Retomar meta',
+    }))
+  )
+    return
   busy.value = true
   message.value = ''
   try {
@@ -850,6 +909,7 @@ async function pause(goal: Goal) {
       checklist_options_by_weekday: goal.checklist_options_by_weekday || {},
     })
     await refresh()
+    message.value = goal.active ? 'Meta pausada.' : 'Meta retomada.'
   } catch (error) {
     errorMessage(error)
   } finally {
@@ -880,6 +940,7 @@ onMounted(async () => {
   else loading.value = false
 })
 onUnmounted(() => {
+  finishConfirmation(false)
   mobileQuery.removeEventListener('change', syncMobileWeek)
   systemTheme.removeEventListener('change', syncSystemTheme)
 })
@@ -1029,12 +1090,18 @@ onUnmounted(() => {
               </div>
               <div class="progress-main">
                 <strong>{{ future ? 0 : pace.percent }}%</strong
-                ><span>{{ future ? 'sem atividades vencidas' : 'do previsto até este dia' }}</span>
+                ><span>{{
+                  future ? 'sem atividades vencidas' : 'das refeições e atividades previstas'
+                }}</span>
               </div>
               <div class="progress-track"><div :style="{ width: `${pace.percent}%` }"></div></div>
               <small
                 >{{ pace.completed }} de {{ pace.total }} atividades previstas até esta data
                 <template v-if="pace.upcoming"> · {{ pace.upcoming }} por vir</template></small
+              >
+              <small class="progress-explanation"
+                >Cada refeição conta no percentual. Livres dentro do limite contam como
+                certas.</small
               >
               <div class="week-total">
                 Plano completo: {{ stats.completed }} de {{ stats.total }} · {{ stats.percent }}%
@@ -1557,10 +1624,21 @@ onUnmounted(() => {
               </article>
             </section></div
         ></template>
-        <p v-if="message" role="status" class="notice dashboard-notice">{{ message }}</p>
+        <AppNotice
+          v-if="message && !selectedDay && editingWeekday === null"
+          :message="message"
+          :error="messageIsError"
+          @dismiss="message = ''"
+        />
         <footer>Feito para celebrar a constância, no seu tempo. ✦</footer>
       </main>
     </div>
+    <ConfirmDialog
+      v-if="confirmation"
+      v-bind="confirmation"
+      @confirm="finishConfirmation(true)"
+      @cancel="finishConfirmation(false)"
+    />
     <div
       v-if="editingWeekday !== null"
       class="dialog-backdrop"
@@ -1902,6 +1980,14 @@ onUnmounted(() => {
                 <Plus :size="16" /> Adicionar
               </button>
             </div>
+            <p v-if="goal.category === 'alimentacao'" class="meal-hint meal-progress" role="status">
+              {{
+                Math.round(
+                  goalProgress(goal, localKey(selectedDay), completions, detailsWithDraft(goal)) *
+                    100,
+                )
+              }}% das refeições deste dia dentro do plano.
+            </p>
             <label class="day-note"
               >Observação do dia (opcional)<textarea
                 v-model="dayDrafts[goal.id]!.note"
