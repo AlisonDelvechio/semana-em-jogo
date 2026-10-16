@@ -2,6 +2,7 @@ import type { Completion, Goal, GoalDayDetail, GoalHistory } from '../types'
 import {
   addDays,
   goalForDate,
+  goalProgressCounts,
   isGoalDone,
   localKey,
   mondayOf,
@@ -25,6 +26,8 @@ export function monthStats(
     completed = 0,
     dueTotal = 0,
     dueCompleted = 0
+  let progressTotal = 0,
+    progressCompleted = 0
   for (let date = first; date <= last; date = addDays(date, 1)) {
     for (const original of goals) {
       const goal = goalForDate(original, history, date)
@@ -35,6 +38,9 @@ export function monthStats(
         if (localKey(date) <= localKey(today)) {
           dueTotal++
           if (done) dueCompleted++
+          const counts = goalProgressCounts(goal, localKey(date), completions, details)
+          progressTotal += counts.total
+          progressCompleted += counts.completed
         }
       }
     }
@@ -47,6 +53,8 @@ export function monthStats(
       for (const entry of weeklyEntries(goals, completions, date, history, details, today)) {
         dueTotal += entry.target
         dueCompleted += Math.min(entry.target, entry.completed)
+        progressTotal += entry.target
+        progressCompleted += Math.min(entry.target, entry.completed)
       }
     }
   }
@@ -55,6 +63,6 @@ export function monthStats(
     completed,
     dueTotal,
     dueCompleted,
-    percent: dueTotal ? Math.round((dueCompleted / dueTotal) * 100) : 0,
+    percent: progressTotal ? Math.round((progressCompleted / progressTotal) * 100) : 0,
   }
 }

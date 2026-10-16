@@ -237,7 +237,7 @@ describe('weekly calculations', () => {
       },
     ]
     expect(weekPace([goal], completions, monday, new Date(2026, 8, 26), [], details).percent).toBe(
-      0,
+      67,
     )
     details[0]!.meals.jantar!.checked = true
     expect(weekPace([goal], completions, monday, new Date(2026, 8, 26), [], details).percent).toBe(
@@ -287,7 +287,7 @@ describe('weekly calculations', () => {
     expect(weekStats([goal], [], new Date(2026, 8, 21), [], details)).toEqual({
       total: 2,
       completed: 1,
-      percent: 50,
+      percent: 80,
       points: 10,
     })
     details[1]!.meals.ceia!.checked = true

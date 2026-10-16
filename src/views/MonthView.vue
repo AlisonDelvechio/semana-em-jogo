@@ -5,6 +5,7 @@ import type { Completion, Goal, GoalDayDetail, GoalHistory } from '../types'
 import {
   calendarDays,
   goalForDate,
+  goalProgressCounts,
   isGoalDone,
   localKey,
   scheduledFor,
@@ -53,7 +54,12 @@ function daySummary(date: Date) {
         props.completions.some((entry) => entry.goal_id === goal.id && entry.local_date === day) ||
         props.dayDetails.some((entry) => entry.goal_id === goal.id && entry.local_date === day),
     )
+  const counts = entries.map((goal) =>
+    goalProgressCounts(goal, day, props.completions, props.dayDetails),
+  )
+  const total = counts.reduce((sum, entry) => sum + entry.total, 0)
   return {
+    percent: total ? (counts.reduce((sum, entry) => sum + entry.completed, 0) / total) * 100 : 0,
     total: entries.length,
     completed: entries.filter((goal) =>
       isGoalDone(goal, localKey(date), props.completions, props.dayDetails),
@@ -77,6 +83,7 @@ function daySummary(date: Date) {
     <div>
       <span class="eyebrow">PROGRESSO ATÉ HOJE</span>
       <strong>{{ progress.percent }}%</strong>
+      <small>Cada refeição conta no percentual; livres permitidas também.</small>
       <small
         >{{ progress.dueCompleted }} de {{ progress.dueTotal }} atividades previstas até hoje</small
       >
@@ -139,9 +146,7 @@ function daySummary(date: Date) {
             >{{ daySummary(date).completed }}/{{ daySummary(date).total }}</span
           >
           <span class="calendar-progress"
-            ><span
-              :style="{ width: `${(daySummary(date).completed / daySummary(date).total) * 100}%` }"
-            ></span
+            ><span :style="{ width: `${daySummary(date).percent}%` }"></span
           ></span>
           <small>{{ daySummary(date).total === 1 ? 'meta' : 'metas' }}</small>
         </span>
