@@ -179,6 +179,33 @@ function goalCounts(goal: Goal) {
             ><Check v-if="daySummary(date).status === 'complete'" :size="14" :stroke-width="3"
           /></span>
           <span v-else class="calendar-no-goals" aria-hidden="true"></span>
+          <span class="calendar-desktop-detail" aria-hidden="true">
+            <span v-if="daySummary(date).total" class="calendar-day-totals">
+              <span>{{
+                localKey(date) > localKey(new Date())
+                  ? `${daySummary(date).total} metas previstas`
+                  : `${daySummary(date).completed}/${daySummary(date).total} concluídas`
+              }}</span>
+              <strong v-if="localKey(date) <= localKey(new Date())"
+                >{{ daySummary(date).percent }}%</strong
+              >
+            </span>
+            <span
+              v-for="goal in entriesForDate(date).slice(0, 2)"
+              :key="goal.id"
+              class="calendar-goal"
+              :class="{ done: isGoalDone(goal, localKey(date), completions, dayDetails) }"
+            >
+              <Check
+                v-if="isGoalDone(goal, localKey(date), completions, dayDetails)"
+                :size="14"
+              /><span v-else class="calendar-goal-dot"></span><span>{{ goal.title }}</span>
+            </span>
+            <span v-if="daySummary(date).total > 2" class="calendar-more"
+              >+{{ daySummary(date).total - 2 }} metas</span
+            >
+            <span v-if="!daySummary(date).total" class="calendar-empty">Sem metas previstas</span>
+          </span>
         </button>
       </div>
     </div>

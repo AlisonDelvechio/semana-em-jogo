@@ -127,6 +127,13 @@ it('edits the allowance and saves a compliant day with an optional free meal on 
     expect((await loadData()).goals[0]?.free_meals_per_week).toBe(1)
 
     await wrapper.findAll('.mobile-nav button')[0]!.trigger('click')
+    expect(
+      wrapper
+        .get('.free-meal-overview')
+        .element.compareDocumentPosition(wrapper.get('.days-grid').element) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(wrapper.find('.days-grid .task-category-icon').exists()).toBe(false)
     await wrapper.get('.day-edit-action').trigger('click')
     const meals = wrapper.findAll('.meal-row')
     for (const meal of meals) {
@@ -289,10 +296,14 @@ it('labels completed tasks explicitly and preserves the weekly frequency control
     expect(wrapper.get('.select-chevron').attributes('aria-hidden')).toBe('true')
     await wrapper.get('[aria-label="Aumentar frequência semanal"]').trigger('click')
     expect((wrapper.get('#weekly-target').element as HTMLInputElement).value).toBe('4')
+    await wrapper.get('.goal-period-settings input[type="checkbox"]').setValue(true)
+    await wrapper.get('.period-fields input[type="number"]').setValue(14)
     await wrapper.get('.goal-form').trigger('submit')
     await wrapper.get('.confirmation-actions .primary-button').trigger('click')
     await flushPromises()
     expect((await loadData()).goals[0]?.weekly_target).toBe(4)
+    expect((await loadData()).goals[0]?.duration_days).toBe(14)
+    expect((await loadData()).goals[0]?.start_date).toBe(localKey(new Date()))
   } finally {
     wrapper.unmount()
   }
