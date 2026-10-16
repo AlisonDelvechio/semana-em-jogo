@@ -197,4 +197,68 @@ describe('refeições livres opcionais', () => {
     expect(restored?.dayDetails).toHaveLength(2)
     expect(isGoalDone(restored!.goal, '2026-10-16', [], restored!.dayDetails)).toBe(false)
   })
+
+  it('corrects an old zero limit only for an explicitly edited day and can restore history', () => {
+    const oldGoal = { ...goal, free_meals_per_week: 0 }
+    const selected = { ...detail('2026-10-12', 'free'), free_meals_limit_override: 2 }
+    const untouched = detail('2026-10-13', 'free')
+    const details = [selected, untouched]
+    expect(freeMealUsage(oldGoal, selected.local_date, details)).toEqual({
+      used: 2,
+      limit: 2,
+      excess: 0,
+    })
+    expect(isGoalDone(oldGoal, selected.local_date, [], details)).toBe(true)
+    expect(isGoalDone(oldGoal, untouched.local_date, [], details)).toBe(false)
+    selected.free_meals_limit_override = 0
+    expect(isGoalDone(goal, selected.local_date, [], details)).toBe(false)
+    const restored = { ...selected, free_meals_limit_override: null }
+    expect(isGoalDone(oldGoal, selected.local_date, [], [restored, untouched])).toBe(false)
+    expect(isGoalDone(goal, selected.local_date, [], [restored, untouched])).toBe(true)
+  })
+
+  it('persists a day correction through CSV export and restore without changing the goal limit', async () => {
+    const savedGoal = await createGoal({ ...goalInput(), free_meals_per_week: 0 })
+    await saveDayDetail({
+      ...detail('2026-10-16', 'free'),
+      goal_id: savedGoal.id,
+      free_meals_limit_override: 2,
+    })
+    const data = await loadData()
+    const csv = createGoalReport(
+      data.goals,
+      [],
+      data.history,
+      data.dayDetails,
+      new Date(2026, 9, 16),
+      { from: '2026-10-16', to: '2026-10-16' },
+    )
+    const backup = parseGoalBackup(csv)
+    localStorage.clear()
+    await importGoalBackup(backup)
+    const restored = await loadData()
+    expect(restored.goals[0]?.free_meals_per_week).toBe(0)
+    expect(restored.dayDetails[0]?.free_meals_limit_override).toBe(2)
+    expect(isGoalDone(restored.goals[0]!, '2026-10-16', [], restored.dayDetails)).toBe(true)
+    await saveDayDetail({ ...restored.dayDetails[0]!, free_meals_limit_override: null })
+    expect(isGoalDone(restored.goals[0]!, '2026-10-16', [], (await loadData()).dayDetails)).toBe(
+      false,
+    )
+  })
+
+  it('validates corrected limits on save and import', async () => {
+    for (const free_meals_limit_override of [-1, 1.5, 85, NaN]) {
+      await expect(
+        saveDayDetail({ ...detail('2026-10-16'), free_meals_limit_override }),
+      ).rejects.toThrow(/0 a 84/)
+    }
+    const csv = createGoalReport(
+      [goal],
+      [],
+      [],
+      [{ ...detail('2026-10-16'), free_meals_limit_override: 85 }],
+      new Date(2026, 9, 16),
+    )
+    expect(() => parseGoalBackup(csv)).toThrow(/Correção de limite inválida/)
+  })
 })

@@ -222,6 +222,12 @@ export function parseGoalBackup(csv: string): BackupRecord[] {
     })
     const dayDetails: GoalDayDetail[] = raw.dayDetails.map((value) => {
       const item = object(value)
+      const override = item.free_meals_limit_override ?? null
+      if (
+        override !== null &&
+        (!Number.isInteger(override) || Number(override) < 0 || Number(override) > 84)
+      )
+        throw new Error('Correção de limite inválida no backup.')
       if (id(item.goal_id) !== goalId) throw new Error('Detalhe de outra meta no backup.')
       return {
         goal_id: goalId,
@@ -232,6 +238,7 @@ export function parseGoalBackup(csv: string): BackupRecord[] {
         checklist: entries(item.checklist),
         checklist_options: options(item.checklist_options || []),
         adherence_recorded: item.adherence_recorded === true,
+        free_meals_limit_override: override as number | null,
         note: text(item.note || '', 500),
       }
     })
