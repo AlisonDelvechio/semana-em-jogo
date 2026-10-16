@@ -133,7 +133,7 @@ it('edits the allowance and saves a compliant day with an optional free meal on 
         .element.compareDocumentPosition(wrapper.get('.days-grid').element) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
-    expect(wrapper.find('.days-grid .task-category-icon').exists()).toBe(false)
+    expect(wrapper.find('.days-grid .task-category-icon').exists()).toBe(true)
     await wrapper.get('.day-edit-action').trigger('click')
     const meals = wrapper.findAll('.meal-row')
     for (const meal of meals) {
@@ -267,7 +267,7 @@ it('creates a goal through the mobile dialog and cancels with Escape', async () 
   }
 })
 
-it('labels completed tasks explicitly and preserves the weekly frequency controls', async () => {
+it('keeps completed state accessible without a visual label and preserves frequency controls', async () => {
   const goal = await createGoal({
     title: 'Treinar',
     category: 'treino',
@@ -287,7 +287,7 @@ it('labels completed tasks explicitly and preserves the weekly frequency control
   const wrapper = mount(TrackerApp, { attachTo: document.body })
   try {
     await flushPromises()
-    expect(wrapper.get('.task.done .task-state').text()).toBe('Concluída')
+    expect(wrapper.find('.task.done .task-state').exists()).toBe(false)
     expect(wrapper.get('.task.done').attributes('aria-label')).toContain('Concluída')
     await wrapper.findAll('.mobile-nav button')[2]!.trigger('click')
     await wrapper.get('[aria-label="Editar Treinar"]').trigger('click')

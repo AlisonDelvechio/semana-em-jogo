@@ -62,6 +62,8 @@ import FormDialog from './components/FormDialog.vue'
 import NumberStepper from './components/NumberStepper.vue'
 import ProgressCard from './components/ProgressCard.vue'
 import { monthStats } from './lib/month'
+import InsightsPanel from './components/InsightsPanel.vue'
+import TodayCard from './components/TodayCard.vue'
 import ConfirmDialog from './components/ConfirmDialog.vue'
 import AppNotice from './components/AppNotice.vue'
 import {
@@ -1145,6 +1147,13 @@ onUnmounted(() => {
               :percent="monthlyProgress.percent"
               :caption="monthCaption"
             />
+            <TodayCard
+              :goals="goals"
+              :completions="completions"
+              :history="history"
+              :day-details="dayDetails"
+              @open-day="openDay"
+            />
           </section>
           <section class="week-section">
             <div class="section-heading">
@@ -1269,9 +1278,13 @@ onUnmounted(() => {
                                 ? `${checklistCount(goal, date).checked}/${checklistCount(goal, date).total} itens`
                                 : categoryName(goal.category)
                         }}
-                        <span v-if="isDone(goal, date)" class="task-state">Concluída</span></small
-                      ></span
+                      </small></span
                     >
+                    <span class="task-category-icon" :class="goal.category" aria-hidden="true"
+                      ><Dumbbell v-if="goal.category === 'treino'" :size="20" /><Utensils
+                        v-else-if="goal.category === 'alimentacao'"
+                        :size="20" /><ClipboardList v-else :size="20"
+                    /></span>
                   </button>
                 </div>
                 <p v-else class="rest-day">Dia livre para respirar ☀</p>
@@ -1285,7 +1298,16 @@ onUnmounted(() => {
                 </button>
               </article>
             </div>
-          </section> </template
+          </section>
+          <InsightsPanel
+            :goals="goals"
+            :completions="completions"
+            :history="history"
+            :day-details="dayDetails"
+            :monday="monday"
+            :month="overviewMonth"
+            @open-day="openDay"
+          /> </template
         ><template v-else-if="tab === 'month'">
           <MonthView
             :goals="goals"
@@ -1465,7 +1487,7 @@ onUnmounted(() => {
         </div>
         <div v-if="form.category === 'alimentacao'" class="free-meal-settings">
           <label
-            >Refeições livres permitidas por semana
+            >Refeições livres / semana
             <input
               v-model.number="form.free_meals_per_week"
               type="number"

@@ -245,11 +245,6 @@ function goalCounts(goal: Goal) {
         :aria-label="`${goal.title}: ${isGoalDone(goal, localKey(selectedDate), completions, dayDetails) ? 'Concluída' : 'Pendente'}. Editar dia`"
       >
         <span class="check-visual" aria-hidden="true"><Check :size="18" /></span>
-        <span class="task-category-icon" :class="goal.category" aria-hidden="true"
-          ><Dumbbell v-if="goal.category === 'treino'" :size="20" /><Utensils
-            v-else-if="goal.category === 'alimentacao'"
-            :size="20" /><ClipboardList v-else :size="20"
-        /></span>
         <span class="task-title"
           >{{ goal.title
           }}<small
@@ -257,11 +252,11 @@ function goalCounts(goal: Goal) {
             {{ goal.category === 'alimentacao' ? 'refeições válidas' : 'itens concluídos' }}</small
           ></span
         >
-        <span
-          v-if="isGoalDone(goal, localKey(selectedDate), completions, dayDetails)"
-          class="task-state"
-          >Concluída</span
-        >
+        <span class="task-category-icon" :class="goal.category" aria-hidden="true"
+          ><Dumbbell v-if="goal.category === 'treino'" :size="20" /><Utensils
+            v-else-if="goal.category === 'alimentacao'"
+            :size="20" /><ClipboardList v-else :size="20"
+        /></span>
       </button>
     </div>
     <p v-else class="rest-day">Nenhuma meta prevista ou registrada neste dia.</p>
