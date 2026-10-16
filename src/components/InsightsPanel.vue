@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch, onUnmounted, nextTick } from 'vue'
+import FormDialog from './FormDialog.vue'
 import { Target, ScanSearch, Dumbbell, Utensils, ClipboardList } from '@lucide/vue'
 import type { Completion, Goal, GoalDayDetail, GoalHistory } from '../types'
 import { addDays, localKey } from '../lib/dates'
@@ -12,7 +13,7 @@ const props = defineProps<{
   monday: Date
   month: Date
 }>()
-const emit = defineEmits<{ openDay: [date: Date] }>()
+const emit = defineEmits<{ openDay: [date: Date]; overlayChange: [open: boolean] }>()
 const period = ref<'week' | 'month'>('week')
 const range = computed(() =>
   period.value === 'week'
@@ -72,7 +73,11 @@ function selectPeriod(value: 'week' | 'month') {
   period.value = value
   selectedPattern.value = null
 }
-function openRecord(day: string) {
+watch(selected, (value) => emit('overlayChange', !!value), { flush: 'sync' })
+onUnmounted(() => emit('overlayChange', false))
+async function openRecord(day: string) {
+  selectedPattern.value = null
+  await nextTick()
   emit('openDay', new Date(`${day}T12:00:00`))
 }
 </script>
@@ -237,21 +242,6 @@ function openRecord(day: string) {
             </p>
           </aside>
         </div>
-        <section v-if="selected" class="pattern-records" aria-live="polite">
-          <h4>{{ selected.title }} · registros a conferir</h4>
-          <div v-for="record in records" :key="record.date" class="pattern-record">
-            <div>
-              <strong
-                >{{ new Date(`${record.date}T12:00:00`).toLocaleDateString('pt-BR') }} ·
-                {{ record.reason }}</strong
-              >
-              <p v-if="record.note">{{ record.note }}</p>
-            </div>
-            <button type="button" class="small-button" @click="openRecord(record.date)">
-              Abrir dia
-            </button>
-          </div>
-        </section>
         <p class="pattern-footnote">
           Válidas incluem livres dentro do limite. Livres excedentes aparecem junto às refeições
           fora do plano. Registros sem classificação não permitem inferir aderência.
@@ -259,4 +249,30 @@ function openRecord(day: string) {
       >
     </section>
   </section>
+  <Teleport to="body"
+    ><FormDialog
+      v-if="selected"
+      :title="selected.title"
+      title-id="pattern-records-title"
+      close-label="Fechar registros"
+      class="records-modal"
+      @close="selectedPattern = null"
+    >
+      <section class="pattern-records" aria-label="Registros a conferir">
+        <p class="records-dialog-period">{{ rangeLabel }}</p>
+        <div v-for="record in records" :key="record.date" class="pattern-record">
+          <div>
+            <strong
+              >{{ new Date(`${record.date}T12:00:00`).toLocaleDateString('pt-BR') }} ·
+              {{ record.reason }}</strong
+            >
+            <p v-if="record.note">{{ record.note }}</p>
+          </div>
+          <button type="button" class="small-button" @click="openRecord(record.date)">
+            Abrir dia
+          </button>
+        </div>
+      </section>
+    </FormDialog></Teleport
+  >
 </template>

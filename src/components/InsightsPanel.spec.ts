@@ -33,6 +33,7 @@ it('changes analysis period, opens a real record date and refreshes after editin
     note: 'Aniversário',
   }
   const wrapper = mount(InsightsPanel, {
+    global: { stubs: { Teleport: true } },
     props: {
       goals: [goal],
       completions: [],
@@ -49,7 +50,11 @@ it('changes analysis period, opens a real record date and refreshes after editin
       .findAll('.pattern-record')
       .find((row) => row.text().includes('13/10/2026'))!
     expect(record.text()).toContain('Aniversário')
+    expect(wrapper.get('[role="dialog"]').attributes('aria-labelledby')).toBe(
+      'pattern-records-title',
+    )
     await record.get('button').trigger('click')
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
     expect(localKey(wrapper.emitted('openDay')![0]![0] as Date)).toBe('2026-10-13')
     await wrapper.setProps({
       dayDetails: [

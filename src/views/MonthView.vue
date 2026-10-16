@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch, onUnmounted, nextTick } from 'vue'
+import FormDialog from '../components/FormDialog.vue'
 import {
   CalendarDays,
   ChevronLeft,
@@ -29,8 +30,24 @@ const props = defineProps<{
   history: GoalHistory[]
   dayDetails: GoalDayDetail[]
 }>()
-const emit = defineEmits<{ openDay: [date: Date]; currentWeek: [] }>()
+const emit = defineEmits<{
+  openDay: [date: Date]
+  currentWeek: []
+  overlayChange: [open: boolean]
+}>()
 const selectedDate = ref(new Date())
+const summaryOpen = ref(false)
+watch(summaryOpen, (open) => emit('overlayChange', open), { flush: 'sync' })
+onUnmounted(() => emit('overlayChange', false))
+function selectDate(date: Date) {
+  selectedDate.value = date
+  summaryOpen.value = true
+}
+async function editSelectedDay() {
+  summaryOpen.value = false
+  await nextTick()
+  emit('openDay', selectedDate.value)
+}
 const monthDate = ref(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
 const monthDays = computed(() => calendarDays(monthDate.value))
 const monthTitle = computed(() =>
@@ -167,7 +184,7 @@ function goalCounts(goal: Goal) {
           }"
           :aria-pressed="localKey(date) === localKey(selectedDate)"
           :aria-label="`${date.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}: ${daySummary(date).total ? `${daySummary(date).percent}% de progresso; ${daySummary(date).completed} de ${daySummary(date).total} metas concluídas` : 'sem metas previstas'}. Ver resumo`"
-          @click="selectedDate = date"
+          @click="selectDate(date)"
         >
           <span class="calendar-date">{{ date.getDate() }}</span>
           <span
@@ -223,50 +240,57 @@ function goalCounts(goal: Goal) {
       <span><i class="calendar-status pending" aria-hidden="true"></i> Pendente</span>
     </div>
   </section>
-  <section
-    class="day-card selected-day-card"
-    aria-labelledby="selected-day-title"
-    aria-live="polite"
-  >
-    <div class="selected-day-heading">
-      <h2 id="selected-day-title">{{ selectedTitle }}</h2>
-      <span v-if="selectedSummary.total"
-        >{{ selectedSummary.completed }} de {{ selectedSummary.total }} metas concluídas</span
-      >
-    </div>
-    <div v-if="selectedGoals.length" class="tasks">
-      <button
-        v-for="goal in selectedGoals"
-        :key="goal.id"
-        type="button"
-        class="task"
-        :class="{ done: isGoalDone(goal, localKey(selectedDate), completions, dayDetails) }"
-        @click="emit('openDay', selectedDate)"
-        :aria-label="`${goal.title}: ${isGoalDone(goal, localKey(selectedDate), completions, dayDetails) ? 'Concluída' : 'Pendente'}. Editar dia`"
-      >
-        <span class="check-visual" aria-hidden="true"><Check :size="18" /></span>
-        <span class="task-title"
-          >{{ goal.title
-          }}<small
-            >{{ goalCounts(goal).completed }} de {{ goalCounts(goal).total }}
-            {{ goal.category === 'alimentacao' ? 'refeições válidas' : 'itens concluídos' }}</small
-          ></span
+  <Teleport to="body"
+    ><FormDialog
+      v-if="summaryOpen"
+      :title="selectedTitle"
+      title-id="selected-day-title"
+      close-label="Fechar resumo do dia"
+      class="calendar-summary-modal"
+      @close="summaryOpen = false"
+      ><section class="day-card selected-day-card" aria-label="Resumo do dia">
+        <div class="selected-day-heading">
+          <span v-if="selectedSummary.total"
+            >{{ selectedSummary.completed }} de {{ selectedSummary.total }} metas concluídas</span
+          >
+        </div>
+        <div v-if="selectedGoals.length" class="tasks">
+          <button
+            v-for="goal in selectedGoals"
+            :key="goal.id"
+            type="button"
+            class="task"
+            :class="{ done: isGoalDone(goal, localKey(selectedDate), completions, dayDetails) }"
+            @click="editSelectedDay"
+            :aria-label="`${goal.title}: ${isGoalDone(goal, localKey(selectedDate), completions, dayDetails) ? 'Concluída' : 'Pendente'}. Editar dia`"
+          >
+            <span class="check-visual" aria-hidden="true"><Check :size="18" /></span>
+            <span class="task-title"
+              >{{ goal.title
+              }}<small
+                >{{ goalCounts(goal).completed }} de {{ goalCounts(goal).total }}
+                {{
+                  goal.category === 'alimentacao' ? 'refeições válidas' : 'itens concluídos'
+                }}</small
+              ></span
+            >
+            <span class="task-category-icon" :class="goal.category" aria-hidden="true"
+              ><Dumbbell v-if="goal.category === 'treino'" :size="20" /><Utensils
+                v-else-if="goal.category === 'alimentacao'"
+                :size="20" /><ClipboardList v-else :size="20"
+            /></span>
+          </button>
+        </div>
+        <p v-else class="rest-day">Nenhuma meta prevista ou registrada neste dia.</p>
+        <button
+          v-if="selectedGoals.length"
+          type="button"
+          class="day-edit-action"
+          @click="editSelectedDay"
         >
-        <span class="task-category-icon" :class="goal.category" aria-hidden="true"
-          ><Dumbbell v-if="goal.category === 'treino'" :size="20" /><Utensils
-            v-else-if="goal.category === 'alimentacao'"
-            :size="20" /><ClipboardList v-else :size="20"
-        /></span>
-      </button>
-    </div>
-    <p v-else class="rest-day">Nenhuma meta prevista ou registrada neste dia.</p>
-    <button
-      v-if="selectedGoals.length"
-      type="button"
-      class="day-edit-action"
-      @click="emit('openDay', selectedDate)"
-    >
-      <Pencil :size="18" aria-hidden="true" /> Editar dia
-    </button>
-  </section>
+          <Pencil :size="18" aria-hidden="true" /> Editar dia
+        </button>
+      </section></FormDialog
+    ></Teleport
+  >
 </template>

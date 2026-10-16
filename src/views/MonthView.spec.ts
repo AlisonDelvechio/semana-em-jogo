@@ -39,6 +39,7 @@ it('uses actual meal progress for calendar circles and edits the selected date',
     note: '',
   }))
   const wrapper = mount(MonthView, {
+    global: { stubs: { Teleport: true } },
     props: { goals: [goal], completions: [], history: [], dayDetails: details },
   })
   try {
@@ -56,6 +57,7 @@ it('uses actual meal progress for calendar circles and edits the selected date',
     expect(wrapper.get('.calendar-legend').text()).toContain('Concluído')
     await partial.trigger('click')
     expect(partial.attributes('aria-pressed')).toBe('true')
+    expect(wrapper.get('[role="dialog"]').attributes('aria-labelledby')).toBe('selected-day-title')
     expect(wrapper.get('#selected-day-title').text()).toContain('13 de outubro')
     expect(wrapper.get('.selected-day-card .task-title').text()).toContain(
       '1 de 2 refeições válidas',
@@ -65,8 +67,12 @@ it('uses actual meal progress for calendar circles and edits the selected date',
     expect(localKey(wrapper.emitted('openDay')![0]![0] as Date)).toBe('2026-10-13')
     await wrapper.get('[aria-label="Próximo mês"]').trigger('click')
     expect(wrapper.get('.calendar-header h2').text()).toBe('novembro de 2026')
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
+    await wrapper.get('.calendar-day[aria-label^="domingo, 1 de novembro"]').trigger('click')
     expect(wrapper.get('#selected-day-title').text()).toContain('1 de novembro')
+    await wrapper.get('[aria-label="Fechar resumo do dia"]').trigger('click')
     await wrapper.get('.calendar-nav .today-link').trigger('click')
+    await wrapper.get('.calendar-day.is-today').trigger('click')
     expect(wrapper.get('#selected-day-title').text()).toContain('16 de outubro')
   } finally {
     wrapper.unmount()

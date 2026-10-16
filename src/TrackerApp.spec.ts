@@ -382,3 +382,94 @@ it('keeps all seven day cards visible on desktop', async () => {
     wrapper.unmount()
   }
 })
+
+it('uses only one modal when moving from the calendar summary to editing a day', async () => {
+  await createGoal({
+    title: 'Dieta',
+    category: 'alimentacao',
+    scheduled_weekdays: [0, 1, 2, 3, 4, 5, 6],
+    goal_mode: 'fixed',
+    weekly_target: 1,
+    points: 10,
+    active: true,
+    meal_options: [{ id: 'lunch', label: 'Almoço' }],
+    meal_options_by_weekday: {},
+    checklist_options: [],
+    checklist_options_by_weekday: {},
+    start_date: null,
+    duration_days: null,
+  })
+  const wrapper = mount(TrackerApp, { attachTo: document.body })
+  try {
+    await flushPromises()
+    expect(
+      wrapper.findAll('.progress-overview > article').map((card) => card.get('h2').text()),
+    ).toEqual(['Hoje', 'Semana', 'Mês'])
+    await wrapper.findAll('.mobile-nav button')[1]!.trigger('click')
+    expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(0)
+    await wrapper.get('.calendar-day.is-today').trigger('click')
+    await flushPromises()
+    expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(1)
+    expect(wrapper.get('.dashboard').attributes('inert')).toBeDefined()
+    ;(
+      document.querySelector('.calendar-summary-modal .day-edit-action') as HTMLButtonElement
+    ).click()
+    await flushPromises()
+    expect(document.querySelector('.calendar-summary-modal')).toBeNull()
+    expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(1)
+    expect(wrapper.find('.day-dialog').exists()).toBe(true)
+    await wrapper.get('.day-dialog .dialog-close').trigger('click')
+    expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(0)
+    expect(wrapper.get('.dashboard').attributes('inert')).not.toBe('true')
+  } finally {
+    wrapper.unmount()
+  }
+})
+
+it('validates PDF dates before opening a printable report for the selected range', async () => {
+  await createGoal({
+    title: 'Treinar',
+    category: 'treino',
+    scheduled_weekdays: [0, 1, 2, 3, 4, 5, 6],
+    goal_mode: 'fixed',
+    weekly_target: 1,
+    points: 10,
+    active: true,
+    meal_options: [],
+    meal_options_by_weekday: {},
+    checklist_options: [],
+    checklist_options_by_weekday: {},
+    start_date: '2026-10-01',
+    duration_days: null,
+  })
+  const reportDocument = document.implementation.createHTMLDocument()
+  const popup = {
+    document: reportDocument,
+    opener: window,
+    onload: null as (() => void) | null,
+    focus: vi.fn<() => void>(),
+    print: vi.fn<() => void>(),
+  }
+  const open = vi.spyOn(window, 'open').mockReturnValue(popup as unknown as Window)
+  const wrapper = mount(TrackerApp)
+  try {
+    await flushPromises()
+    await wrapper.findAll('.mobile-nav button')[2]!.trigger('click')
+    await wrapper.get('.report-panel select').setValue('range')
+    const dates = wrapper.findAll('.report-dates input')
+    await dates[0]!.setValue('2026-10-13')
+    await dates[1]!.setValue('2026-10-12')
+    await wrapper.get('.report-export-actions .primary-button').trigger('click')
+    expect(open).not.toHaveBeenCalled()
+    expect(wrapper.get('.report-notice').text()).toContain('intervalo de datas válido')
+    await dates[1]!.setValue('2026-10-13')
+    await wrapper.get('.report-export-actions .primary-button').trigger('click')
+    expect(open).toHaveBeenCalledOnce()
+    expect(reportDocument.querySelector('header')!.textContent).toContain('13/10/2026 a 13/10/2026')
+    expect(reportDocument.querySelectorAll('.record')).toHaveLength(1)
+    popup.onload!()
+    expect(popup.print).toHaveBeenCalledOnce()
+  } finally {
+    wrapper.unmount()
+  }
+})
