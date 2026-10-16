@@ -41,6 +41,7 @@ function readLocal(): LocalData {
         checklist_options_by_weekday: goal.checklist_options_by_weekday || {},
         goal_mode: goal.goal_mode || 'fixed',
         weekly_target: goal.weekly_target || 1,
+        free_meals_per_week: goal.free_meals_per_week ?? 0,
         start_date: goal.start_date || null,
         duration_days: goal.duration_days || null,
       })),
@@ -53,6 +54,7 @@ function readLocal(): LocalData {
         checklist_options_by_weekday: entry.checklist_options_by_weekday || {},
         goal_mode: entry.goal_mode || 'fixed',
         weekly_target: entry.weekly_target || 1,
+        free_meals_per_week: entry.free_meals_per_week ?? 0,
         start_date: entry.start_date || null,
         duration_days: entry.duration_days || null,
       })),
@@ -105,6 +107,7 @@ function snapshot(goal: Goal, validUntil: string): GoalHistory {
     scheduled_weekdays: [...goal.scheduled_weekdays],
     goal_mode: goal.goal_mode || 'fixed',
     weekly_target: goal.weekly_target || 1,
+    free_meals_per_week: goal.free_meals_per_week ?? 0,
     start_date: goal.start_date || null,
     duration_days: goal.duration_days || null,
     points: goal.points,
@@ -116,7 +119,14 @@ function snapshot(goal: Goal, validUntil: string): GoalHistory {
   }
 }
 
+function validateFreeMealLimit(input: GoalInput) {
+  const limit = input.free_meals_per_week ?? 0
+  if (!Number.isInteger(limit) || limit < 0 || limit > 84)
+    throw new Error('Escolha de 0 a 84 refeições livres por semana.')
+}
+
 export async function createGoal(input: GoalInput): Promise<Goal> {
+  validateFreeMealLimit(input)
   if (!supabase) {
     const data = readLocal()
     const goal: Goal = {
@@ -142,6 +152,7 @@ export async function createGoal(input: GoalInput): Promise<Goal> {
 }
 
 export async function updateGoal(id: string, input: GoalInput): Promise<void> {
+  validateFreeMealLimit(input)
   const today = localKey(new Date())
   if (!supabase) {
     const data = readLocal()

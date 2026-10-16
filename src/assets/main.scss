@@ -1154,6 +1154,49 @@ p {
   font-size: 0.73rem;
   color: #526754;
 }
+.free-meal-overview {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.free-meal-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid #dbe7d5;
+  border-radius: 10px;
+  background: #eef5eb;
+  color: #395c3a;
+  font-size: 0.79rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.free-meal-summary svg {
+  flex: none;
+  margin-top: 3px;
+}
+.free-meal-summary small {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.74rem;
+}
+.free-meal-settings p {
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+.free-meal-warning {
+  color: #8b440d;
+  line-height: 1.5;
+}
+html[data-theme='dark'] .free-meal-summary {
+  background: #314634;
+  border-color: #506c50;
+  color: #d3edcc;
+}
+html[data-theme='dark'] .free-meal-warning {
+  color: #f3c18f;
+}
 .meal-adherence select {
   max-width: 100%;
   min-height: 38px;

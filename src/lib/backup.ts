@@ -5,6 +5,7 @@ import {
   type GoalDayDetail,
   type GoalHistory,
   type MealEntries,
+  type MealAdherence,
   type MealOption,
 } from '../types'
 import type { BackupRecord } from './report'
@@ -65,6 +66,7 @@ const entries = (value: unknown): MealEntries => {
         typeof item.checked !== 'boolean' ||
         (item.adherent !== undefined &&
           item.adherent !== null &&
+          item.adherent !== 'free' &&
           typeof item.adherent !== 'boolean')
       )
         throw new Error('Marcação inválida no backup.')
@@ -73,7 +75,7 @@ const entries = (value: unknown): MealEntries => {
         {
           checked: item.checked,
           description: text(item.description || '', 300),
-          ...(item.adherent === undefined ? {} : { adherent: item.adherent as boolean | null }),
+          ...(item.adherent === undefined ? {} : { adherent: item.adherent as MealAdherence }),
         },
       ]
     }),
@@ -107,6 +109,9 @@ const plan = (value: unknown) => {
   )
     throw new Error('Período inválido no backup.')
   const weekly = item.weekly_target || 1
+  const freeMeals = item.free_meals_per_week ?? 0
+  if (!Number.isInteger(freeMeals) || Number(freeMeals) < 0 || Number(freeMeals) > 84)
+    throw new Error('Limite de refeições livres inválido no backup.')
   if (!Number.isInteger(weekly) || Number(weekly) < 1 || Number(weekly) > 7)
     throw new Error('Frequência inválida no backup.')
   const title = text(item.title, 100)
@@ -119,6 +124,7 @@ const plan = (value: unknown) => {
     points: item.points as number,
     active: item.active,
     weekly_target: weekly as number,
+    free_meals_per_week: freeMeals as number,
     start_date: start,
     duration_days: duration as number | null,
     meal_options: options(item.meal_options || defaultMealOptions, false),

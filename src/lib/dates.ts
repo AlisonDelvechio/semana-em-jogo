@@ -48,7 +48,9 @@ export function goalForDate(goal: Goal, history: GoalHistory[], date: Date): Goa
   const version = history
     .filter((entry) => entry.goal_id === goal.id && entry.valid_until > day)
     .sort((a, b) => a.valid_until.localeCompare(b.valid_until))[0]
-  return version ? { ...goal, ...version } : goal
+  return version
+    ? { ...goal, ...version, free_meals_per_week: version.free_meals_per_week ?? 0 }
+    : goal
 }
 
 export function scheduledFor(goal: Goal, date: Date): boolean {
@@ -76,6 +78,45 @@ export function checklistOptionsForDate(goal: Goal, date: Date) {
   return goal.checklist_options_by_weekday?.[String(date.getDay())] || goal.checklist_options || []
 }
 
+// Only checked, explicitly classified free meals consume the optional allowance.
+// Sort by date and stable ID so reordering the checklist cannot move the excess.
+function freeMealsInWeek(goal: Goal, day: string, details: GoalDayDetail[]) {
+  const start = localKey(mondayOf(new Date(`${day}T12:00:00`)))
+  const end = localKey(addDays(new Date(`${start}T12:00:00`), 6))
+  return details
+    .filter(
+      (detail) =>
+        detail.goal_id === goal.id &&
+        detail.local_date >= start &&
+        detail.local_date <= end &&
+        detail.adherence_recorded,
+    )
+    .flatMap((detail) =>
+      detail.meal_options
+        .filter(({ id }) => detail.meals[id]?.checked && detail.meals[id]?.adherent === 'free')
+        .map(({ id }) => ({ day: detail.local_date, id })),
+    )
+    .sort((a, b) => a.day.localeCompare(b.day) || a.id.localeCompare(b.id))
+}
+
+export function freeMealUsage(goal: Goal, day: string, details: GoalDayDetail[]) {
+  const used = freeMealsInWeek(goal, day, details).length
+  const limit = goal.free_meals_per_week ?? 0
+  return { used, limit, excess: Math.max(0, used - limit) }
+}
+
+export function isMealAllowed(goal: Goal, day: string, id: string, details: GoalDayDetail[]) {
+  const detail = details.find((entry) => entry.goal_id === goal.id && entry.local_date === day)
+  const meal = detail?.meals[id]
+  if (!meal?.checked) return false
+  if (!detail?.adherence_recorded || meal.adherent === true) return true
+  if (meal.adherent !== 'free') return false
+  const index = freeMealsInWeek(goal, day, details).findIndex(
+    (entry) => entry.day === day && entry.id === id,
+  )
+  return index >= 0 && index < (goal.free_meals_per_week ?? 0)
+}
+
 export function isGoalDone(
   goal: Goal,
   day: string,
@@ -85,14 +126,7 @@ export function isGoalDone(
   const detail = dayDetails.find((entry) => entry.goal_id === goal.id && entry.local_date === day)
   if (goal.category === 'alimentacao' && detail) {
     const options = detail.meal_options || goal.meal_options || []
-    return (
-      options.length > 0 &&
-      options.every(
-        ({ id }) =>
-          detail.meals[id]?.checked &&
-          (!detail.adherence_recorded || detail.meals[id]?.adherent === true),
-      )
-    )
+    return options.length > 0 && options.every(({ id }) => isMealAllowed(goal, day, id, dayDetails))
   }
   if (goal.category !== 'alimentacao' && detail?.checklist_options?.length) {
     return detail.checklist_options.every(({ id }) => detail.checklist?.[id]?.checked)
