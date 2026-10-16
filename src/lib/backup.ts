@@ -175,18 +175,19 @@ function parseCsv(csv: string): string[][] {
 export function parseGoalBackup(csv: string): BackupRecord[] {
   if (csv.length > 20_000_000) throw new Error('Arquivo muito grande (máximo de 20 MB).')
   const rows = parseCsv(csv)
-  if (!rows.length || rows[0]?.[0] !== 'Data' || rows[0]?.[13] !== 'Dados para restauração')
+  const backupIndex = rows[0]?.indexOf('Dados para restauração') ?? -1
+  if (!rows.length || rows[0]?.[0] !== 'Data' || backupIndex < 0)
     throw new Error(
       'Este CSV não contém os dados de restauração. Exporte novamente pela versão atual do app.',
     )
   const found = new Set<string>()
   const result: BackupRecord[] = []
   for (const row of rows.slice(1)) {
-    if (row.length !== 14) throw new Error('Colunas incompletas no CSV.')
-    if (!row[13]) continue
+    if (row.length !== rows[0]!.length) throw new Error('Colunas incompletas no CSV.')
+    if (!row[backupIndex]) continue
     let raw: Record<string, unknown>
     try {
-      raw = object(JSON.parse(row[13]))
+      raw = object(JSON.parse(row[backupIndex]))
     } catch {
       throw new Error('Dados de restauração inválidos no CSV.')
     }

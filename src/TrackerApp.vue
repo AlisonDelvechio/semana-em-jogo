@@ -51,13 +51,15 @@ import {
   weekDays,
   weekPace,
   weekdays,
-  weekStats,
   weeklyEntries,
 } from './lib/dates'
 import { moveMeal } from './lib/meals'
 import { parseGoalBackup } from './lib/backup'
 import { createGoalReport, type BackupRecord, type ReportRange } from './lib/report'
 import MonthView from './views/MonthView.vue'
+import FormDialog from './components/FormDialog.vue'
+import ProgressCard from './components/ProgressCard.vue'
+import { monthStats } from './lib/month'
 import ConfirmDialog from './components/ConfirmDialog.vue'
 import AppNotice from './components/AppNotice.vue'
 import {
@@ -112,6 +114,7 @@ const session = ref<Session | null>(null),
   password = ref(''),
   signUp = ref(false)
 const editing = ref<string | null>(null)
+const goalEditorOpen = ref(false)
 const selectedDay = ref<Date | null>(null)
 const dialogCloseButton = ref<HTMLButtonElement | null>(null)
 const dayDialog = ref<HTMLElement | null>(null)
@@ -167,6 +170,13 @@ const toggleTheme = () => {
   }
 }
 const newDayMeals = ref<Record<string, string>>({})
+const hasOverlay = computed(
+  () =>
+    goalEditorOpen.value ||
+    selectedDay.value !== null ||
+    editingWeekday.value !== null ||
+    confirmation.value !== null,
+)
 const fresh = (): GoalInput => ({
   title: '',
   category: 'treino',
@@ -201,9 +211,6 @@ const visibleDays = computed(() => {
     (a, b) => Number(localKey(b) === today) - Number(localKey(a) === today),
   )
 })
-const stats = computed(() =>
-  weekStats(goals.value, completions.value, monday.value, history.value, dayDetails.value),
-)
 const pace = computed(() =>
   weekPace(
     goals.value,
@@ -214,6 +221,27 @@ const pace = computed(() =>
     dayDetails.value,
   ),
 )
+const overviewMonth = computed(() =>
+  current.value ? new Date() : new Date(monday.value.getFullYear(), monday.value.getMonth(), 1),
+)
+const monthlyProgress = computed(() =>
+  monthStats(
+    goals.value,
+    completions.value,
+    history.value,
+    dayDetails.value,
+    overviewMonth.value,
+    new Date(),
+  ),
+)
+const overviewMonthLabel = computed(() =>
+  overviewMonth.value.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
+)
+const monthCaption = computed(() => {
+  const key = localKey(overviewMonth.value).slice(0, 7),
+    today = localKey(new Date()).slice(0, 7)
+  return key === today ? 'Até hoje' : key < today ? 'Mês encerrado' : 'Mês futuro'
+})
 const label = computed(
   () =>
     `${days.value[0]!.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} – ${days.value[6]!.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}`,
@@ -265,9 +293,6 @@ const planned = (date: Date) =>
   goals.value
     .map((goal) => goalForDate(goal, history.value, date))
     .filter((goal) => scheduledFor(goal, date))
-const activeThisWeek = computed(
-  () => new Set(days.value.flatMap((date) => planned(date).map((goal) => goal.id))).size,
-)
 const weeklyFoodAllowances = computed(() => {
   const versions = new Map<string, Goal>()
   days.value.forEach((date) =>
@@ -747,7 +772,17 @@ function switchAuth() {
   signUp.value = !signUp.value
   message.value = ''
 }
+function newGoal() {
+  newGoalMeal.value = ''
+  newGoalChecklist.value = ''
+  editing.value = null
+  form.value = fresh()
+  message.value = ''
+  goalEditorOpen.value = true
+}
 function cancelEdit() {
+  if (busy.value) return
+  goalEditorOpen.value = false
   editing.value = null
   form.value = fresh()
 }
@@ -783,8 +818,6 @@ async function save() {
     (input.goal_mode === 'weekly' &&
       input.duration_days !== null &&
       input.duration_days < input.weekly_target) ||
-    !Number.isInteger(input.points) ||
-    input.points < 1 ||
     (input.category === 'alimentacao' &&
       (!input.meal_options.length ||
         input.meal_options.length > 12 ||
@@ -795,7 +828,7 @@ async function save() {
       (input.checklist_options.length > 12 ||
         Object.values(input.checklist_options_by_weekday).some((options) => options.length > 12)))
   ) {
-    message.value = 'Informe nome, frequência, dias e pontos válidos.'
+    message.value = 'Informe nome, frequência e dias válidos.'
     return
   }
   if (
@@ -815,6 +848,7 @@ async function save() {
     await refresh()
     editing.value = null
     form.value = fresh()
+    goalEditorOpen.value = false
     message.value = 'Meta salva.'
   } catch (error) {
     errorMessage(error)
@@ -823,6 +857,8 @@ async function save() {
   }
 }
 function edit(goal: Goal) {
+  message.value = ''
+  goalEditorOpen.value = true
   editing.value = goal.id
   form.value = {
     title: goal.title,
@@ -850,7 +886,6 @@ function edit(goal: Goal) {
       ]),
     ),
   }
-  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 async function remove(goal: Goal) {
   if (
@@ -948,7 +983,7 @@ onUnmounted(() => {
 
 <template>
   <div class="app-shell">
-    <header class="topbar">
+    <header class="topbar" :inert="hasOverlay">
       <div class="brand">
         <span class="brand-mark"><Sparkles :size="19" aria-hidden="true" /></span> semana<span
           >emjogo</span
@@ -985,7 +1020,12 @@ onUnmounted(() => {
         </div>
       </div>
     </header>
-    <nav v-if="!cloudEnabled || session" class="mobile-nav" aria-label="Navegação principal">
+    <nav
+      v-if="!cloudEnabled || session"
+      class="mobile-nav"
+      :inert="hasOverlay"
+      aria-label="Navegação principal"
+    >
       <button
         type="button"
         :class="{ selected: tab === 'week' }"
@@ -1046,7 +1086,7 @@ onUnmounted(() => {
         <p v-if="message" role="status" class="notice">{{ message }}</p>
       </form>
     </main>
-    <div v-else class="dashboard">
+    <div v-else class="dashboard" :inert="hasOverlay">
       <aside class="sidebar">
         <span class="eyebrow">MEU ESPAÇO</span
         ><button :class="['nav-button', { selected: tab === 'week' }]" @click="tab = 'week'">
@@ -1076,50 +1116,24 @@ onUnmounted(() => {
               <h1>Uma semana de <em>cada vez.</em></h1>
               <p>O que importa é continuar no seu ritmo.</p>
             </div>
-            <button class="small-button" @click="tab = 'goals'">
+            <button class="small-button" @click="newGoal">
               <Plus :size="17" aria-hidden="true" /> Nova meta
             </button>
           </div>
-          <div class="summary-grid">
-            <div class="summary-card featured">
-              <div class="card-top">
-                {{
-                  future ? 'PRÓXIMA SEMANA' : current ? 'PROGRESSO ATÉ HOJE' : 'RESULTADO DA SEMANA'
-                }}
-                <Sparkles :size="23" aria-hidden="true" />
-              </div>
-              <div class="progress-main">
-                <strong>{{ future ? 0 : pace.percent }}%</strong
-                ><span>{{
-                  future ? 'sem atividades vencidas' : 'das refeições e atividades previstas'
-                }}</span>
-              </div>
-              <div class="progress-track"><div :style="{ width: `${pace.percent}%` }"></div></div>
-              <small
-                >{{ pace.completed }} de {{ pace.total }} atividades previstas até esta data
-                <template v-if="pace.upcoming"> · {{ pace.upcoming }} por vir</template></small
-              >
-              <small class="progress-explanation"
-                >Cada refeição conta no percentual. Livres dentro do limite contam como
-                certas.</small
-              >
-              <div class="week-total">
-                Plano completo: {{ stats.completed }} de {{ stats.total }} · {{ stats.percent }}%
-              </div>
-            </div>
-            <div class="summary-card">
-              <div class="card-top">
-                PONTOS CONQUISTADOS <Sparkles :size="22" aria-hidden="true" />
-              </div>
-              <strong class="stat-number">{{ stats.points }} <small>pts</small></strong>
-              <p>Cada passo conta.</p>
-            </div>
-            <div class="summary-card">
-              <div class="card-top">METAS NA SEMANA <Target :size="22" aria-hidden="true" /></div>
-              <strong class="stat-number">{{ activeThisWeek }}</strong>
-              <p>Um plano feito por você.</p>
-            </div>
-          </div>
+          <section class="progress-overview" aria-label="Progresso da semana e do mês">
+            <ProgressCard
+              title="Semana"
+              :period="label"
+              :percent="pace.percent"
+              :caption="future ? 'Semana futura' : current ? 'Até hoje' : 'Semana encerrada'"
+            />
+            <ProgressCard
+              title="Mês"
+              :period="overviewMonthLabel"
+              :percent="monthlyProgress.percent"
+              :caption="monthCaption"
+            />
+          </section>
           <section class="week-section">
             <div class="section-heading">
               <div>
@@ -1214,10 +1228,7 @@ onUnmounted(() => {
                                 ? `${checklistCount(goal, date).checked}/${checklistCount(goal, date).total} itens`
                                 : categoryName(goal.category)
                         }}
-                        · {{ goal.points }} pts{{
-                          goal.goal_mode === 'weekly' ? '/semana' : ''
-                        }}</small
-                      ></span
+                      </small></span
                     >
                   </button>
                 </div>
@@ -1249,383 +1260,132 @@ onUnmounted(() => {
               <h1>Metas que cabem <em>na vida.</em></h1>
               <p>Escolha ações simples que você gostaria de repetir.</p>
             </div>
-            <button
-              type="button"
-              class="small-button report-button"
-              :disabled="!goals.length"
-              @click="downloadReport"
-            >
-              <Download :size="17" aria-hidden="true" /> Exportar CSV
+            <button type="button" class="small-button" @click="newGoal">
+              <Plus :size="17" /> Nova meta
             </button>
           </div>
-          <section class="panel report-panel" aria-label="Exportar e importar registros">
-            <div>
-              <strong>Período do relatório</strong>
-              <label
-                >Exportar
-                <select v-model="reportMode">
-                  <option value="all">Tudo desde o início</option>
-                  <option value="month">Um mês</option>
-                  <option value="range">Intervalo de datas</option>
-                </select>
-              </label>
-              <label v-if="reportMode === 'month'"
-                >Mês<input v-model="reportMonth" type="month"
-              /></label>
-              <div v-if="reportMode === 'range'" class="report-dates">
-                <label>De<input v-model="reportFrom" type="date" /></label>
-                <label>Até<input v-model="reportTo" type="date" /></label>
-              </div>
+
+          <section class="goal-list panel">
+            <span class="eyebrow">SEU REPERTÓRIO</span>
+            <h2>
+              Minhas metas <span>{{ goals.length }}</span>
+            </h2>
+            <div v-if="!goals.length" class="list-empty">
+              Suas metas aparecerão aqui. Que tal começar com uma ação pequena?
             </div>
-            <div>
-              <strong>Restaurar registros</strong>
-              <label
-                >Selecione um CSV exportado por esta versão<input
-                  type="file"
-                  accept=".csv,text/csv"
-                  @change="selectBackup"
-              /></label>
-              <p v-if="pendingBackup">
-                {{ pendingBackupName }} · {{ pendingBackup.length }} metas reconhecidas. A
-                importação adiciona apenas registros ausentes.
-              </p>
-              <button
-                v-if="pendingBackup"
-                type="button"
-                class="small-button"
-                :disabled="busy"
-                @click="restoreBackup"
-              >
-                {{ busy ? 'Importando...' : 'Importar registros' }}
-              </button>
-              <p v-else>
-                Arquivos antigos sem a coluna de restauração continuam legíveis, mas não podem ser
-                importados com segurança.
-              </p>
-            </div>
-            <p v-if="reportMessage" role="status" class="notice report-notice">
-              {{ reportMessage }}
-            </p>
-          </section>
-          <div class="goals-layout">
-            <form class="goal-form panel" @submit.prevent="save">
-              <span class="eyebrow">{{ editing ? 'AJUSTAR META' : 'NOVA META' }}</span>
-              <h2>{{ editing ? 'Editar meta' : 'Crie uma meta' }}</h2>
-              <label
-                >O que você quer fazer?<input
-                  v-model="form.title"
-                  required
-                  maxlength="100"
-                  placeholder="Ex.: Fazer treino de força"
-              /></label>
-              <div class="form-row">
-                <label
-                  >Categoria<select v-model="form.category">
-                    <option value="treino">Treino</option>
-                    <option value="alimentacao">Alimentação</option>
-                    <option value="outro">Outro</option>
-                  </select></label
-                ><label
-                  >Pontos<input
-                    v-model.number="form.points"
-                    type="number"
-                    min="1"
-                    max="100"
-                    step="1"
-                    required
-                /></label>
+            <article
+              v-for="goal in goals"
+              :key="goal.id"
+              :class="['goal-item', { inactive: !goal.active }]"
+            >
+              <div class="goal-icon" :class="goal.category">
+                <Dumbbell v-if="goal.category === 'treino'" :size="20" />
+                <Utensils v-else-if="goal.category === 'alimentacao'" :size="20" />
+                <Sparkles v-else :size="20" />
               </div>
-              <div v-if="form.category === 'alimentacao'" class="free-meal-settings">
-                <label
-                  >Refeições livres permitidas por semana
-                  <input
-                    v-model.number="form.free_meals_per_week"
-                    type="number"
-                    min="0"
-                    max="84"
-                    step="1"
-                    required
-                    aria-describedby="free-meal-help"
-                  />
-                </label>
-                <p id="free-meal-help">
-                  São opcionais. Seguir a dieta em todas as refeições também conclui a meta. Use 0
-                  para não permitir refeições livres. A semana vai de segunda a domingo.
-                </p>
+              <div class="goal-details">
+                <strong>{{ goal.title }}</strong
+                ><span
+                  >{{ categoryName(goal.category) }} ·
+                  {{
+                    goal.goal_mode === 'weekly'
+                      ? `${goal.weekly_target || 1}x por semana · dias livres`
+                      : goal.scheduled_weekdays.map((day) => weekdays[day]).join(', ')
+                  }}{{
+                    goal.start_date && goal.duration_days
+                      ? ` · ${goal.duration_days} dias desde ${new Date(`${goal.start_date}T12:00:00`).toLocaleDateString('pt-BR')}`
+                      : ''
+                  }}</span
+                ><small v-if="goal.category === 'alimentacao'"
+                  >Até {{ goal.free_meals_per_week ?? 0 }} refeições livres por semana ·
+                  opcionais</small
+                ><small v-if="!goal.active">Pausada</small>
               </div>
-              <fieldset>
-                <legend>Período da meta</legend>
-                <label class="active-switch"
-                  ><input
-                    type="checkbox"
-                    :checked="form.duration_days !== null"
-                    @change="togglePeriod"
-                  />Duração definida</label
+              <div class="goal-actions">
+                <button
+                  :disabled="busy"
+                  :aria-label="goal.active ? `Pausar ${goal.title}` : `Ativar ${goal.title}`"
+                  @click="pause(goal)"
                 >
-                <div v-if="form.duration_days !== null" class="form-row period-fields">
-                  <label>Começa em<input v-model="form.start_date" type="date" required /></label>
-                  <label
-                    >Por quantos dias?<input
-                      v-model.number="form.duration_days"
-                      type="number"
-                      min="1"
-                      max="365"
-                      step="1"
-                      required
-                  /></label>
-                </div>
-                <p v-if="form.duration_days !== null">
-                  Para 14 marcações diárias, escolha todos os dias da semana.
-                </p>
-              </fieldset>
-              <fieldset v-if="form.category !== 'alimentacao'">
-                <legend>Como contar esta meta?</legend>
-                <label
-                  >Tipo de meta
-                  <select :value="form.goal_mode" @change="changeMode">
-                    <option value="fixed">Dias fixos</option>
-                    <option value="weekly">Frequência semanal (dias livres)</option>
-                  </select>
-                </label>
-                <label v-if="form.goal_mode === 'weekly'"
-                  >Quantas vezes na semana?
-                  <input
-                    v-model.number="form.weekly_target"
-                    type="number"
-                    min="1"
-                    max="7"
-                    step="1"
-                    required
-                  />
-                </label>
-                <p v-if="form.goal_mode === 'weekly'">
-                  Marque os dias em que fez a atividade. Os pontos são ganhos uma vez ao atingir a
-                  frequência.
-                </p>
-              </fieldset>
-              <fieldset v-if="form.category === 'alimentacao'" class="meal-options-field">
-                <legend>Refeições para acompanhar</legend>
-                <p>
-                  Estas opções aparecem nos dias da meta. Você pode ajustá-las em um dia específico
-                  depois.
-                </p>
-                <div class="meal-option-list">
-                  <span
-                    v-for="(option, index) in form.meal_options"
-                    :key="option.id"
-                    class="meal-option-chip"
-                    >{{ option.label
-                    }}<button
-                      type="button"
-                      :disabled="index === 0"
-                      :aria-label="`Subir ${option.label}`"
-                      @click="moveGoalMeal(option.id, -1)"
-                    >
-                      <ArrowUp :size="14" /></button
-                    ><button
-                      type="button"
-                      :disabled="index === form.meal_options.length - 1"
-                      :aria-label="`Descer ${option.label}`"
-                      @click="moveGoalMeal(option.id, 1)"
-                    >
-                      <ArrowDown :size="14" /></button
-                    ><button
-                      type="button"
-                      :aria-label="`Remover ${option.label}`"
-                      :disabled="form.meal_options.length === 1"
-                      @click="removeGoalMeal(option.id)"
-                    >
-                      <X :size="14" /></button
-                  ></span>
-                </div>
-                <div class="meal-add">
-                  <input
-                    v-model="newGoalMeal"
-                    type="text"
-                    maxlength="40"
-                    placeholder="Ex.: Ceia"
-                    aria-label="Nova refeição da meta"
-                    @keydown.enter.prevent="addGoalMeal"
-                  /><button type="button" class="small-button" @click="addGoalMeal">
-                    <Plus :size="16" /> Adicionar
-                  </button>
-                </div>
-              </fieldset>
-              <fieldset v-if="form.category !== 'alimentacao'" class="meal-options-field">
-                <legend>Checklist da meta (opcional)</legend>
-                <p>
-                  Adicione etapas para marcar em cada dia. Sem itens, a meta usa um check simples.
-                </p>
-                <div class="meal-option-list">
-                  <span
-                    v-for="(option, index) in form.checklist_options"
-                    :key="option.id"
-                    class="meal-option-chip"
-                    >{{ option.label
-                    }}<button
-                      type="button"
-                      :disabled="index === 0"
-                      :aria-label="`Subir ${option.label}`"
-                      @click="moveGoalChecklist(option.id, -1)"
-                    >
-                      <ArrowUp :size="14" /></button
-                    ><button
-                      type="button"
-                      :disabled="index === form.checklist_options.length - 1"
-                      :aria-label="`Descer ${option.label}`"
-                      @click="moveGoalChecklist(option.id, 1)"
-                    >
-                      <ArrowDown :size="14" /></button
-                    ><button
-                      type="button"
-                      :aria-label="`Remover ${option.label}`"
-                      @click="removeGoalChecklist(option.id)"
-                    >
-                      <X :size="14" /></button
-                  ></span>
-                </div>
-                <div class="meal-add">
-                  <input
-                    v-model="newGoalChecklist"
-                    type="text"
-                    maxlength="40"
-                    placeholder="Ex.: Aquecer, treinar, alongar"
-                    aria-label="Novo item do checklist"
-                    @keydown.enter.prevent="addGoalChecklist"
-                  /><button type="button" class="small-button" @click="addGoalChecklist">
-                    <Plus :size="16" /> Adicionar
-                  </button>
-                </div>
-              </fieldset>
-              <fieldset v-if="form.category === 'alimentacao' || form.goal_mode === 'fixed'">
-                <legend>Em quais dias?</legend>
-                <div class="day-picker">
-                  <button
-                    v-for="day in [1, 2, 3, 4, 5, 6, 0]"
-                    :key="day"
-                    type="button"
-                    :class="{ active: form.scheduled_weekdays.includes(day) }"
-                    :aria-pressed="form.scheduled_weekdays.includes(day)"
-                    :aria-label="fullWeekdays[day]"
-                    @click="changeDay(day)"
-                  >
-                    {{ weekdays[day] }}
-                  </button>
-                </div>
-              </fieldset>
-              <fieldset
-                v-if="
-                  form.goal_mode === 'fixed' &&
-                  form.scheduled_weekdays.length &&
-                  formDefaultOptions.length
-                "
-                class="weekday-meals-field"
-              >
-                <legend>Opções em cada dia da semana</legend>
-                <p>Todos usam os itens acima. Personalize apenas os dias que quiser.</p>
-                <div
-                  v-for="day in [1, 2, 3, 4, 5, 6, 0].filter((value) =>
-                    form.scheduled_weekdays.includes(value),
-                  )"
-                  :key="day"
-                  class="weekday-meals-card"
+                  <CirclePause v-if="goal.active" :size="16" /><CirclePlay
+                    v-else
+                    :size="16"
+                  /></button
+                ><button :aria-label="`Editar ${goal.title}`" @click="edit(goal)">
+                  <Pencil :size="16" /></button
+                ><button
+                  :disabled="busy"
+                  :aria-label="`Excluir ${goal.title}`"
+                  @click="remove(goal)"
                 >
-                  <div class="weekday-meals-header">
-                    <strong>{{ fullWeekdays[day] }}</strong>
-                    <div>
-                      <button type="button" class="text-button" @click="openWeekdayModal(day)">
-                        {{
-                          formWeekdayOptions[String(day)] ? 'Editar opções' : 'Personalizar'
-                        }}</button
-                      ><button
-                        v-if="formWeekdayOptions[String(day)]"
-                        type="button"
-                        class="text-button"
-                        @click="resetWeekday(day)"
-                      >
-                        Usar padrão
-                      </button>
-                    </div>
-                  </div>
-                  <small>{{
-                    (formWeekdayOptions[String(day)] || formDefaultOptions)
-                      .map((option) => option.label)
-                      .join(' · ')
-                  }}</small>
-                </div>
-              </fieldset>
-              <label class="active-switch"
-                ><input v-model="form.active" type="checkbox" /> Meta ativa</label
-              >
-              <div class="form-actions">
-                <button class="primary-button" :disabled="busy">
-                  {{ editing ? 'Salvar alterações' : 'Adicionar meta' }} ↗</button
-                ><button v-if="editing" type="button" class="text-button" @click="cancelEdit">
-                  Cancelar
+                  <Trash2 :size="16" />
                 </button>
               </div>
-            </form>
-            <section class="goal-list panel">
-              <span class="eyebrow">SEU REPERTÓRIO</span>
-              <h2>
-                Minhas metas <span>{{ goals.length }}</span>
-              </h2>
-              <div v-if="!goals.length" class="list-empty">
-                Suas metas aparecerão aqui. Que tal começar com uma ação pequena?
+            </article>
+          </section>
+          <details class="report-tools panel">
+            <summary>Relatórios e backup CSV</summary>
+            <section class="report-panel" aria-label="Exportar e importar registros">
+              <div>
+                <strong>Período do relatório</strong
+                ><button
+                  type="button"
+                  class="small-button report-button"
+                  :disabled="!goals.length"
+                  @click="downloadReport"
+                >
+                  <Download :size="17" /> Exportar CSV
+                </button>
+                <label
+                  >Exportar
+                  <select v-model="reportMode">
+                    <option value="all">Tudo desde o início</option>
+                    <option value="month">Um mês</option>
+                    <option value="range">Intervalo de datas</option>
+                  </select>
+                </label>
+                <label v-if="reportMode === 'month'"
+                  >Mês<input v-model="reportMonth" type="month"
+                /></label>
+                <div v-if="reportMode === 'range'" class="report-dates">
+                  <label>De<input v-model="reportFrom" type="date" /></label>
+                  <label>Até<input v-model="reportTo" type="date" /></label>
+                </div>
               </div>
-              <article
-                v-for="goal in goals"
-                :key="goal.id"
-                :class="['goal-item', { inactive: !goal.active }]"
-              >
-                <div class="goal-icon" :class="goal.category">
-                  <Dumbbell v-if="goal.category === 'treino'" :size="20" />
-                  <Utensils v-else-if="goal.category === 'alimentacao'" :size="20" />
-                  <Sparkles v-else :size="20" />
-                </div>
-                <div class="goal-details">
-                  <strong>{{ goal.title }}</strong
-                  ><span
-                    >{{ categoryName(goal.category) }} · {{ goal.points }} pts ·
-                    {{
-                      goal.goal_mode === 'weekly'
-                        ? `${goal.weekly_target || 1}x por semana · dias livres`
-                        : goal.scheduled_weekdays.map((day) => weekdays[day]).join(', ')
-                    }}{{
-                      goal.start_date && goal.duration_days
-                        ? ` · ${goal.duration_days} dias desde ${new Date(`${goal.start_date}T12:00:00`).toLocaleDateString('pt-BR')}`
-                        : ''
-                    }}</span
-                  ><small v-if="goal.category === 'alimentacao'"
-                    >Até {{ goal.free_meals_per_week ?? 0 }} refeições livres por semana ·
-                    opcionais</small
-                  ><small v-if="!goal.active">Pausada</small>
-                </div>
-                <div class="goal-actions">
-                  <button
-                    :disabled="busy"
-                    :aria-label="goal.active ? `Pausar ${goal.title}` : `Ativar ${goal.title}`"
-                    @click="pause(goal)"
-                  >
-                    <CirclePause v-if="goal.active" :size="16" /><CirclePlay
-                      v-else
-                      :size="16"
-                    /></button
-                  ><button :aria-label="`Editar ${goal.title}`" @click="edit(goal)">
-                    <Pencil :size="16" /></button
-                  ><button
-                    :disabled="busy"
-                    :aria-label="`Excluir ${goal.title}`"
-                    @click="remove(goal)"
-                  >
-                    <Trash2 :size="16" />
-                  </button>
-                </div>
-              </article>
-            </section></div
-        ></template>
+              <div>
+                <strong>Restaurar registros</strong>
+                <label
+                  >Selecione um CSV exportado por esta versão<input
+                    type="file"
+                    accept=".csv,text/csv"
+                    @change="selectBackup"
+                /></label>
+                <p v-if="pendingBackup">
+                  {{ pendingBackupName }} · {{ pendingBackup.length }} metas reconhecidas. A
+                  importação adiciona apenas registros ausentes.
+                </p>
+                <button
+                  v-if="pendingBackup"
+                  type="button"
+                  class="small-button"
+                  :disabled="busy"
+                  @click="restoreBackup"
+                >
+                  {{ busy ? 'Importando...' : 'Importar registros' }}
+                </button>
+                <p v-else>
+                  Arquivos antigos sem a coluna de restauração continuam legíveis, mas não podem ser
+                  importados com segurança.
+                </p>
+              </div>
+              <p v-if="reportMessage" role="status" class="notice report-notice">
+                {{ reportMessage }}
+              </p>
+            </section>
+          </details></template
+        >
         <AppNotice
-          v-if="message && !selectedDay && editingWeekday === null"
+          v-if="message && !selectedDay && editingWeekday === null && !goalEditorOpen"
           :message="message"
           :error="messageIsError"
           @dismiss="message = ''"
@@ -1633,6 +1393,256 @@ onUnmounted(() => {
         <footer>Feito para celebrar a constância, no seu tempo. ✦</footer>
       </main>
     </div>
+    <FormDialog
+      v-if="goalEditorOpen"
+      :inert="editingWeekday !== null || confirmation !== null"
+      :title="editing ? 'Editar meta' : 'Nova meta'"
+      :busy="busy"
+      @close="cancelEdit"
+    >
+      <form class="goal-form" @submit.prevent="save">
+        <label
+          >O que você quer fazer?<input
+            v-model="form.title"
+            required
+            maxlength="100"
+            placeholder="Ex.: Fazer treino de força"
+        /></label>
+        <div class="form-row">
+          <label
+            >Categoria<select v-model="form.category">
+              <option value="treino">Treino</option>
+              <option value="alimentacao">Alimentação</option>
+              <option value="outro">Outro</option>
+            </select></label
+          >
+        </div>
+        <div v-if="form.category === 'alimentacao'" class="free-meal-settings">
+          <label
+            >Refeições livres permitidas por semana
+            <input
+              v-model.number="form.free_meals_per_week"
+              type="number"
+              min="0"
+              max="84"
+              step="1"
+              required
+              aria-describedby="free-meal-help"
+            />
+          </label>
+          <p id="free-meal-help">
+            São opcionais. Seguir a dieta em todas as refeições também conclui a meta. Use 0 para
+            não permitir refeições livres. A semana vai de segunda a domingo.
+          </p>
+        </div>
+        <fieldset>
+          <legend>Período da meta</legend>
+          <label class="active-switch"
+            ><input
+              type="checkbox"
+              :checked="form.duration_days !== null"
+              @change="togglePeriod"
+            />Duração definida</label
+          >
+          <div v-if="form.duration_days !== null" class="form-row period-fields">
+            <label>Começa em<input v-model="form.start_date" type="date" required /></label>
+            <label
+              >Por quantos dias?<input
+                v-model.number="form.duration_days"
+                type="number"
+                min="1"
+                max="365"
+                step="1"
+                required
+            /></label>
+          </div>
+          <p v-if="form.duration_days !== null">
+            Para 14 marcações diárias, escolha todos os dias da semana.
+          </p>
+        </fieldset>
+        <fieldset v-if="form.category !== 'alimentacao'">
+          <legend>Como contar esta meta?</legend>
+          <label
+            >Tipo de meta
+            <select :value="form.goal_mode" @change="changeMode">
+              <option value="fixed">Dias fixos</option>
+              <option value="weekly">Frequência semanal (dias livres)</option>
+            </select>
+          </label>
+          <label v-if="form.goal_mode === 'weekly'"
+            >Quantas vezes na semana?
+            <input
+              v-model.number="form.weekly_target"
+              type="number"
+              min="1"
+              max="7"
+              step="1"
+              required
+            />
+          </label>
+          <p v-if="form.goal_mode === 'weekly'">
+            Marque os dias em que fez a atividade. A meta é concluída ao atingir a frequência
+            semanal.
+          </p>
+        </fieldset>
+        <fieldset v-if="form.category === 'alimentacao'" class="meal-options-field">
+          <legend>Refeições para acompanhar</legend>
+          <p>
+            Estas opções aparecem nos dias da meta. Você pode ajustá-las em um dia específico
+            depois.
+          </p>
+          <div class="meal-option-list">
+            <span
+              v-for="(option, index) in form.meal_options"
+              :key="option.id"
+              class="meal-option-chip"
+              >{{ option.label
+              }}<button
+                type="button"
+                :disabled="index === 0"
+                :aria-label="`Subir ${option.label}`"
+                @click="moveGoalMeal(option.id, -1)"
+              >
+                <ArrowUp :size="14" /></button
+              ><button
+                type="button"
+                :disabled="index === form.meal_options.length - 1"
+                :aria-label="`Descer ${option.label}`"
+                @click="moveGoalMeal(option.id, 1)"
+              >
+                <ArrowDown :size="14" /></button
+              ><button
+                type="button"
+                :aria-label="`Remover ${option.label}`"
+                :disabled="form.meal_options.length === 1"
+                @click="removeGoalMeal(option.id)"
+              >
+                <X :size="14" /></button
+            ></span>
+          </div>
+          <div class="meal-add">
+            <input
+              v-model="newGoalMeal"
+              type="text"
+              maxlength="40"
+              placeholder="Ex.: Ceia"
+              aria-label="Nova refeição da meta"
+              @keydown.enter.prevent="addGoalMeal"
+            /><button type="button" class="small-button" @click="addGoalMeal">
+              <Plus :size="16" /> Adicionar
+            </button>
+          </div>
+        </fieldset>
+        <fieldset v-if="form.category !== 'alimentacao'" class="meal-options-field">
+          <legend>Checklist da meta (opcional)</legend>
+          <p>Adicione etapas para marcar em cada dia. Sem itens, a meta usa um check simples.</p>
+          <div class="meal-option-list">
+            <span
+              v-for="(option, index) in form.checklist_options"
+              :key="option.id"
+              class="meal-option-chip"
+              >{{ option.label
+              }}<button
+                type="button"
+                :disabled="index === 0"
+                :aria-label="`Subir ${option.label}`"
+                @click="moveGoalChecklist(option.id, -1)"
+              >
+                <ArrowUp :size="14" /></button
+              ><button
+                type="button"
+                :disabled="index === form.checklist_options.length - 1"
+                :aria-label="`Descer ${option.label}`"
+                @click="moveGoalChecklist(option.id, 1)"
+              >
+                <ArrowDown :size="14" /></button
+              ><button
+                type="button"
+                :aria-label="`Remover ${option.label}`"
+                @click="removeGoalChecklist(option.id)"
+              >
+                <X :size="14" /></button
+            ></span>
+          </div>
+          <div class="meal-add">
+            <input
+              v-model="newGoalChecklist"
+              type="text"
+              maxlength="40"
+              placeholder="Ex.: Aquecer, treinar, alongar"
+              aria-label="Novo item do checklist"
+              @keydown.enter.prevent="addGoalChecklist"
+            /><button type="button" class="small-button" @click="addGoalChecklist">
+              <Plus :size="16" /> Adicionar
+            </button>
+          </div>
+        </fieldset>
+        <fieldset v-if="form.category === 'alimentacao' || form.goal_mode === 'fixed'">
+          <legend>Em quais dias?</legend>
+          <div class="day-picker">
+            <button
+              v-for="day in [1, 2, 3, 4, 5, 6, 0]"
+              :key="day"
+              type="button"
+              :class="{ active: form.scheduled_weekdays.includes(day) }"
+              :aria-pressed="form.scheduled_weekdays.includes(day)"
+              :aria-label="fullWeekdays[day]"
+              @click="changeDay(day)"
+            >
+              {{ weekdays[day] }}
+            </button>
+          </div>
+        </fieldset>
+        <fieldset
+          v-if="
+            form.goal_mode === 'fixed' &&
+            form.scheduled_weekdays.length &&
+            formDefaultOptions.length
+          "
+          class="weekday-meals-field"
+        >
+          <legend>Opções em cada dia da semana</legend>
+          <p>Todos usam os itens acima. Personalize apenas os dias que quiser.</p>
+          <div
+            v-for="day in [1, 2, 3, 4, 5, 6, 0].filter((value) =>
+              form.scheduled_weekdays.includes(value),
+            )"
+            :key="day"
+            class="weekday-meals-card"
+          >
+            <div class="weekday-meals-header">
+              <strong>{{ fullWeekdays[day] }}</strong>
+              <div>
+                <button type="button" class="text-button" @click="openWeekdayModal(day)">
+                  {{ formWeekdayOptions[String(day)] ? 'Editar opções' : 'Personalizar' }}</button
+                ><button
+                  v-if="formWeekdayOptions[String(day)]"
+                  type="button"
+                  class="text-button"
+                  @click="resetWeekday(day)"
+                >
+                  Usar padrão
+                </button>
+              </div>
+            </div>
+            <small>{{
+              (formWeekdayOptions[String(day)] || formDefaultOptions)
+                .map((option) => option.label)
+                .join(' · ')
+            }}</small>
+          </div>
+        </fieldset>
+        <label class="active-switch"
+          ><input v-model="form.active" type="checkbox" /> Meta ativa</label
+        >
+        <p v-if="message" class="notice" role="alert">{{ message }}</p>
+        <div class="form-actions">
+          <button class="primary-button" :disabled="busy">
+            {{ editing ? 'Salvar alterações' : 'Adicionar meta' }} ↗</button
+          ><button type="button" class="text-button" @click="cancelEdit">Cancelar</button>
+        </div>
+      </form>
+    </FormDialog>
     <ConfirmDialog
       v-if="confirmation"
       v-bind="confirmation"
@@ -1641,7 +1651,7 @@ onUnmounted(() => {
     />
     <div
       v-if="editingWeekday !== null"
-      class="dialog-backdrop"
+      class="dialog-backdrop weekday-backdrop"
       @click.self="editingWeekday = null"
       @keydown.esc="editingWeekday = null"
     >
@@ -1782,11 +1792,7 @@ onUnmounted(() => {
               /></span>
               <div>
                 <strong>{{ goal.title }}</strong
-                ><small
-                  >{{ categoryName(goal.category) }} · {{ goal.points }} pts{{
-                    goal.goal_mode === 'weekly' ? '/semana' : ''
-                  }}</small
-                >
+                ><small>{{ categoryName(goal.category) }}</small>
               </div>
             </div>
             <template v-if="goal.category === 'alimentacao' || dayDrafts[goal.id]!.options.length">

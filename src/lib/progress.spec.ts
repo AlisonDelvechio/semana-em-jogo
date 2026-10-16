@@ -44,11 +44,11 @@ describe('meal-based percentage', () => {
     expect(goalProgress(goal, saved.local_date, [], [saved]) * 100).toBe(expected)
     expect(isGoalDone(goal, saved.local_date, [], [saved])).toBe(expected === 100)
   })
-  it('pools meals across days with different counts and keeps points separate', () => {
+  it('pools meals across days with different counts', () => {
     const details = [detail('2026-10-12', [true, true, true, true]), detail('2026-10-13', [false])]
     expect(weekStats([goal], [], monday, [], details)).toMatchObject({
       percent: 80,
-      points: 10,
+
       completed: 1,
     })
     expect(weekPace([goal], [], monday, tuesday, [], details).percent).toBe(80)

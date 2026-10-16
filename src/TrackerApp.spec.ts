@@ -190,3 +190,70 @@ it('confirms deletion, supports Escape and restores focus without deleting on ca
     wrapper.unmount()
   }
 })
+
+it('separates weekly and monthly progress and edits goals in a modal without points', async () => {
+  await createGoal({
+    title: 'Academia',
+    category: 'treino',
+    scheduled_weekdays: [1],
+    goal_mode: 'fixed',
+    weekly_target: 3,
+    points: 25,
+    active: true,
+    meal_options: [],
+    meal_options_by_weekday: {},
+    checklist_options: [],
+    checklist_options_by_weekday: {},
+    start_date: null,
+    duration_days: null,
+  })
+  const wrapper = mount(TrackerApp, { attachTo: document.body })
+  try {
+    await flushPromises()
+    const cards = wrapper.findAll('.period-progress-card')
+    expect(cards).toHaveLength(2)
+    expect(cards[0]!.get('h2').text()).toBe('Semana')
+    expect(cards[1]!.get('h2').text()).toBe('Mês')
+    expect(wrapper.text()).not.toContain('PONTOS CONQUISTADOS')
+    expect(wrapper.text()).not.toContain('METAS NA SEMANA')
+    await wrapper.findAll('.mobile-nav button')[2]!.trigger('click')
+    expect(wrapper.find('.goal-form').exists()).toBe(false)
+    await wrapper.get('[aria-label="Editar Academia"]').trigger('click')
+    expect(wrapper.get('.goal-editor-dialog').attributes('role')).toBe('dialog')
+    expect(document.body.style.overflow).toBe('hidden')
+    expect(wrapper.get('.goal-form').text()).not.toContain('Pontos')
+    await wrapper.get('.goal-form input[maxlength="100"]').setValue('Alteração cancelada')
+    await wrapper.get('[aria-label="Fechar edição da meta"]').trigger('click')
+    expect(wrapper.find('.goal-editor-dialog').exists()).toBe(false)
+    expect((await loadData()).goals[0]?.title).toBe('Academia')
+    await wrapper.get('[aria-label="Editar Academia"]').trigger('click')
+    expect(
+      (wrapper.get('.goal-form input[maxlength="100"]').element as HTMLInputElement).value,
+    ).toBe('Academia')
+    await wrapper.get('.goal-form input[maxlength="100"]').setValue('Treino de força')
+    await wrapper.get('.goal-form').trigger('submit')
+    await wrapper.get('.confirmation-actions .primary-button').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('.goal-editor-dialog').exists()).toBe(false)
+    expect((await loadData()).goals[0]?.title).toBe('Treino de força')
+    expect((await loadData()).goals[0]?.points).toBe(25)
+    expect(document.body.style.overflow).toBe('')
+  } finally {
+    wrapper.unmount()
+  }
+})
+
+it('creates a goal through the mobile dialog and cancels with Escape', async () => {
+  const wrapper = mount(TrackerApp, { attachTo: document.body })
+  try {
+    await flushPromises()
+    await wrapper.get('.week-layout .page-heading .small-button').trigger('click')
+    expect(wrapper.get('#goal-editor-title').text()).toBe('Nova meta')
+    await wrapper.get('.goal-editor-dialog').trigger('keydown', { key: 'Escape' })
+    expect(wrapper.find('.goal-editor-dialog').exists()).toBe(false)
+    expect((await loadData()).goals).toHaveLength(0)
+    expect(document.body.style.overflow).toBe('')
+  } finally {
+    wrapper.unmount()
+  }
+})

@@ -70,7 +70,6 @@ describe('refeições livres opcionais', () => {
     expect(weekStats([goal], [], new Date(2026, 9, 12), [], details)).toMatchObject({
       completed: 7,
       percent: 100,
-      points: 70,
     })
   })
 
@@ -88,7 +87,6 @@ describe('refeições livres opcionais', () => {
     ])
     expect(weekStats([goal], [], new Date(2026, 9, 12), [], details)).toMatchObject({
       completed: 2,
-      points: 20,
     })
     expect(
       monthStats([goal], [], [], details, new Date(2026, 9, 1), new Date(2026, 9, 18)).completed,

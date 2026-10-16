@@ -244,11 +244,6 @@ export function weekStats(
     total,
     completed,
     percent: progressPercent(scheduled, weekly, completions, dayDetails),
-    points:
-      done.reduce((sum, entry) => sum + entry.goal.points, 0) +
-      weekly
-        .filter((entry) => entry.completed >= entry.target)
-        .reduce((sum, entry) => sum + entry.goal.points, 0),
   }
 }
 

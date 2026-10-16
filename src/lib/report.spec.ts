@@ -47,7 +47,7 @@ describe('goal report', () => {
     }
     const csv = createGoalReport([goal], [], history, [detail], new Date(2026, 8, 26))
     expect(csv).toContain(
-      '="26/09/2026";"Sábado";"Dieta anterior";"alimentacao";"Sim";"Não";"10";"0"',
+      '="26/09/2026";"Sábado";"Dieta anterior";"alimentacao";"Sim";"Não";"Café da manhã"',
     )
     expect(csv).toContain('"Rap10 com carne moída, mussarela; leite com chocolate"')
     expect(csv).toContain('"\'=1+1"')

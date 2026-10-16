@@ -77,6 +77,8 @@ onUnmounted(() => {
 .confirmation-dialog {
   position: relative;
   width: min(100%, 430px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
   padding: 28px;
   border-radius: 20px;
   background: #fff;
@@ -116,6 +118,7 @@ h2 {
 }
 p {
   line-height: 1.6;
+  color: #4e5e51;
   font-size: 0.9rem;
 }
 .confirmation-actions {
@@ -132,15 +135,22 @@ p {
   background: #b53b32;
   color: white;
 }
-:global(html[data-theme='dark']) .confirmation-dialog {
+:global(html[data-theme='dark'] .confirmation-dialog) {
   background: #202d24;
   color: #e5f0e2;
 }
-:global(html[data-theme='dark']) .confirmation-icon {
+:global(html[data-theme='dark'] .confirmation-dialog p) {
+  color: #d5e3d2;
+}
+:global(html[data-theme='dark'] .confirmation-dialog .danger-button) {
+  background: #b53b32;
+  color: #fff;
+}
+:global(html[data-theme='dark'] .confirmation-icon) {
   background: #334c37;
   color: #d2eac9;
 }
-:global(html[data-theme='dark']) .confirmation-icon.danger {
+:global(html[data-theme='dark'] .confirmation-icon.danger) {
   background: #5c302d;
   color: #ffd1c9;
 }

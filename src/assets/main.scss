@@ -2238,3 +2238,321 @@ html[data-theme='dark'] .featured small,
 html[data-theme='dark'] .featured .progress-main span {
   color: #e5f0e2;
 }
+
+/* Resumo compacto: períodos separados, sem misturar contagens com percentuais. */
+.progress-overview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+.period-progress-card {
+  min-width: 0;
+  padding: 22px;
+  border: 1px solid #dce5d7;
+  border-radius: 18px;
+  background: #fff;
+}
+.period-progress-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.period-progress-heading h2 {
+  margin: 0;
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+}
+.period-progress-heading > span {
+  color: #52664e;
+  font-size: 0.74rem;
+}
+.period-progress-date {
+  display: block;
+  color: #5e705c;
+  margin: 8px 0 16px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+.period-progress-value {
+  display: block;
+  font:
+    600 2.7rem/1 Outfit,
+    sans-serif;
+  letter-spacing: -0.04em;
+  color: #3b613a;
+}
+.period-progress-value > span {
+  font-size: 1.3rem;
+  margin-left: 3px;
+}
+.period-progress-bar {
+  margin-top: 16px;
+  height: 7px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #e6eee2;
+}
+.period-progress-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #709567;
+}
+.goal-editor-backdrop {
+  z-index: 30;
+}
+.weekday-backdrop {
+  z-index: 35;
+}
+.goal-editor-dialog {
+  width: min(100%, 700px);
+  max-height: calc(100dvh - 36px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 22px 65px #172b243b;
+}
+.goal-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #fff;
+  padding: 20px 24px;
+  border-bottom: 1px solid #dfe6dc;
+}
+.goal-editor-header h2 {
+  margin: 5px 0 0;
+  font-size: 1.4rem;
+}
+.goal-editor-dialog .goal-form {
+  padding: 0 24px;
+}
+.goal-editor-dialog .form-row:not(.period-fields) {
+  grid-template-columns: minmax(0, 1fr);
+}
+.goal-editor-dialog .form-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: #fff;
+  margin: 0 -24px;
+  padding: 16px 24px max(16px, env(safe-area-inset-bottom));
+  border-top: 1px solid #dfe6dc;
+}
+.goal-editor-dialog .form-actions button {
+  min-height: 44px;
+}
+.goal-list .goal-details {
+  min-width: 0;
+}
+.goal-list .goal-details strong,
+.goal-list .goal-details span,
+.goal-list .goal-details small {
+  overflow-wrap: anywhere;
+}
+.goal-actions button {
+  width: 44px;
+  height: 44px;
+}
+.report-tools {
+  margin-top: 18px;
+}
+.report-tools > summary {
+  min-height: 44px;
+  display: list-item;
+  cursor: pointer;
+  font-weight: 700;
+  line-height: 1.5;
+  padding: 10px 0;
+}
+.report-tools .report-panel {
+  margin: 18px 0 0;
+}
+.report-tools .report-button {
+  display: flex;
+  margin: 12px 0;
+}
+html[data-theme='dark'] .period-progress-card,
+html[data-theme='dark'] .goal-editor-dialog,
+html[data-theme='dark'] .goal-editor-header,
+html[data-theme='dark'] .goal-editor-dialog .form-actions {
+  background: #202d25;
+  border-color: #3d5141;
+  color: #e9f0e8;
+}
+html[data-theme='dark'] .period-progress-heading > span,
+html[data-theme='dark'] .period-progress-date {
+  color: #c0d0bb;
+}
+html[data-theme='dark'] .period-progress-value {
+  color: #d3edc7;
+}
+html[data-theme='dark'] .period-progress-bar {
+  background: #3d5141;
+}
+html[data-theme='dark'] .period-progress-bar > span {
+  background: #a6cc91;
+}
+@media (max-width: 720px) {
+  .week-layout .progress-overview {
+    order: 1;
+    grid-column: 1 / -1;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .period-progress-card {
+    padding: 14px;
+    border-radius: 14px;
+  }
+  .period-progress-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .period-progress-heading h2 {
+    font-size: 0.95rem;
+  }
+  .period-progress-date {
+    min-height: 2.8em;
+    margin: 8px 0 12px;
+    font-size: 0.72rem;
+  }
+  .period-progress-value {
+    font-size: 2.1rem;
+  }
+  .period-progress-bar {
+    margin-top: 12px;
+  }
+  .goal-editor-backdrop {
+    padding: 0;
+    align-items: end;
+  }
+  .goal-editor-dialog {
+    width: 100%;
+    max-height: calc(100dvh - max(12px, env(safe-area-inset-top)));
+    border-radius: 20px 20px 0 0;
+  }
+  .goal-editor-header {
+    padding: 16px;
+  }
+  .goal-editor-dialog .goal-form {
+    padding: 0 16px;
+  }
+  .goal-editor-dialog .form-actions {
+    margin-inline: -16px;
+    padding-inline: 16px;
+    gap: 10px;
+    display: flex;
+    flex-wrap: wrap;
+  }
+  .goal-editor-dialog .form-actions button {
+    flex: 1;
+    white-space: normal;
+  }
+  .goal-editor-dialog .period-fields {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .goal-editor-dialog .weekday-meals-header {
+    flex-wrap: wrap;
+  }
+  .goal-editor-dialog .meal-option-chip {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+  .report-tools .report-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .report-tools input,
+  .report-tools select {
+    min-width: 0;
+    max-width: 100%;
+    font-size: 16px;
+  }
+  .report-tools .report-dates {
+    flex-wrap: wrap;
+  }
+  .small-button,
+  .goal-editor-dialog button,
+  .goal-actions button {
+    touch-action: manipulation;
+  }
+  .confirmation-dialog {
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
+  }
+}
+@media (max-width: 360px) {
+  .period-progress-card {
+    padding: 12px;
+  }
+  .period-progress-heading > span {
+    font-size: 0.68rem;
+  }
+  .goal-list .goal-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+.goal-editor-dialog fieldset {
+  min-width: 0;
+}
+@media (max-width: 720px) {
+  .goal-editor-dialog .meal-option-chip {
+    flex-wrap: wrap;
+  }
+  .goal-editor-dialog .meal-option-chip button,
+  .weekday-dialog .meal-order-actions button,
+  .weekday-dialog .meal-remove {
+    min-width: 40px;
+    min-height: 44px;
+  }
+  .goal-editor-dialog .weekday-meals-header > div {
+    flex-wrap: wrap;
+  }
+  .goal-editor-dialog .text-button {
+    min-height: 44px;
+  }
+  .report-tools .report-dates {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .report-tools .report-panel {
+    padding: 0;
+  }
+  .goal-editor-dialog input[type='date'] {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+@media (max-width: 720px) {
+  .meal-row,
+  .meal-row.food-row {
+    grid-template-columns: minmax(0, 1fr) 90px 44px;
+  }
+  .meal-row .meal-order-actions button,
+  .meal-row .meal-remove {
+    width: 44px;
+    height: 44px;
+  }
+  .meal-row .meal-check {
+    min-height: 44px;
+    overflow-wrap: anywhere;
+  }
+  .meal-adherence select {
+    min-height: 44px;
+    font-size: 16px;
+  }
+  .day-goal-title > div {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .goal-editor-dialog .day-picker button {
+    flex-shrink: 0;
+  }
+}
