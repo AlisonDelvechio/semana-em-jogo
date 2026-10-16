@@ -196,6 +196,9 @@ export async function deleteGoal(id: string): Promise<void> {
 }
 
 export async function saveDayDetail(detail: Omit<GoalDayDetail, 'user_id'>): Promise<void> {
+  const override = detail.free_meals_limit_override
+  if (override != null && (!Number.isInteger(override) || override < 0 || override > 84))
+    throw new Error('Escolha de 0 a 84 refeições livres para corrigir este dia.')
   const meal_options = detail.meal_options.map(({ id, label }) => ({ id, label: label.trim() }))
   const checklist_options = (detail.checklist_options || []).map(({ id, label }) => ({
     id,

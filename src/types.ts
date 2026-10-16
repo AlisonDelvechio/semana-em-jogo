@@ -51,6 +51,7 @@ export interface GoalDayDetail {
   checklist_options?: MealOption[]
   checklist?: MealEntries
   adherence_recorded?: boolean
+  free_meals_limit_override?: number | null
   note: string
 }
 export interface GoalHistory {

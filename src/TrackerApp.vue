@@ -100,6 +100,7 @@ type DayDraft = {
   note: string
   completed: boolean
   trackAdherence: boolean
+  freeMealLimitOverride: number | null
 }
 const dayDrafts = ref<Record<string, DayDraft>>({})
 const newGoalMeal = ref('')
@@ -244,10 +245,11 @@ const weeklyFoodAllowances = computed(() => {
       if (goal.category === 'alimentacao') versions.set(goal.id, goal)
     }),
   )
-  return [...versions.values()].map((goal) => ({
-    goal,
-    ...freeMealUsage(goal, localKey(monday.value), dayDetails.value),
-  }))
+  return [...versions.values()].map((goal) => {
+    const { used } = freeMealUsage(goal, localKey(monday.value), dayDetails.value)
+    const limit = goal.free_meals_per_week ?? 0
+    return { goal, used, limit, excess: Math.max(0, used - limit) }
+  })
 })
 const isDone = (goal: Goal, date: Date) =>
   isGoalDone(goal, localKey(date), completions.value, dayDetails.value)
@@ -531,6 +533,7 @@ function openDay(date: Date) {
           note: detail?.note || '',
           completed,
           trackAdherence: detail?.adherence_recorded ?? !detail,
+          freeMealLimitOverride: detail?.free_meals_limit_override ?? null,
         },
       ]
     }),
@@ -549,12 +552,18 @@ function detailsWithDraft(goal: Goal): GoalDayDetail[] {
       meals: draft.items,
       meal_options: draft.options,
       adherence_recorded: draft.trackAdherence,
+      free_meals_limit_override: draft.freeMealLimitOverride,
       note: draft.note,
     },
   ]
 }
 const draftFreeUsage = (goal: Goal) =>
   freeMealUsage(goal, localKey(selectedDay.value!), detailsWithDraft(goal))
+const currentFreeMealLimit = (goal: Goal) =>
+  goals.value.find((entry) => entry.id === goal.id)?.free_meals_per_week ?? 0
+function correctDayLimit(goalId: string, event: Event) {
+  dayDrafts.value[goalId]!.freeMealLimitOverride = (event.target as HTMLInputElement).valueAsNumber
+}
 const draftFreeExceeded = (goal: Goal, id: string) =>
   dayDrafts.value[goal.id]?.items[id]?.checked &&
   dayDrafts.value[goal.id]?.items[id]?.adherent === 'free' &&
@@ -603,12 +612,19 @@ async function saveDay() {
   try {
     const date = selectedDay.value
     for (const goal of planned(date)) {
+      const limit = dayDrafts.value[goal.id]!.freeMealLimitOverride
+      if (limit !== null && (!Number.isInteger(limit) || limit < 0 || limit > 84))
+        throw new Error('Escolha de 0 a 84 refeições livres para corrigir este dia.')
+    }
+    for (const goal of planned(date)) {
       const draft = dayDrafts.value[goal.id]!
       await saveDayDetail({
         goal_id: goal.id,
         local_date: localKey(date),
         meals: goal.category === 'alimentacao' ? draft.items : {},
         adherence_recorded: goal.category === 'alimentacao' && draft.trackAdherence,
+        free_meals_limit_override:
+          goal.category === 'alimentacao' ? draft.freeMealLimitOverride : null,
         meal_options:
           goal.category === 'alimentacao' ? draft.options : goal.meal_options || defaultMealOptions,
         checklist: goal.category === 'alimentacao' ? {} : draft.items,
@@ -1710,6 +1726,14 @@ onUnmounted(() => {
                     >{{ draftFreeUsage(goal).used }} de
                     {{ draftFreeUsage(goal).limit }} permitidas</strong
                   >
+                  <small v-if="dayDrafts[goal.id]!.freeMealLimitOverride !== null"
+                    >Limite corrigido para esta data.</small
+                  >
+                  <small v-else-if="(goal.free_meals_per_week ?? 0) !== currentFreeMealLimit(goal)"
+                    >Este dia usa o limite histórico. A meta atual permite
+                    {{ currentFreeMealLimit(goal) }}; use “Corrigir limite deste dia” abaixo para
+                    ajustar.</small
+                  >
                   <small>{{
                     draftFreeUsage(goal).excess
                       ? `${draftFreeUsage(goal).excess} além do limite. As excedentes não contam para concluir a meta.`
@@ -1717,6 +1741,56 @@ onUnmounted(() => {
                   }}</small>
                 </span>
               </div>
+              <details
+                v-if="
+                  goal.category === 'alimentacao' &&
+                  (localKey(selectedDay) < localKey(new Date()) ||
+                    dayDrafts[goal.id]!.freeMealLimitOverride !== null)
+                "
+                class="day-limit-correction"
+              >
+                <summary>Corrigir limite deste dia</summary>
+                <p>
+                  O limite histórico deste dia é {{ goal.free_meals_per_week ?? 0 }}. A meta atual
+                  permite {{ currentFreeMealLimit(goal) }} por semana. Você pode corrigir o limite
+                  considerado nesta data; a contagem continua incluindo as refeições livres da
+                  semana inteira.
+                </p>
+                <button
+                  v-if="
+                    dayDrafts[goal.id]!.freeMealLimitOverride === null ||
+                    dayDrafts[goal.id]!.freeMealLimitOverride !== currentFreeMealLimit(goal)
+                  "
+                  type="button"
+                  class="small-button use-current-limit"
+                  @click="dayDrafts[goal.id]!.freeMealLimitOverride = currentFreeMealLimit(goal)"
+                >
+                  Usar limite atual: {{ currentFreeMealLimit(goal) }}
+                </button>
+                <label
+                  >Limite semanal considerado neste dia
+                  <input
+                    type="number"
+                    min="0"
+                    max="84"
+                    step="1"
+                    required
+                    :value="
+                      dayDrafts[goal.id]!.freeMealLimitOverride ?? goal.free_meals_per_week ?? 0
+                    "
+                    @input="correctDayLimit(goal.id, $event)"
+                  />
+                </label>
+                <button
+                  v-if="dayDrafts[goal.id]!.freeMealLimitOverride !== null"
+                  type="button"
+                  class="text-button"
+                  @click="dayDrafts[goal.id]!.freeMealLimitOverride = null"
+                >
+                  Restaurar limite histórico
+                </button>
+                <p>Aplica somente a este dia ao salvar o registro.</p>
+              </details>
               <div
                 v-for="(option, index) in dayDrafts[goal.id]!.options"
                 :key="option.id"

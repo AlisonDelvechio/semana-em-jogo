@@ -101,8 +101,18 @@ function freeMealsInWeek(goal: Goal, day: string, details: GoalDayDetail[]) {
 
 export function freeMealUsage(goal: Goal, day: string, details: GoalDayDetail[]) {
   const used = freeMealsInWeek(goal, day, details).length
-  const limit = goal.free_meals_per_week ?? 0
+  const limit = freeMealLimit(goal, day, details)
   return { used, limit, excess: Math.max(0, used - limit) }
+}
+
+// An explicit correction only changes the selected date. Goal edits still use history.
+function freeMealLimit(goal: Goal, day: string, details: GoalDayDetail[]) {
+  return (
+    details.find((entry) => entry.goal_id === goal.id && entry.local_date === day)
+      ?.free_meals_limit_override ??
+    goal.free_meals_per_week ??
+    0
+  )
 }
 
 export function isMealAllowed(goal: Goal, day: string, id: string, details: GoalDayDetail[]) {
@@ -114,7 +124,7 @@ export function isMealAllowed(goal: Goal, day: string, id: string, details: Goal
   const index = freeMealsInWeek(goal, day, details).findIndex(
     (entry) => entry.day === day && entry.id === id,
   )
-  return index >= 0 && index < (goal.free_meals_per_week ?? 0)
+  return index >= 0 && index < freeMealLimit(goal, day, details)
 }
 
 export function isGoalDone(
