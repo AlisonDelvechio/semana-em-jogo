@@ -1170,6 +1170,28 @@ onUnmounted(() => {
               Voltar para hoje
             </button>
             <div
+              v-if="weeklyFoodAllowances.length"
+              class="free-meal-overview"
+              aria-label="Refeições livres da semana"
+            >
+              <div
+                v-for="allowance in weeklyFoodAllowances"
+                :key="allowance.goal.id"
+                class="free-meal-summary"
+              >
+                <Utensils :size="17" aria-hidden="true" />
+                <span
+                  ><strong>{{ allowance.goal.title }}</strong> · Refeições livres usadas:
+                  {{ allowance.used }} de {{ allowance.limit }} permitidas
+                  <small>{{
+                    allowance.excess
+                      ? `${allowance.excess} além do limite. Confira os registros dos dias.`
+                      : 'Opcionais · de segunda a domingo.'
+                  }}</small>
+                </span>
+              </div>
+            </div>
+            <div
               v-if="mobileWeek"
               class="week-strip"
               role="group"
@@ -1233,25 +1255,23 @@ onUnmounted(() => {
                     @click="openDay(date)"
                   >
                     <span class="check-visual" aria-hidden="true"><Check :size="18" /></span
-                    ><span class="task-category-icon" :class="goal.category" aria-hidden="true"
-                      ><Dumbbell v-if="goal.category === 'treino'" :size="20" /><Utensils
-                        v-else-if="goal.category === 'alimentacao'"
-                        :size="20" /><ClipboardList v-else :size="20" /></span
                     ><span class="task-title"
                       >{{ goal.title
                       }}<small
                         >{{
                           goal.category === 'alimentacao'
-                            ? `${mealCount(goal, date).checked}/${mealCount(goal, date).total} registradas${mealCount(goal, date).adherent === null ? '' : ` · ${mealCount(goal, date).adherent} válidas`}`
+                            ? mealCount(goal, date).adherent === null
+                              ? `${mealCount(goal, date).checked}/${mealCount(goal, date).total} registradas`
+                              : `${mealCount(goal, date).adherent}/${mealCount(goal, date).total} refeições válidas`
                             : goal.goal_mode === 'weekly'
                               ? `${Math.min(weeklyCount(goal, date)?.completed || 0, weeklyCount(goal, date)?.target || 1)}/${weeklyCount(goal, date)?.target || 1} idas na semana`
                               : checklistCount(goal, date).total
                                 ? `${checklistCount(goal, date).checked}/${checklistCount(goal, date).total} itens`
                                 : categoryName(goal.category)
                         }}
-                      </small></span
+                        <span v-if="isDone(goal, date)" class="task-state">Concluída</span></small
+                      ></span
                     >
-                    <span v-if="isDone(goal, date)" class="task-state">Concluída</span>
                   </button>
                 </div>
                 <p v-else class="rest-day">Dia livre para respirar ☀</p>
@@ -1264,28 +1284,6 @@ onUnmounted(() => {
                   <Pencil :size="18" aria-hidden="true" /> Editar dia
                 </button>
               </article>
-            </div>
-            <div
-              v-if="weeklyFoodAllowances.length"
-              class="free-meal-overview"
-              aria-label="Refeições livres da semana"
-            >
-              <div
-                v-for="allowance in weeklyFoodAllowances"
-                :key="allowance.goal.id"
-                class="free-meal-summary"
-              >
-                <Utensils :size="17" aria-hidden="true" />
-                <span
-                  ><strong>{{ allowance.goal.title }}</strong> · Refeições livres usadas:
-                  {{ allowance.used }} de {{ allowance.limit }} permitidas
-                  <small>{{
-                    allowance.excess
-                      ? `${allowance.excess} além do limite. Confira os registros dos dias.`
-                      : 'Opcionais · de segunda a domingo.'
-                  }}</small>
-                </span>
-              </div>
             </div>
           </section> </template
         ><template v-else-if="tab === 'month'">
@@ -1483,14 +1481,41 @@ onUnmounted(() => {
             não permitir refeições livres. A semana vai de segunda a domingo.
           </p>
         </div>
-        <fieldset>
-          <legend>Período da meta</legend>
+        <fieldset v-if="form.category !== 'alimentacao'">
+          <legend>Como contar esta meta?</legend>
+          <div class="goal-frequency-row" :class="{ weekly: form.goal_mode === 'weekly' }">
+            <label
+              >Tipo de meta
+              <span class="select-control"
+                ><select :value="form.goal_mode" @change="changeMode">
+                  <option value="fixed">Dias fixos</option>
+                  <option value="weekly">Frequência semanal (dias livres)</option></select
+                ><ChevronDown :size="20" class="select-chevron" aria-hidden="true"
+              /></span>
+            </label>
+            <div v-if="form.goal_mode === 'weekly'" class="frequency-field">
+              <label for="weekly-target">Quantas vezes na semana?</label>
+              <NumberStepper
+                v-model="form.weekly_target"
+                input-id="weekly-target"
+                label="frequência semanal"
+                :min="1"
+                :max="7"
+              />
+            </div>
+          </div>
+          <p v-if="form.goal_mode === 'weekly'">
+            Marque os dias em que fez a atividade. A meta é concluída ao atingir a frequência
+            semanal.
+          </p>
+        </fieldset>
+        <div class="goal-period-settings">
           <label class="active-switch"
             ><input
               type="checkbox"
               :checked="form.duration_days !== null"
               @change="togglePeriod"
-            />Duração definida</label
+            />Definir período da meta <span class="optional-label">Opcional</span></label
           >
           <div v-if="form.duration_days !== null" class="form-row period-fields">
             <label>Começa em<input v-model="form.start_date" type="date" required /></label>
@@ -1507,33 +1532,7 @@ onUnmounted(() => {
           <p v-if="form.duration_days !== null">
             Para 14 marcações diárias, escolha todos os dias da semana.
           </p>
-        </fieldset>
-        <fieldset v-if="form.category !== 'alimentacao'">
-          <legend>Como contar esta meta?</legend>
-          <label
-            >Tipo de meta
-            <span class="select-control"
-              ><select :value="form.goal_mode" @change="changeMode">
-                <option value="fixed">Dias fixos</option>
-                <option value="weekly">Frequência semanal (dias livres)</option></select
-              ><ChevronDown :size="20" class="select-chevron" aria-hidden="true"
-            /></span>
-          </label>
-          <div v-if="form.goal_mode === 'weekly'" class="frequency-field">
-            <label for="weekly-target">Quantas vezes na semana?</label>
-            <NumberStepper
-              v-model="form.weekly_target"
-              input-id="weekly-target"
-              label="frequência semanal"
-              :min="1"
-              :max="7"
-            />
-          </div>
-          <p v-if="form.goal_mode === 'weekly'">
-            Marque os dias em que fez a atividade. A meta é concluída ao atingir a frequência
-            semanal.
-          </p>
-        </fieldset>
+        </div>
         <fieldset v-if="form.category === 'alimentacao'" class="meal-options-field">
           <legend>Refeições para acompanhar</legend>
           <p>

@@ -79,3 +79,5 @@ A navegação mobile fica na base com espaço reservado no conteúdo e nas notif
 
 
 O calendário usa círculos com check para conclusão, preenchimento proporcional para progresso parcial e contorno para pendência, com legenda e descrição acessível. Selecionar uma data mostra o resumo abaixo; **Editar dia** abre o registro. No desktop, os cards da semana têm alturas iguais e os botões alinhados na base. No celular, o rodapé decorativo foi retirado e o card do dia selecionado concentra as tarefas.
+
+No desktop, cada data do calendário também mostra contagem, percentual e até duas metas, com indicação de outras metas existentes. O formato compacto do calendário mobile foi preservado. Os cards semanais usam um marcador de estado e contagens junto ao título, com destaque de fundo e borda para hoje. Refeições livres voltaram para antes dos cards. Na edição, tipo e frequência ficam na mesma linha no desktop; período é uma opção compacta que revela início e duração quando ativada. Os controles continuam empilhados no celular.
