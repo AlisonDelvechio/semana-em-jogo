@@ -56,6 +56,7 @@ import {
 } from './lib/dates'
 import { moveMeal } from './lib/meals'
 import { parseGoalBackup } from './lib/backup'
+import { createPrintableReport } from './lib/print-report'
 import { createGoalReport, type BackupRecord, type ReportRange } from './lib/report'
 import MonthView from './views/MonthView.vue'
 import FormDialog from './components/FormDialog.vue'
@@ -174,8 +175,10 @@ const toggleTheme = () => {
   }
 }
 const newDayMeals = ref<Record<string, string>>({})
+const detailOverlay = ref(false)
 const hasOverlay = computed(
   () =>
+    detailOverlay.value ||
     goalEditorOpen.value ||
     selectedDay.value !== null ||
     editingWeekday.value !== null ||
@@ -338,7 +341,7 @@ const weeklyCount = (goal: Goal, date: Date) =>
     history.value,
     dayDetails.value,
   )[0]
-function downloadReport() {
+function downloadReport(format: 'csv' | 'pdf' = 'csv') {
   let range: ReportRange = {}
   if (reportMode.value === 'month') {
     if (!/^\d{4}-\d{2}$/.test(reportMonth.value)) {
@@ -363,6 +366,22 @@ function downloadReport() {
     new Date(),
     range,
   )
+  if (format === 'pdf') {
+    const popup = window.open('', '_blank')
+    if (!popup) {
+      reportMessage.value = 'Permita abrir a janela do relatório para salvar o PDF.'
+      return
+    }
+    popup.opener = null
+    popup.document.open()
+    popup.document.write(createPrintableReport(csv, new Date(), range))
+    popup.onload = () => {
+      popup.focus()
+      popup.print()
+    }
+    popup.document.close()
+    return
+  }
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
   const link = document.createElement('a')
   link.href = url
@@ -1135,6 +1154,13 @@ onUnmounted(() => {
             </button>
           </div>
           <section class="progress-overview" aria-label="Progresso da semana e do mês">
+            <TodayCard
+              :goals="goals"
+              :completions="completions"
+              :history="history"
+              :day-details="dayDetails"
+              @open-day="openDay"
+            />
             <ProgressCard
               title="Semana"
               :period="label"
@@ -1146,13 +1172,6 @@ onUnmounted(() => {
               :period="overviewMonthLabel"
               :percent="monthlyProgress.percent"
               :caption="monthCaption"
-            />
-            <TodayCard
-              :goals="goals"
-              :completions="completions"
-              :history="history"
-              :day-details="dayDetails"
-              @open-day="openDay"
             />
           </section>
           <section class="week-section">
@@ -1306,6 +1325,7 @@ onUnmounted(() => {
             :day-details="dayDetails"
             :monday="monday"
             :month="overviewMonth"
+            @overlay-change="detailOverlay = $event"
             @open-day="openDay"
           /> </template
         ><template v-else-if="tab === 'month'">
@@ -1315,6 +1335,7 @@ onUnmounted(() => {
             :history="history"
             :day-details="dayDetails"
             @open-day="openDay"
+            @overlay-change="detailOverlay = $event"
             @current-week="goToCurrentWeek"
           /> </template
         ><template v-else
@@ -1389,20 +1410,13 @@ onUnmounted(() => {
             </article>
           </section>
           <section class="report-tools panel" aria-labelledby="report-tools-title">
-            <h2 id="report-tools-title">Relatórios e backup CSV</h2>
+            <h2 id="report-tools-title">Relatórios e backups</h2>
             <section class="report-panel" aria-label="Exportar e importar registros">
               <div>
-                <strong>Período do relatório</strong
-                ><button
-                  type="button"
-                  class="small-button report-button"
-                  :disabled="!goals.length"
-                  @click="downloadReport"
-                >
-                  <Download :size="17" /> Exportar CSV
-                </button>
+                <h3>Exportar relatório</h3>
+                <p class="report-description">Escolha o período e o formato.</p>
                 <label
-                  >Exportar
+                  >Período
                   <span class="select-control"
                     ><select v-model="reportMode">
                       <option value="all">Tudo desde o início</option>
@@ -1418,14 +1432,33 @@ onUnmounted(() => {
                   <label>De<input v-model="reportFrom" type="date" /></label>
                   <label>Até<input v-model="reportTo" type="date" /></label>
                 </div>
+                <div class="report-export-actions">
+                  <button
+                    type="button"
+                    class="small-button report-button"
+                    :disabled="!goals.length"
+                    @click="downloadReport('csv')"
+                  >
+                    <Download :size="18" aria-hidden="true" /> Exportar CSV</button
+                  ><button
+                    type="button"
+                    class="primary-button report-button"
+                    :disabled="!goals.length"
+                    @click="downloadReport('pdf')"
+                  >
+                    <Download :size="18" aria-hidden="true" /> Salvar PDF
+                  </button>
+                </div>
+                <p class="report-format-help">
+                  PDF abre uma versão para impressão: escolha “Salvar como PDF”. O CSV inclui os
+                  dados para restauração.
+                </p>
               </div>
               <div>
-                <strong>Restaurar registros</strong>
+                <h3>Restaurar backup</h3>
+                <p class="report-description">Importe os registros de um CSV exportado pelo app.</p>
                 <label
-                  >Selecione um CSV exportado por esta versão<input
-                    type="file"
-                    accept=".csv,text/csv"
-                    @change="selectBackup"
+                  >Arquivo CSV<input type="file" accept=".csv,text/csv" @change="selectBackup"
                 /></label>
                 <p v-if="pendingBackup">
                   {{ pendingBackupName }} · {{ pendingBackup.length }} metas reconhecidas. A

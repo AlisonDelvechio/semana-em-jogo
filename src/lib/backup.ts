@@ -134,7 +134,7 @@ const plan = (value: unknown) => {
   }
 }
 
-function parseCsv(csv: string): string[][] {
+export function parseCsv(csv: string): string[][] {
   const rows: string[][] = []
   let row: string[] = [],
     cell = '',

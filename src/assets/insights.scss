@@ -370,3 +370,121 @@ html[data-theme='dark'] .pattern-pending {
   white-space: nowrap;
   border: 0;
 }
+/* Dialog content is teleported outside the inert app, with a single overlay at a time. */
+.records-modal .goal-editor-dialog,
+.calendar-summary-modal .goal-editor-dialog {
+  width: min(680px, 100%);
+}
+.records-modal .pattern-records {
+  padding: 0 24px 24px;
+  margin: 0;
+  border: 0;
+}
+.records-dialog-period {
+  margin: 18px 0;
+  color: var(--ui-muted);
+  font-size: 0.8rem;
+}
+.calendar-summary-modal .selected-day-card,
+html[data-theme='dark'] .calendar-summary-modal .selected-day-card {
+  margin: 0;
+  padding: 20px 24px 24px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+.calendar-summary-modal .selected-day-heading {
+  margin-bottom: 12px;
+}
+.calendar-summary-modal .day-edit-action {
+  margin-top: 16px;
+}
+.report-tools > h2 {
+  margin: 0 0 22px;
+}
+.report-tools .report-panel {
+  gap: 28px;
+  margin: 0;
+  align-items: start;
+}
+.report-tools .report-panel > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.report-tools .report-panel h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+.report-tools .report-description {
+  margin: 6px 0 16px;
+  font-size: 0.8rem;
+  color: var(--ui-muted);
+  min-height: 2.8em;
+}
+.report-tools .report-panel label {
+  margin: 0 0 14px;
+  font-size: 0.8rem;
+}
+.report-export-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 2px;
+}
+.report-export-actions .report-button {
+  margin: 0;
+  padding: 10px 14px;
+  flex: 1 1 150px;
+}
+.report-tools .report-format-help,
+.report-tools .report-panel > div > p:not(.report-description) {
+  margin: 12px 0 0;
+  font-size: 0.76rem;
+  color: var(--ui-muted);
+}
+.report-tools .report-panel input[type='file'] {
+  padding: 2px;
+  margin-top: 8px;
+  width: 100%;
+  font-size: 0.8rem;
+}
+.report-tools .report-dates {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.report-tools .report-notice {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+@media (max-width: 720px) {
+  .progress-overview .today-summary-card {
+    grid-row: 1;
+  }
+  .records-modal .pattern-records {
+    padding: 0 16px 20px;
+  }
+  .calendar-summary-modal .selected-day-card {
+    padding: 16px;
+  }
+  .report-tools .report-panel {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+  .report-tools .report-panel > div + div {
+    border-top: 1px solid var(--ui-border);
+    padding-top: 20px;
+  }
+  .report-tools .report-description {
+    min-height: 0;
+  }
+  .report-tools .report-dates {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+}
+body:has(.dialog-backdrop) {
+  overflow: hidden;
+}

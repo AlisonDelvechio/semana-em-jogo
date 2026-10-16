@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { X } from '@lucide/vue'
-const props = defineProps<{ title: string; busy?: boolean }>()
+const props = withDefaults(
+  defineProps<{ title: string; busy?: boolean; titleId?: string; closeLabel?: string }>(),
+  { titleId: 'goal-editor-title', closeLabel: 'Fechar edição da meta' },
+)
 const emit = defineEmits<{ close: [] }>()
 const root = ref<HTMLElement | null>(null)
 const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null
@@ -48,19 +51,19 @@ onUnmounted(() => {
       class="goal-editor-dialog"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="goal-editor-title"
+      :aria-labelledby="titleId"
       @keydown="onKey"
     >
       <header class="goal-editor-header">
         <div>
           <span class="eyebrow">SEU PLANO</span>
-          <h2 id="goal-editor-title">{{ title }}</h2>
+          <h2 :id="titleId">{{ title }}</h2>
         </div>
         <button
           type="button"
           class="dialog-close"
           :disabled="busy"
-          aria-label="Fechar edição da meta"
+          :aria-label="closeLabel"
           @click="close"
         >
           <X :size="22" />
