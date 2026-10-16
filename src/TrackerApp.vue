@@ -39,10 +39,12 @@ import {
   addDays,
   checklistOptionsForDate,
   fullWeekdays,
+  freeMealUsage,
   localKey,
   mondayOf,
   goalForDate,
   isGoalDone,
+  isMealAllowed,
   mealOptionsForDate,
   scheduledFor,
   weekDays,
@@ -141,6 +143,7 @@ const fresh = (): GoalInput => ({
   scheduled_weekdays: [],
   goal_mode: 'fixed',
   weekly_target: 3,
+  free_meals_per_week: 2,
   start_date: null,
   duration_days: null,
   points: 10,
@@ -234,6 +237,18 @@ const planned = (date: Date) =>
 const activeThisWeek = computed(
   () => new Set(days.value.flatMap((date) => planned(date).map((goal) => goal.id))).size,
 )
+const weeklyFoodAllowances = computed(() => {
+  const versions = new Map<string, Goal>()
+  days.value.forEach((date) =>
+    planned(date).forEach((goal) => {
+      if (goal.category === 'alimentacao') versions.set(goal.id, goal)
+    }),
+  )
+  return [...versions.values()].map((goal) => ({
+    goal,
+    ...freeMealUsage(goal, localKey(monday.value), dayDetails.value),
+  }))
+})
 const isDone = (goal: Goal, date: Date) =>
   isGoalDone(goal, localKey(date), completions.value, dayDetails.value)
 const daySummary = (date: Date) => {
@@ -344,8 +359,7 @@ const mealCount = (goal: Goal, date: Date) => {
         : 0,
     total: options.length,
     adherent: detail?.adherence_recorded
-      ? options.filter(({ id }) => detail.meals[id]?.checked && detail.meals[id]?.adherent === true)
-          .length
+      ? options.filter(({ id }) => isMealAllowed(goal, localKey(date), id, dayDetails.value)).length
       : null,
   }
 }
@@ -522,6 +536,29 @@ function openDay(date: Date) {
     }),
   )
 }
+function detailsWithDraft(goal: Goal): GoalDayDetail[] {
+  if (!selectedDay.value || !dayDrafts.value[goal.id]) return dayDetails.value
+  const day = localKey(selectedDay.value)
+  const draft = dayDrafts.value[goal.id]!
+  return [
+    ...dayDetails.value.filter((detail) => detail.goal_id !== goal.id || detail.local_date !== day),
+    {
+      goal_id: goal.id,
+      user_id: goal.user_id,
+      local_date: day,
+      meals: draft.items,
+      meal_options: draft.options,
+      adherence_recorded: draft.trackAdherence,
+      note: draft.note,
+    },
+  ]
+}
+const draftFreeUsage = (goal: Goal) =>
+  freeMealUsage(goal, localKey(selectedDay.value!), detailsWithDraft(goal))
+const draftFreeExceeded = (goal: Goal, id: string) =>
+  dayDrafts.value[goal.id]?.items[id]?.checked &&
+  dayDrafts.value[goal.id]?.items[id]?.adherent === 'free' &&
+  !isMealAllowed(goal, localKey(selectedDay.value!), id, detailsWithDraft(goal))
 watch(selectedDay, async (date) => {
   await nextTick()
   if (date) {
@@ -540,7 +577,7 @@ function keepModalFocus(event: KeyboardEvent, root: HTMLElement | null) {
   if (event.key !== 'Tab' || !root) return
   const controls = [
     ...root.querySelectorAll<HTMLElement>(
-      'button:not(:disabled), input:not(:disabled), textarea:not(:disabled)',
+      'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled)',
     ),
   ]
   const first = controls[0],
@@ -673,6 +710,8 @@ async function save() {
   const input = {
     ...form.value,
     title: form.value.title.trim(),
+    free_meals_per_week:
+      form.value.category === 'alimentacao' ? (form.value.free_meals_per_week ?? 0) : 0,
     goal_mode: form.value.category === 'alimentacao' ? ('fixed' as const) : form.value.goal_mode,
     scheduled_weekdays:
       form.value.goal_mode === 'weekly' && form.value.category !== 'alimentacao'
@@ -681,6 +720,9 @@ async function save() {
   }
   if (
     !input.title ||
+    !Number.isInteger(input.free_meals_per_week) ||
+    input.free_meals_per_week < 0 ||
+    input.free_meals_per_week > 84 ||
     !input.scheduled_weekdays.length ||
     !Number.isInteger(input.weekly_target) ||
     input.weekly_target < 1 ||
@@ -732,6 +774,7 @@ function edit(goal: Goal) {
     scheduled_weekdays: [...goal.scheduled_weekdays],
     goal_mode: goal.goal_mode || 'fixed',
     weekly_target: goal.weekly_target || 3,
+    free_meals_per_week: goal.free_meals_per_week ?? 0,
     start_date: goal.start_date || null,
     duration_days: goal.duration_days || null,
     points: goal.points,
@@ -780,6 +823,7 @@ async function pause(goal: Goal) {
       scheduled_weekdays: goal.scheduled_weekdays,
       goal_mode: goal.goal_mode || 'fixed',
       weekly_target: goal.weekly_target || 1,
+      free_meals_per_week: goal.free_meals_per_week ?? 0,
       start_date: goal.start_date || null,
       duration_days: goal.duration_days || null,
       points: goal.points,
@@ -1012,6 +1056,28 @@ onUnmounted(() => {
             <button v-if="!current" class="today-link" @click="monday = mondayOf(new Date())">
               Voltar para esta semana
             </button>
+            <div
+              v-if="weeklyFoodAllowances.length"
+              class="free-meal-overview"
+              aria-label="Refeições livres da semana"
+            >
+              <div
+                v-for="allowance in weeklyFoodAllowances"
+                :key="allowance.goal.id"
+                class="free-meal-summary"
+              >
+                <Utensils :size="17" aria-hidden="true" />
+                <span
+                  ><strong>{{ allowance.goal.title }}</strong> · Refeições livres usadas:
+                  {{ allowance.used }} de {{ allowance.limit }} permitidas
+                  <small>{{
+                    allowance.excess
+                      ? `${allowance.excess} além do limite. Confira os registros dos dias.`
+                      : 'Opcionais · de segunda a domingo.'
+                  }}</small>
+                </span>
+              </div>
+            </div>
             <div v-if="!days.some((date) => planned(date).length)" class="empty-state">
               <Sparkles :size="32" aria-hidden="true" />
               <h3>Nenhuma meta nesta semana</h3>
@@ -1058,7 +1124,7 @@ onUnmounted(() => {
                       }}<small
                         >{{
                           goal.category === 'alimentacao'
-                            ? `${mealCount(goal, date).checked}/${mealCount(goal, date).total} registradas${mealCount(goal, date).adherent === null ? '' : ` · ${mealCount(goal, date).adherent} no plano`}`
+                            ? `${mealCount(goal, date).checked}/${mealCount(goal, date).total} registradas${mealCount(goal, date).adherent === null ? '' : ` · ${mealCount(goal, date).adherent} válidas`}`
                             : goal.goal_mode === 'weekly'
                               ? `${Math.min(weeklyCount(goal, date)?.completed || 0, weeklyCount(goal, date)?.target || 1)}/${weeklyCount(goal, date)?.target || 1} idas na semana`
                               : checklistCount(goal, date).total
@@ -1185,6 +1251,24 @@ onUnmounted(() => {
                     step="1"
                     required
                 /></label>
+              </div>
+              <div v-if="form.category === 'alimentacao'" class="free-meal-settings">
+                <label
+                  >Refeições livres permitidas por semana
+                  <input
+                    v-model.number="form.free_meals_per_week"
+                    type="number"
+                    min="0"
+                    max="84"
+                    step="1"
+                    required
+                    aria-describedby="free-meal-help"
+                  />
+                </label>
+                <p id="free-meal-help">
+                  São opcionais. Seguir a dieta em todas as refeições também conclui a meta. Use 0
+                  para não permitir refeições livres. A semana vai de segunda a domingo.
+                </p>
               </div>
               <fieldset>
                 <legend>Período da meta</legend>
@@ -1429,6 +1513,9 @@ onUnmounted(() => {
                         ? ` · ${goal.duration_days} dias desde ${new Date(`${goal.start_date}T12:00:00`).toLocaleDateString('pt-BR')}`
                         : ''
                     }}</span
+                  ><small v-if="goal.category === 'alimentacao'"
+                    >Até {{ goal.free_meals_per_week ?? 0 }} refeições livres por semana ·
+                    opcionais</small
                   ><small v-if="!goal.active">Pausada</small>
                 </div>
                 <div class="goal-actions">
@@ -1612,10 +1699,24 @@ onUnmounted(() => {
               <p class="meal-hint">
                 {{
                   goal.category === 'alimentacao'
-                    ? 'Registre o que comeu e indique se seguiu o plano. Só refeições dentro do plano concluem a meta alimentar.'
+                    ? 'Registre cada refeição. Seguir o plano ou usar uma refeição livre dentro do limite conta para concluir o dia.'
                     : 'Marque todos os itens para concluir esta meta do dia.'
                 }}
               </p>
+              <div v-if="goal.category === 'alimentacao'" class="free-meal-summary" role="status">
+                <span
+                  >Refeições livres usadas nesta semana:
+                  <strong
+                    >{{ draftFreeUsage(goal).used }} de
+                    {{ draftFreeUsage(goal).limit }} permitidas</strong
+                  >
+                  <small>{{
+                    draftFreeUsage(goal).excess
+                      ? `${draftFreeUsage(goal).excess} além do limite. As excedentes não contam para concluir a meta.`
+                      : 'Você pode seguir a dieta sem usar nenhuma. O contador inclui as alterações deste dia.'
+                  }}</small>
+                </span>
+              </div>
               <div
                 v-for="(option, index) in dayDrafts[goal.id]!.options"
                 :key="option.id"
@@ -1636,8 +1737,12 @@ onUnmounted(() => {
                   >
                     <option :value="null">Não informada</option>
                     <option :value="true">Segui o plano</option>
-                    <option :value="false">Fora do plano / refeição livre</option>
+                    <option value="free">Refeição livre</option>
+                    <option :value="false">Fora do plano</option>
                   </select>
+                  <small v-if="draftFreeExceeded(goal, option.id)" class="free-meal-warning"
+                    >Esta refeição excede o limite semanal e não conta para a meta.</small
+                  >
                 </label>
                 <textarea
                   v-model="dayDrafts[goal.id]!.items[option.id]!.description"
@@ -1702,7 +1807,7 @@ onUnmounted(() => {
               Registro antigo sem avaliação de aderência. Classifique as refeições para atualizar
               este dia.
             </p>
-            <label v-else class="meal-check completion-check"
+            <label v-if="goal.category !== 'alimentacao'" class="meal-check completion-check"
               ><input v-model="dayDrafts[goal.id]!.completed" type="checkbox" />{{
                 goal.goal_mode === 'weekly' ? 'Fiz esta atividade hoje' : 'Meta concluída'
               }}</label

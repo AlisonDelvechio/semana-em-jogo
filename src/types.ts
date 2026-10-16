@@ -8,6 +8,7 @@ export interface Goal {
   scheduled_weekdays: number[]
   goal_mode?: GoalMode
   weekly_target?: number
+  free_meals_per_week?: number
   start_date?: string | null
   duration_days?: number | null
   points: number
@@ -36,9 +37,10 @@ export const defaultMealOptions: MealOption[] = [
   { id: 'jantar', label: 'Jantar' },
 ]
 export const legacyMealOptions = defaultMealOptions.filter(({ id }) => id !== 'cafe')
+export type MealAdherence = boolean | 'free' | null
 export type MealEntries = Record<
   string,
-  { checked: boolean; description: string; adherent?: boolean | null }
+  { checked: boolean; description: string; adherent?: MealAdherence }
 >
 export interface GoalDayDetail {
   goal_id: string
@@ -60,6 +62,7 @@ export interface GoalHistory {
   scheduled_weekdays: number[]
   goal_mode?: GoalMode
   weekly_target?: number
+  free_meals_per_week?: number
   start_date?: string | null
   duration_days?: number | null
   points: number
@@ -79,6 +82,7 @@ export type GoalInput = Pick<
   | 'meal_options'
   | 'meal_options_by_weekday'
 > & {
+  free_meals_per_week?: number
   goal_mode: GoalMode
   weekly_target: number
   start_date: string | null

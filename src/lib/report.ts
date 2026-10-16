@@ -5,6 +5,7 @@ import {
   fullWeekdays,
   goalForDate,
   isGoalDone,
+  isMealAllowed,
   localKey,
   mealOptionsForDate,
   mondayOf,
@@ -140,9 +141,13 @@ export function createGoalReport(
             food && detail?.adherence_recorded && itemEntries?.[option.id]?.checked
               ? itemEntries[option.id]?.adherent === true
                 ? 'Sim'
-                : itemEntries[option.id]?.adherent === false
-                  ? 'Não'
-                  : 'Não informado'
+                : itemEntries[option.id]?.adherent === 'free'
+                  ? isMealAllowed(version, day, option.id, dayDetails)
+                    ? 'Refeição livre (permitida)'
+                    : 'Refeição livre (limite excedido)'
+                  : itemEntries[option.id]?.adherent === false
+                    ? 'Não'
+                    : 'Não informado'
               : 'Não informado',
             itemEntries?.[option.id]?.description || '',
             detail?.note || '',
@@ -173,6 +178,9 @@ export function createGoalReport(
       ])
     if (rows.length === firstRow) continue
     const inRange = (day: string) => (!range.from || day >= range.from) && day <= end
+    // A range can start midweek. Keep the earlier meal records in the technical
+    // backup so restoring it preserves how much of that week's allowance was used.
+    const contextStart = range.from ? localKey(mondayOf(new Date(`${range.from}T12:00:00`))) : null
     const backup: BackupRecord = {
       version: 1,
       goal,
@@ -181,7 +189,13 @@ export function createGoalReport(
         (entry) => entry.goal_id === goal.id && inRange(entry.local_date),
       ),
       dayDetails: dayDetails.filter(
-        (entry) => entry.goal_id === goal.id && inRange(entry.local_date),
+        (entry) =>
+          entry.goal_id === goal.id &&
+          (inRange(entry.local_date) ||
+            (goal.category === 'alimentacao' &&
+              contextStart &&
+              entry.local_date >= contextStart &&
+              entry.local_date < range.from!)),
       ),
     }
     rows[firstRow]![13] = JSON.stringify(backup)
