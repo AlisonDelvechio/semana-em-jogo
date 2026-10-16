@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import TrackerApp from './TrackerApp.vue'
-import { createGoal, loadData } from './lib/data'
+import { createGoal, loadData, setCompleted } from './lib/data'
+import { localKey } from './lib/dates'
 import { goalForDate, isGoalDone } from './lib/dates'
 
 beforeEach(() => {
@@ -253,6 +254,44 @@ it('creates a goal through the mobile dialog and cancels with Escape', async () 
     expect(wrapper.find('.goal-editor-dialog').exists()).toBe(false)
     expect((await loadData()).goals).toHaveLength(0)
     expect(document.body.style.overflow).toBe('')
+  } finally {
+    wrapper.unmount()
+  }
+})
+
+it('labels completed tasks explicitly and preserves the weekly frequency controls', async () => {
+  const goal = await createGoal({
+    title: 'Treinar',
+    category: 'treino',
+    scheduled_weekdays: [0, 1, 2, 3, 4, 5, 6],
+    goal_mode: 'weekly',
+    weekly_target: 3,
+    points: 10,
+    active: true,
+    meal_options: [],
+    meal_options_by_weekday: {},
+    checklist_options: [],
+    checklist_options_by_weekday: {},
+    start_date: null,
+    duration_days: null,
+  })
+  await setCompleted(goal.id, localKey(new Date()), true)
+  const wrapper = mount(TrackerApp, { attachTo: document.body })
+  try {
+    await flushPromises()
+    expect(wrapper.get('.task.done .task-state').text()).toBe('Concluída')
+    expect(wrapper.get('.task.done').attributes('aria-label')).toContain('Concluída')
+    await wrapper.findAll('.mobile-nav button')[2]!.trigger('click')
+    await wrapper.get('[aria-label="Editar Treinar"]').trigger('click')
+    const select = wrapper.get('.goal-basics-row .select-control select')
+    expect(select.element.tagName).toBe('SELECT')
+    expect(wrapper.get('.select-chevron').attributes('aria-hidden')).toBe('true')
+    await wrapper.get('[aria-label="Aumentar frequência semanal"]').trigger('click')
+    expect((wrapper.get('#weekly-target').element as HTMLInputElement).value).toBe('4')
+    await wrapper.get('.goal-form').trigger('submit')
+    await wrapper.get('.confirmation-actions .primary-button').trigger('click')
+    await flushPromises()
+    expect((await loadData()).goals[0]?.weekly_target).toBe(4)
   } finally {
     wrapper.unmount()
   }

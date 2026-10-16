@@ -1,4 +1,5 @@
 import './assets/main.scss'
+import './assets/identity.scss'
 
 import { createApp } from 'vue'
 import App from './TrackerApp.vue'
