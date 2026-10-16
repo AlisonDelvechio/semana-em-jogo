@@ -214,3 +214,28 @@ describe('CSV de restauração', () => {
     )
   })
 })
+
+it('imports both the previous CSV with points columns and the current CSV without them', () => {
+  const goal: Goal = {
+    id: 'b8620e36-e80a-43e3-bb57-4bd7e3d97741',
+    user_id: 'u',
+    title: 'Teste',
+    category: 'outro',
+    scheduled_weekdays: [1],
+    active: false,
+    points: 25,
+    meal_options: defaultMealOptions,
+    meal_options_by_weekday: {},
+    created_at: '2026-10-01T12:00:00Z',
+  }
+  const current = createGoalReport([goal], [], [], [], new Date(2026, 9, 16))
+  const backup = { version: 1, goal, history: [], completions: [], dayDetails: [] }
+  const cell = '"' + JSON.stringify(backup).replaceAll('"', '""') + '"'
+  const old =
+    '"Data";"Dia da semana";"Meta";"Categoria";"Prevista";"Concluída";"Pontos da meta";"Pontos ganhos";"Item do checklist";"Item marcado";"Seguiu o plano";"Descrição";"Observação do dia";"Dados para restauração"\r\n' +
+    Array(13).fill('""').concat(cell).join(';') +
+    '\r\n'
+  expect(current.split('\r\n')[0]).not.toContain('Pontos')
+  expect(parseGoalBackup(current)[0]?.goal.points).toBe(25)
+  expect(parseGoalBackup(old)[0]?.goal.points).toBe(25)
+})

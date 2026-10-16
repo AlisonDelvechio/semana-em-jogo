@@ -30,19 +30,17 @@ const visit = (date: string): Completion => ({
 
 describe('flexible weekly frequency', () => {
   const monday = new Date(2026, 8, 21)
-  it('counts any three different dates, caps progress and grants points only once', () => {
+  it('counts any three different dates and caps progress', () => {
     expect(weekStats([goal], [visit('2026-09-21')], monday)).toMatchObject({
       total: 3,
       completed: 1,
       percent: 33,
-      points: 0,
     })
     const visits = ['2026-09-21', '2026-09-24', '2026-09-26', '2026-09-27'].map(visit)
     expect(weekStats([goal], visits, monday)).toMatchObject({
       total: 3,
       completed: 3,
       percent: 100,
-      points: 30,
     })
     expect(weekPace([goal], visits, monday, new Date(2026, 8, 24))).toMatchObject({
       total: 3,
@@ -64,12 +62,10 @@ describe('flexible weekly frequency', () => {
     expect(weekStats([goal], [visit('2026-09-21')], monday, history)).toMatchObject({
       total: 2,
       completed: 1,
-      points: 30,
     })
     expect(weekStats([goal], [visit('2026-09-28')], new Date(2026, 8, 28), history)).toMatchObject({
       total: 3,
       completed: 1,
-      points: 0,
     })
   })
 
@@ -81,7 +77,6 @@ describe('flexible weekly frequency', () => {
     ).toMatchObject({
       total: 3,
       completed: 3,
-      points: 30,
     })
   })
 
@@ -93,15 +88,18 @@ describe('flexible weekly frequency', () => {
     expect(month.dueTotal).toBe(9)
   })
 
-  it('exports weekly points only on the third visit, even with more visits', () => {
+  it('exports visits without points columns', () => {
     const csv = createGoalReport(
       [goal],
       [visit('2026-09-21'), visit('2026-09-24'), visit('2026-09-26'), visit('2026-09-27')],
       [],
       [],
       new Date(2026, 8, 27),
+      { from: '2026-09-21', to: '2026-09-27' },
     )
     const rows = csv.split('\r\n').filter((row) => row.includes('"Academia"'))
-    expect(rows.filter((row) => row.includes(';"30";"30";'))).toHaveLength(1)
+    expect(rows).toHaveLength(7)
+    expect(rows.filter((row) => row.includes(';"Sim";"Sim";'))).toHaveLength(4)
+    expect(csv.split('\r\n')[0]).not.toContain('Pontos')
   })
 })

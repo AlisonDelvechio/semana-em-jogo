@@ -58,12 +58,12 @@ button {
   border-color: #e7b3a9;
   color: #8a3026;
 }
-:global(html[data-theme='dark']) .app-notice {
+:global(html[data-theme='dark'] .app-notice) {
   background: #253f2c;
   border-color: #628065;
   color: #e0f1db;
 }
-:global(html[data-theme='dark']) .is-error {
+:global(html[data-theme='dark'] .is-error) {
   background: #4c2925;
   border-color: #b37a71;
   color: #ffe1db;

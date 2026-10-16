@@ -74,7 +74,6 @@ describe('weekly calculations', () => {
       total: 0,
       completed: 0,
       percent: 0,
-      points: 0,
     })
   })
   it('counts only scheduled completions for the selected week', () => {
@@ -96,9 +95,9 @@ describe('weekly calculations', () => {
         [{ id: 'c', user_id: 'u', goal_id: 'g', local_date: '2026-09-21', completed_at: '' }],
         new Date(2026, 8, 21),
       ),
-    ).toEqual({ total: 2, completed: 1, percent: 50, points: 10 })
+    ).toEqual({ total: 2, completed: 1, percent: 50 })
   })
-  it('preserves past schedules and points after editing and pausing a goal', () => {
+  it('preserves past schedules after editing and pausing a goal', () => {
     const goal: Goal = {
       id: 'g',
       user_id: 'u',
@@ -138,13 +137,11 @@ describe('weekly calculations', () => {
       total: 2,
       completed: 1,
       percent: 50,
-      points: 10,
     })
     expect(weekStats([goal], completion, new Date(2026, 8, 28), history)).toEqual({
       total: 0,
       completed: 0,
       percent: 0,
-      points: 0,
     })
   })
   it('selects the version active on each day across successive edits', () => {
@@ -194,7 +191,6 @@ describe('weekly calculations', () => {
       total: 2,
       completed: 2,
       percent: 100,
-      points: 30,
     })
   })
   it('shows 100% through Saturday while Sunday is still upcoming', () => {
@@ -288,7 +284,6 @@ describe('weekly calculations', () => {
       total: 2,
       completed: 1,
       percent: 80,
-      points: 10,
     })
     details[1]!.meals.ceia!.checked = true
     expect(weekStats([goal], [], new Date(2026, 8, 21), [], details).percent).toBe(100)

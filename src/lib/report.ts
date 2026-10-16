@@ -10,7 +10,6 @@ import {
   mealOptionsForDate,
   mondayOf,
   scheduledFor,
-  weeklyEntries,
 } from './dates'
 
 const columns = [
@@ -20,8 +19,6 @@ const columns = [
   'Categoria',
   'Prevista',
   'Concluída',
-  'Pontos da meta',
-  'Pontos ganhos',
   'Item do checklist',
   'Item marcado',
   'Seguiu o plano',
@@ -97,19 +94,6 @@ export function createGoalReport(
       if (!scheduled && !detail && !completedDates.has(`${goal.id}:${day}`)) continue
       recorded = true
       const done = isGoalDone(version, day, completions, dayDetails)
-      const earned =
-        version.goal_mode === 'weekly' && done
-          ? (() => {
-              const monday = mondayOf(date)
-              const count = (through: Date) =>
-                weeklyEntries([goal], completions, monday, history, dayDetails, through)[0]
-              const now = count(date)
-              const before = count(addDays(date, -1))
-              return Boolean(
-                now && now.completed >= now.target && (!before || before.completed < now.target),
-              )
-            })()
-          : scheduled && done
       const common = [
         date.toLocaleDateString('pt-BR'),
         fullWeekdays[date.getDay()]!,
@@ -117,8 +101,6 @@ export function createGoalReport(
         version.category,
         scheduled ? 'Sim' : 'Não',
         done ? 'Sim' : 'Não',
-        version.points,
-        earned ? version.points : 0,
       ]
       const food = version.category === 'alimentacao'
       const options = food
@@ -128,10 +110,9 @@ export function createGoalReport(
           : checklistOptionsForDate(version, date)
       const itemEntries = food ? detail?.meals : detail?.checklist
       if (options.length) {
-        for (const [index, option] of options.entries()) {
+        for (const option of options) {
           rows.push([
-            ...common.slice(0, 7),
-            index === 0 ? common[7]! : 0,
+            ...common,
             option.label,
             itemEntries?.[option.id]?.checked
               ? 'Sim'
@@ -160,22 +141,7 @@ export function createGoalReport(
     }
     // Keep newly created or paused goals visible even when no day is scheduled yet.
     if (!recorded && !range.from && !range.to)
-      rows.push([
-        '',
-        '',
-        goal.title,
-        goal.category,
-        'Não',
-        'Não',
-        goal.points,
-        0,
-        '',
-        '',
-        '',
-        '',
-        '',
-        '',
-      ])
+      rows.push(['', '', goal.title, goal.category, 'Não', 'Não', '', '', '', '', '', ''])
     if (rows.length === firstRow) continue
     const inRange = (day: string) => (!range.from || day >= range.from) && day <= end
     // A range can start midweek. Keep the earlier meal records in the technical
@@ -198,7 +164,7 @@ export function createGoalReport(
               entry.local_date < range.from!)),
       ),
     }
-    rows[firstRow]![13] = JSON.stringify(backup)
+    rows[firstRow]![columns.length - 1] = JSON.stringify(backup)
   }
 
   return `\uFEFF${rows
