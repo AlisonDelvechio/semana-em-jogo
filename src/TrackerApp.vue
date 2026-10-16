@@ -6,6 +6,7 @@ import {
   ArrowUp,
   CalendarDays,
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   CirclePause,
@@ -58,6 +59,7 @@ import { parseGoalBackup } from './lib/backup'
 import { createGoalReport, type BackupRecord, type ReportRange } from './lib/report'
 import MonthView from './views/MonthView.vue'
 import FormDialog from './components/FormDialog.vue'
+import NumberStepper from './components/NumberStepper.vue'
 import ProgressCard from './components/ProgressCard.vue'
 import { monthStats } from './lib/month'
 import ConfirmDialog from './components/ConfirmDialog.vue'
@@ -1015,7 +1017,7 @@ onUnmounted(() => {
             title="Sair da conta"
             @click="supabase?.auth.signOut()"
           >
-            <LogOut :size="16" />
+            <LogOut :size="18" />
           </button>
         </div>
       </div>
@@ -1212,10 +1214,10 @@ onUnmounted(() => {
                     v-for="goal in planned(date)"
                     :key="goal.id"
                     :class="['task', goal.category, { done: isDone(goal, date) }]"
-                    :aria-label="`Detalhar ${goal.title} em ${date.toLocaleDateString('pt-BR')}`"
+                    :aria-label="`${goal.title}: ${isDone(goal, date) ? 'Concluída' : 'Pendente'}. Detalhar em ${date.toLocaleDateString('pt-BR')}`"
                     @click="openDay(date)"
                   >
-                    <span class="check-visual" aria-hidden="true"><Check :size="16" /></span
+                    <span class="check-visual" aria-hidden="true"><Check :size="18" /></span
                     ><span class="task-title"
                       >{{ goal.title
                       }}<small
@@ -1230,6 +1232,7 @@ onUnmounted(() => {
                         }}
                       </small></span
                     >
+                    <span v-if="isDone(goal, date)" class="task-state">Concluída</span>
                   </button>
                 </div>
                 <p v-else class="rest-day">Dia livre para respirar ☀</p>
@@ -1339,11 +1342,13 @@ onUnmounted(() => {
                 </button>
                 <label
                   >Exportar
-                  <select v-model="reportMode">
-                    <option value="all">Tudo desde o início</option>
-                    <option value="month">Um mês</option>
-                    <option value="range">Intervalo de datas</option>
-                  </select>
+                  <span class="select-control"
+                    ><select v-model="reportMode">
+                      <option value="all">Tudo desde o início</option>
+                      <option value="month">Um mês</option>
+                      <option value="range">Intervalo de datas</option></select
+                    ><ChevronDown :size="20" class="select-chevron" aria-hidden="true"
+                  /></span>
                 </label>
                 <label v-if="reportMode === 'month'"
                   >Mês<input v-model="reportMonth" type="month"
@@ -1411,12 +1416,13 @@ onUnmounted(() => {
               placeholder="Ex.: Fazer treino de força"
           /></label>
           <label
-            >Categoria<select v-model="form.category">
-              <option value="treino">Treino</option>
-              <option value="alimentacao">Alimentação</option>
-              <option value="outro">Outro</option>
-            </select></label
-          >
+            >Categoria<span class="select-control"
+              ><select v-model="form.category">
+                <option value="treino">Treino</option>
+                <option value="alimentacao">Alimentação</option>
+                <option value="outro">Outro</option></select
+              ><ChevronDown :size="20" class="select-chevron" aria-hidden="true" /></span
+          ></label>
         </div>
         <div v-if="form.category === 'alimentacao'" class="free-meal-settings">
           <label
@@ -1465,22 +1471,23 @@ onUnmounted(() => {
           <legend>Como contar esta meta?</legend>
           <label
             >Tipo de meta
-            <select :value="form.goal_mode" @change="changeMode">
-              <option value="fixed">Dias fixos</option>
-              <option value="weekly">Frequência semanal (dias livres)</option>
-            </select>
+            <span class="select-control"
+              ><select :value="form.goal_mode" @change="changeMode">
+                <option value="fixed">Dias fixos</option>
+                <option value="weekly">Frequência semanal (dias livres)</option></select
+              ><ChevronDown :size="20" class="select-chevron" aria-hidden="true"
+            /></span>
           </label>
-          <label v-if="form.goal_mode === 'weekly'"
-            >Quantas vezes na semana?
-            <input
-              v-model.number="form.weekly_target"
-              type="number"
-              min="1"
-              max="7"
-              step="1"
-              required
+          <div v-if="form.goal_mode === 'weekly'" class="frequency-field">
+            <label for="weekly-target">Quantas vezes na semana?</label>
+            <NumberStepper
+              v-model="form.weekly_target"
+              input-id="weekly-target"
+              label="frequência semanal"
+              :min="1"
+              :max="7"
             />
-          </label>
+          </div>
           <p v-if="form.goal_mode === 'weekly'">
             Marque os dias em que fez a atividade. A meta é concluída ao atingir a frequência
             semanal.
@@ -1497,28 +1504,29 @@ onUnmounted(() => {
               v-for="(option, index) in form.meal_options"
               :key="option.id"
               class="meal-option-chip"
-              >{{ option.label
-              }}<button
-                type="button"
-                :disabled="index === 0"
-                :aria-label="`Subir ${option.label}`"
-                @click="moveGoalMeal(option.id, -1)"
-              >
-                <ArrowUp :size="18" /></button
-              ><button
-                type="button"
-                :disabled="index === form.meal_options.length - 1"
-                :aria-label="`Descer ${option.label}`"
-                @click="moveGoalMeal(option.id, 1)"
-              >
-                <ArrowDown :size="18" /></button
-              ><button
-                type="button"
-                :aria-label="`Remover ${option.label}`"
-                :disabled="form.meal_options.length === 1"
-                @click="removeGoalMeal(option.id)"
-              >
-                <X :size="18" /></button
+              ><span class="option-item-label">{{ option.label }}</span
+              ><span class="option-item-actions"
+                ><button
+                  type="button"
+                  :disabled="index === 0"
+                  :aria-label="`Subir ${option.label}`"
+                  @click="moveGoalMeal(option.id, -1)"
+                >
+                  <ArrowUp :size="18" /></button
+                ><button
+                  type="button"
+                  :disabled="index === form.meal_options.length - 1"
+                  :aria-label="`Descer ${option.label}`"
+                  @click="moveGoalMeal(option.id, 1)"
+                >
+                  <ArrowDown :size="18" /></button
+                ><button
+                  type="button"
+                  :aria-label="`Remover ${option.label}`"
+                  :disabled="form.meal_options.length === 1"
+                  @click="removeGoalMeal(option.id)"
+                >
+                  <X :size="18" /></button></span
             ></span>
           </div>
           <div class="meal-add">
@@ -1530,7 +1538,7 @@ onUnmounted(() => {
               aria-label="Nova refeição da meta"
               @keydown.enter.prevent="addGoalMeal"
             /><button type="button" class="small-button" @click="addGoalMeal">
-              <Plus :size="16" /> Adicionar
+              <Plus :size="18" /> Adicionar
             </button>
           </div>
         </fieldset>
@@ -1542,27 +1550,28 @@ onUnmounted(() => {
               v-for="(option, index) in form.checklist_options"
               :key="option.id"
               class="meal-option-chip"
-              >{{ option.label
-              }}<button
-                type="button"
-                :disabled="index === 0"
-                :aria-label="`Subir ${option.label}`"
-                @click="moveGoalChecklist(option.id, -1)"
-              >
-                <ArrowUp :size="18" /></button
-              ><button
-                type="button"
-                :disabled="index === form.checklist_options.length - 1"
-                :aria-label="`Descer ${option.label}`"
-                @click="moveGoalChecklist(option.id, 1)"
-              >
-                <ArrowDown :size="18" /></button
-              ><button
-                type="button"
-                :aria-label="`Remover ${option.label}`"
-                @click="removeGoalChecklist(option.id)"
-              >
-                <X :size="18" /></button
+              ><span class="option-item-label">{{ option.label }}</span
+              ><span class="option-item-actions"
+                ><button
+                  type="button"
+                  :disabled="index === 0"
+                  :aria-label="`Subir ${option.label}`"
+                  @click="moveGoalChecklist(option.id, -1)"
+                >
+                  <ArrowUp :size="18" /></button
+                ><button
+                  type="button"
+                  :disabled="index === form.checklist_options.length - 1"
+                  :aria-label="`Descer ${option.label}`"
+                  @click="moveGoalChecklist(option.id, 1)"
+                >
+                  <ArrowDown :size="18" /></button
+                ><button
+                  type="button"
+                  :aria-label="`Remover ${option.label}`"
+                  @click="removeGoalChecklist(option.id)"
+                >
+                  <X :size="18" /></button></span
             ></span>
           </div>
           <div class="meal-add">
@@ -1574,7 +1583,7 @@ onUnmounted(() => {
               aria-label="Novo item do checklist"
               @keydown.enter.prevent="addGoalChecklist"
             /><button type="button" class="small-button" @click="addGoalChecklist">
-              <Plus :size="16" /> Adicionar
+              <Plus :size="18" /> Adicionar
             </button>
           </div>
         </fieldset>
@@ -1695,14 +1704,14 @@ onUnmounted(() => {
                 :aria-label="`Subir ${option.label}`"
                 @click="moveWeekdayMeal(option.id, -1)"
               >
-                <ArrowUp :size="16" /></button
+                <ArrowUp :size="18" /></button
               ><button
                 type="button"
                 :disabled="index === weekdayDraft.length - 1"
                 :aria-label="`Descer ${option.label}`"
                 @click="moveWeekdayMeal(option.id, 1)"
               >
-                <ArrowDown :size="16" />
+                <ArrowDown :size="18" />
               </button>
             </div>
             <button
@@ -1712,7 +1721,7 @@ onUnmounted(() => {
               :aria-label="`Remover ${option.label}`"
               @click="removeWeekdayMeal(option.id)"
             >
-              <X :size="16" />
+              <X :size="18" />
             </button>
           </li>
         </ol>
@@ -1725,7 +1734,7 @@ onUnmounted(() => {
             aria-label="Novo item neste dia da semana"
             @keydown.enter.prevent="addWeekdayMeal"
           /><button type="button" class="small-button" @click="addWeekdayMeal">
-            <Plus :size="16" /> Adicionar
+            <Plus :size="18" /> Adicionar
           </button>
         </div>
         <p v-if="weekdayModalError" class="notice" role="alert">{{ weekdayModalError }}</p>
@@ -1891,16 +1900,18 @@ onUnmounted(() => {
                 >
                 <label v-if="goal.category === 'alimentacao'" class="meal-adherence"
                   >Aderência ao plano
-                  <select
-                    v-model="dayDrafts[goal.id]!.items[option.id]!.adherent"
-                    :disabled="!dayDrafts[goal.id]!.items[option.id]!.checked"
-                    @change="dayDrafts[goal.id]!.trackAdherence = true"
-                  >
-                    <option :value="null">Não informada</option>
-                    <option :value="true">Segui o plano</option>
-                    <option value="free">Refeição livre</option>
-                    <option :value="false">Fora do plano</option>
-                  </select>
+                  <span class="select-control"
+                    ><select
+                      v-model="dayDrafts[goal.id]!.items[option.id]!.adherent"
+                      :disabled="!dayDrafts[goal.id]!.items[option.id]!.checked"
+                      @change="dayDrafts[goal.id]!.trackAdherence = true"
+                    >
+                      <option :value="null">Não informada</option>
+                      <option :value="true">Segui o plano</option>
+                      <option value="free">Refeição livre</option>
+                      <option :value="false">Fora do plano</option></select
+                    ><ChevronDown :size="20" class="select-chevron" aria-hidden="true"
+                  /></span>
                   <small v-if="draftFreeExceeded(goal, option.id)" class="free-meal-warning"
                     >Esta refeição excede o limite semanal e não conta para a meta.</small
                   >
@@ -1957,7 +1968,7 @@ onUnmounted(() => {
                     )
                   "
                 >
-                  <X :size="16" />
+                  <X :size="18" />
                 </button>
               </div>
             </template>
@@ -1986,7 +1997,7 @@ onUnmounted(() => {
                 :aria-label="`Novo item de ${goal.title} neste dia`"
                 @keydown.enter.prevent="addDayMeal(goal.id)"
               /><button type="button" class="small-button" @click="addDayMeal(goal.id)">
-                <Plus :size="16" /> Adicionar
+                <Plus :size="18" /> Adicionar
               </button>
             </div>
             <p v-if="goal.category === 'alimentacao'" class="meal-hint meal-progress" role="status">

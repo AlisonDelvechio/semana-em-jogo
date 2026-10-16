@@ -123,35 +123,42 @@ function daySummary(date: Date) {
         </button>
       </div>
     </div>
-    <div class="calendar-grid">
-      <div v-for="weekday in [1, 2, 3, 4, 5, 6, 0]" :key="weekday" class="calendar-weekday">
-        {{ weekdays[weekday] }}
+    <div
+      class="calendar-grid-scroll"
+      tabindex="0"
+      role="region"
+      aria-label="Dias do mês; deslize horizontalmente se necessário"
+    >
+      <div class="calendar-grid">
+        <div v-for="weekday in [1, 2, 3, 4, 5, 6, 0]" :key="weekday" class="calendar-weekday">
+          {{ weekdays[weekday] }}
+        </div>
+        <button
+          v-for="date in monthDays"
+          :key="localKey(date)"
+          type="button"
+          class="calendar-day"
+          :class="{
+            'outside-month': date.getMonth() !== monthDate.getMonth(),
+            'is-today': localKey(date) === localKey(new Date()),
+            'has-goals': daySummary(date).total > 0,
+          }"
+          :aria-label="`${date.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}: ${daySummary(date).completed} de ${daySummary(date).total} metas concluídas. Abrir registro`"
+          @click="emit('openDay', date)"
+        >
+          <span class="calendar-date">{{ date.getDate() }}</span>
+          <span v-if="daySummary(date).total" class="calendar-day-content">
+            <span class="calendar-count"
+              >{{ daySummary(date).completed }}/{{ daySummary(date).total }}</span
+            >
+            <span class="calendar-progress"
+              ><span :style="{ width: `${daySummary(date).percent}%` }"></span
+            ></span>
+            <small>{{ daySummary(date).total === 1 ? 'meta' : 'metas' }}</small>
+          </span>
+          <span v-else class="calendar-free">Livre</span>
+        </button>
       </div>
-      <button
-        v-for="date in monthDays"
-        :key="localKey(date)"
-        type="button"
-        class="calendar-day"
-        :class="{
-          'outside-month': date.getMonth() !== monthDate.getMonth(),
-          'is-today': localKey(date) === localKey(new Date()),
-          'has-goals': daySummary(date).total > 0,
-        }"
-        :aria-label="`${date.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}: ${daySummary(date).completed} de ${daySummary(date).total} metas concluídas. Abrir registro`"
-        @click="emit('openDay', date)"
-      >
-        <span class="calendar-date">{{ date.getDate() }}</span>
-        <span v-if="daySummary(date).total" class="calendar-day-content">
-          <span class="calendar-count"
-            >{{ daySummary(date).completed }}/{{ daySummary(date).total }}</span
-          >
-          <span class="calendar-progress"
-            ><span :style="{ width: `${daySummary(date).percent}%` }"></span
-          ></span>
-          <small>{{ daySummary(date).total === 1 ? 'meta' : 'metas' }}</small>
-        </span>
-        <span v-else class="calendar-free">Livre</span>
-      </button>
     </div>
   </section>
 </template>

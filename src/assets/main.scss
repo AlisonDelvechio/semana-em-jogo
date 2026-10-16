@@ -1,7 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
 
 :root {
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Inter', sans-serif;
   color: #26342e;
   background: #f8f7f3;
   font-synthesis: none;
@@ -43,7 +43,7 @@ h2,
 h3,
 .brand,
 .stat-number {
-  font-family: Outfit, sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
 }
 h1 {
   font-size: clamp(2.25rem, 4vw, 3.55rem);
@@ -339,7 +339,7 @@ p {
   margin: 18px 0 14px;
 }
 .progress-main strong {
-  font: 700 3.4rem Outfit;
+  font: 700 3.4rem 'Plus Jakarta Sans';
   letter-spacing: -0.06em;
   line-height: 1;
 }
@@ -400,7 +400,7 @@ p {
 .month-overview strong {
   display: block;
   font:
-    700 2.2rem Outfit,
+    700 2.2rem 'Plus Jakarta Sans',
     sans-serif;
   letter-spacing: -0.05em;
   line-height: 1.15;
@@ -512,7 +512,7 @@ p {
 }
 .calendar-date {
   font:
-    700 0.92rem Outfit,
+    700 0.92rem 'Plus Jakarta Sans',
     sans-serif;
   border-radius: 7px;
 }
@@ -615,7 +615,7 @@ p {
   margin-bottom: 5px;
 }
 .day-open strong {
-  font: 600 1.4rem Outfit;
+  font: 600 1.4rem 'Plus Jakarta Sans';
 }
 .day-heading small {
   font-size: 0.8rem;
@@ -1283,7 +1283,7 @@ html[data-theme='dark'] .free-meal-warning {
   gap: 12px;
 }
 .goal-list h2 span {
-  font: 700 0.8rem 'DM Sans';
+  font: 700 0.8rem 'Inter';
   background: #edf3e9;
   color: #699065;
   border-radius: 20px;
@@ -2278,7 +2278,7 @@ html[data-theme='dark'] .featured .progress-main span {
 .period-progress-value {
   display: block;
   font:
-    600 2.7rem/1 Outfit,
+    600 2.7rem/1 'Plus Jakarta Sans',
     sans-serif;
   letter-spacing: -0.04em;
   color: #3b613a;
