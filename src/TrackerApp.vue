@@ -1032,7 +1032,7 @@ onUnmounted(() => {
         :aria-current="tab === 'week' ? 'page' : undefined"
         @click="tab = 'week'"
       >
-        <CalendarDays :size="19" /> <span>Semana</span></button
+        <ClipboardList :size="20" aria-hidden="true" /> <span>Semana</span></button
       ><button
         type="button"
         :class="{ selected: tab === 'month' }"
@@ -1090,7 +1090,7 @@ onUnmounted(() => {
       <aside class="sidebar">
         <span class="eyebrow">MEU ESPAÇO</span
         ><button :class="['nav-button', { selected: tab === 'week' }]" @click="tab = 'week'">
-          <CalendarDays :size="18" aria-hidden="true" /> Minha semana</button
+          <ClipboardList :size="20" aria-hidden="true" /> Minha semana</button
         ><button :class="['nav-button', { selected: tab === 'month' }]" @click="tab = 'month'">
           <CalendarDays :size="18" aria-hidden="true" /> Calendário</button
         ><button :class="['nav-button', { selected: tab === 'goals' }]" @click="tab = 'goals'">
@@ -1215,7 +1215,7 @@ onUnmounted(() => {
                     :aria-label="`Detalhar ${goal.title} em ${date.toLocaleDateString('pt-BR')}`"
                     @click="openDay(date)"
                   >
-                    <span class="check-visual" aria-hidden="true"><Check :size="13" /></span
+                    <span class="check-visual" aria-hidden="true"><Check :size="16" /></span
                     ><span class="task-title"
                       >{{ goal.title
                       }}<small
@@ -1239,7 +1239,7 @@ onUnmounted(() => {
                   class="day-edit-action"
                   @click="openDay(date)"
                 >
-                  <Pencil :size="14" /> Editar dia
+                  <Pencil :size="18" aria-hidden="true" /> Editar dia
                 </button>
               </article>
             </div>
@@ -1281,7 +1281,7 @@ onUnmounted(() => {
               <div class="goal-icon" :class="goal.category">
                 <Dumbbell v-if="goal.category === 'treino'" :size="20" />
                 <Utensils v-else-if="goal.category === 'alimentacao'" :size="20" />
-                <Sparkles v-else :size="20" />
+                <ClipboardList v-else :size="22" aria-hidden="true" />
               </div>
               <div class="goal-details">
                 <strong>{{ goal.title }}</strong
@@ -1307,24 +1307,25 @@ onUnmounted(() => {
                   :aria-label="goal.active ? `Pausar ${goal.title}` : `Ativar ${goal.title}`"
                   @click="pause(goal)"
                 >
-                  <CirclePause v-if="goal.active" :size="16" /><CirclePlay
+                  <CirclePause v-if="goal.active" :size="20" aria-hidden="true" /><CirclePlay
                     v-else
-                    :size="16"
-                  /></button
+                    :size="20"
+                    aria-hidden="true"
+                  /><span>{{ goal.active ? 'Pausar' : 'Retomar' }}</span></button
                 ><button :aria-label="`Editar ${goal.title}`" @click="edit(goal)">
-                  <Pencil :size="16" /></button
+                  <Pencil :size="20" aria-hidden="true" /><span>Editar</span></button
                 ><button
                   :disabled="busy"
                   :aria-label="`Excluir ${goal.title}`"
                   @click="remove(goal)"
                 >
-                  <Trash2 :size="16" />
+                  <Trash2 :size="20" aria-hidden="true" /><span>Excluir</span>
                 </button>
               </div>
             </article>
           </section>
-          <details class="report-tools panel">
-            <summary>Relatórios e backup CSV</summary>
+          <section class="report-tools panel" aria-labelledby="report-tools-title">
+            <h2 id="report-tools-title">Relatórios e backup CSV</h2>
             <section class="report-panel" aria-label="Exportar e importar registros">
               <div>
                 <strong>Período do relatório</strong
@@ -1382,7 +1383,7 @@ onUnmounted(() => {
                 {{ reportMessage }}
               </p>
             </section>
-          </details></template
+          </section></template
         >
         <AppNotice
           v-if="message && !selectedDay && editingWeekday === null && !goalEditorOpen"
@@ -1401,14 +1402,14 @@ onUnmounted(() => {
       @close="cancelEdit"
     >
       <form class="goal-form" @submit.prevent="save">
-        <label
-          >O que você quer fazer?<input
-            v-model="form.title"
-            required
-            maxlength="100"
-            placeholder="Ex.: Fazer treino de força"
-        /></label>
-        <div class="form-row">
+        <div class="goal-basics-row">
+          <label
+            >O que você quer fazer?<input
+              v-model="form.title"
+              required
+              maxlength="100"
+              placeholder="Ex.: Fazer treino de força"
+          /></label>
           <label
             >Categoria<select v-model="form.category">
               <option value="treino">Treino</option>
@@ -1503,21 +1504,21 @@ onUnmounted(() => {
                 :aria-label="`Subir ${option.label}`"
                 @click="moveGoalMeal(option.id, -1)"
               >
-                <ArrowUp :size="14" /></button
+                <ArrowUp :size="18" /></button
               ><button
                 type="button"
                 :disabled="index === form.meal_options.length - 1"
                 :aria-label="`Descer ${option.label}`"
                 @click="moveGoalMeal(option.id, 1)"
               >
-                <ArrowDown :size="14" /></button
+                <ArrowDown :size="18" /></button
               ><button
                 type="button"
                 :aria-label="`Remover ${option.label}`"
                 :disabled="form.meal_options.length === 1"
                 @click="removeGoalMeal(option.id)"
               >
-                <X :size="14" /></button
+                <X :size="18" /></button
             ></span>
           </div>
           <div class="meal-add">
@@ -1548,20 +1549,20 @@ onUnmounted(() => {
                 :aria-label="`Subir ${option.label}`"
                 @click="moveGoalChecklist(option.id, -1)"
               >
-                <ArrowUp :size="14" /></button
+                <ArrowUp :size="18" /></button
               ><button
                 type="button"
                 :disabled="index === form.checklist_options.length - 1"
                 :aria-label="`Descer ${option.label}`"
                 @click="moveGoalChecklist(option.id, 1)"
               >
-                <ArrowDown :size="14" /></button
+                <ArrowDown :size="18" /></button
               ><button
                 type="button"
                 :aria-label="`Remover ${option.label}`"
                 @click="removeGoalChecklist(option.id)"
               >
-                <X :size="14" /></button
+                <X :size="18" /></button
             ></span>
           </div>
           <div class="meal-add">
@@ -1638,7 +1639,9 @@ onUnmounted(() => {
         <p v-if="message" class="notice" role="alert">{{ message }}</p>
         <div class="form-actions">
           <button class="primary-button" :disabled="busy">
-            {{ editing ? 'Salvar alterações' : 'Adicionar meta' }} ↗</button
+            <Check :size="20" aria-hidden="true" /><span>{{
+              editing ? 'Salvar alterações' : 'Adicionar meta'
+            }}</span></button
           ><button type="button" class="text-button" @click="cancelEdit">Cancelar</button>
         </div>
       </form>
@@ -1776,7 +1779,7 @@ onUnmounted(() => {
             >{{ daySummary(selectedDay).completed }} de {{ daySummary(selectedDay).total }} metas
             concluídas</span
           ><button type="button" @click="openWeekOf(selectedDay)">
-            Ver na semana <ChevronRight :size="15" />
+            Ver na semana <ChevronRight :size="18" />
           </button>
         </div>
         <p v-if="!planned(selectedDay).length" class="dialog-empty">
@@ -1926,14 +1929,14 @@ onUnmounted(() => {
                     :aria-label="`Subir ${option.label}`"
                     @click="moveDayMeal(goal.id, option.id, -1)"
                   >
-                    <ArrowUp :size="15" /></button
+                    <ArrowUp :size="18" /></button
                   ><button
                     type="button"
                     :disabled="index === dayDrafts[goal.id]!.options.length - 1"
                     :aria-label="`Descer ${option.label}`"
                     @click="moveDayMeal(goal.id, option.id, 1)"
                   >
-                    <ArrowDown :size="15" />
+                    <ArrowDown :size="18" />
                   </button>
                 </div>
                 <button

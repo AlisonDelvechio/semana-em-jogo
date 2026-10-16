@@ -65,6 +65,9 @@ O percentual semanal e mensal agora soma as refeições individualmente: quatro 
 Exclusão, pausa/retomada e edição de metas usam confirmações no estilo do app, com suporte a teclado, Escape, foco inicial em Cancelar e retorno ao controle de origem. As mensagens de sucesso e erro podem ser fechadas e seguem o tema claro/escuro. Cancelar não grava alterações.
 
 
-A criação e a edição de metas abrem em modal, com cabeçalho e ações visíveis durante a rolagem. Cancelar descarta o rascunho. A tela Minhas metas prioriza a lista; relatórios e backup ficam em uma seção recolhível. No celular, o modal usa a altura disponível, respeita a área segura e mantém campos com tamanho adequado para toque.
+A criação e a edição de metas abrem em modal, com cabeçalho e ações visíveis durante a rolagem. Cancelar descarta o rascunho. A tela Minhas metas prioriza a lista; relatórios e backup ficam sempre visíveis em uma seção própria. No celular, o modal usa a altura disponível, respeita a área segura e mantém campos com tamanho adequado para toque.
 
 O sistema de pontos foi removido da interface, dos cálculos e das colunas legíveis do CSV. Os campos legados no banco e na coluna técnica do backup são preservados, sem migração destrutiva. A importação aceita tanto o CSV antigo de 14 colunas quanto o novo de 12, encontrando a coluna de restauração pelo nome. A paleta escura original (#151d19) foi restaurada pela correção do escopo CSS das mensagens e confirmações; a cor de erro agora só afeta o componente correspondente.
+
+
+Na edição de metas, nome e categoria compartilham a primeira linha no desktop e ficam empilhados no celular. Checks de 22px, áreas de toque de pelo menos 44px e ações com ícone e texto facilitam a interação. O botão Salvar usa um ícone de confirmação, sem seta de link externo. O fundo do editor usa uma sobreposição escura com desfoque para reduzir a distração.
