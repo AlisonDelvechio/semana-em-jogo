@@ -206,12 +206,20 @@ const mobileQuery = window.matchMedia('(max-width: 720px)')
 const syncMobileWeek = () => {
   mobileWeek.value = mobileQuery.matches
 }
+const selectedWeekDay = ref(localKey(new Date()))
+watch(
+  monday,
+  () => {
+    selectedWeekDay.value = days.value.some((date) => localKey(date) === localKey(new Date()))
+      ? localKey(new Date())
+      : localKey(days.value[0]!)
+  },
+  { flush: 'sync' },
+)
 const visibleDays = computed(() => {
-  if (!mobileWeek.value || !current.value) return days.value
-  const today = localKey(new Date())
-  return [...days.value].sort(
-    (a, b) => Number(localKey(b) === today) - Number(localKey(a) === today),
-  )
+  if (!mobileWeek.value) return days.value
+  const selected = days.value.find((date) => localKey(date) === selectedWeekDay.value)
+  return [selected || days.value[0]!]
 })
 const pace = computed(() =>
   weekPace(
@@ -398,10 +406,12 @@ function resizeMealDescription(input: HTMLTextAreaElement) {
 }
 function openWeekOf(date: Date) {
   monday.value = mondayOf(date)
+  selectedWeekDay.value = localKey(date)
   selectedDay.value = null
   tab.value = 'week'
 }
 function goToCurrentWeek() {
+  selectedWeekDay.value = localKey(new Date())
   monday.value = mondayOf(new Date())
   tab.value = 'week'
 }
@@ -1152,30 +1162,35 @@ onUnmounted(() => {
                 </button>
               </div>
             </div>
-            <button v-if="!current" class="today-link" @click="monday = mondayOf(new Date())">
-              Voltar para esta semana
+            <button
+              v-if="!current || (mobileWeek && selectedWeekDay !== localKey(new Date()))"
+              class="today-link"
+              @click="goToCurrentWeek"
+            >
+              Voltar para hoje
             </button>
             <div
-              v-if="weeklyFoodAllowances.length"
-              class="free-meal-overview"
-              aria-label="Refeições livres da semana"
+              v-if="mobileWeek"
+              class="week-strip"
+              role="group"
+              aria-label="Escolher dia da semana"
             >
-              <div
-                v-for="allowance in weeklyFoodAllowances"
-                :key="allowance.goal.id"
-                class="free-meal-summary"
+              <button
+                v-for="date in days"
+                :key="localKey(date)"
+                type="button"
+                :class="{
+                  selected: localKey(date) === selectedWeekDay,
+                  'is-today': localKey(date) === localKey(new Date()),
+                }"
+                :aria-label="`Selecionar dia ${date.toLocaleDateString('pt-BR')}`"
+                :aria-pressed="localKey(date) === selectedWeekDay"
+                @click="selectedWeekDay = localKey(date)"
               >
-                <Utensils :size="17" aria-hidden="true" />
-                <span
-                  ><strong>{{ allowance.goal.title }}</strong> · Refeições livres usadas:
-                  {{ allowance.used }} de {{ allowance.limit }} permitidas
-                  <small>{{
-                    allowance.excess
-                      ? `${allowance.excess} além do limite. Confira os registros dos dias.`
-                      : 'Opcionais · de segunda a domingo.'
-                  }}</small>
-                </span>
-              </div>
+                <span>{{ fullWeekdays[date.getDay()]!.slice(0, 1) }}</span
+                ><strong>{{ date.getDate() }}</strong
+                ><small>{{ localKey(date) === localKey(new Date()) ? 'Hoje' : '' }}</small>
+              </button>
             </div>
             <div v-if="!days.some((date) => planned(date).length)" class="empty-state">
               <Sparkles :size="32" aria-hidden="true" />
@@ -1218,6 +1233,10 @@ onUnmounted(() => {
                     @click="openDay(date)"
                   >
                     <span class="check-visual" aria-hidden="true"><Check :size="18" /></span
+                    ><span class="task-category-icon" :class="goal.category" aria-hidden="true"
+                      ><Dumbbell v-if="goal.category === 'treino'" :size="20" /><Utensils
+                        v-else-if="goal.category === 'alimentacao'"
+                        :size="20" /><ClipboardList v-else :size="20" /></span
                     ><span class="task-title"
                       >{{ goal.title
                       }}<small
@@ -1245,6 +1264,28 @@ onUnmounted(() => {
                   <Pencil :size="18" aria-hidden="true" /> Editar dia
                 </button>
               </article>
+            </div>
+            <div
+              v-if="weeklyFoodAllowances.length"
+              class="free-meal-overview"
+              aria-label="Refeições livres da semana"
+            >
+              <div
+                v-for="allowance in weeklyFoodAllowances"
+                :key="allowance.goal.id"
+                class="free-meal-summary"
+              >
+                <Utensils :size="17" aria-hidden="true" />
+                <span
+                  ><strong>{{ allowance.goal.title }}</strong> · Refeições livres usadas:
+                  {{ allowance.used }} de {{ allowance.limit }} permitidas
+                  <small>{{
+                    allowance.excess
+                      ? `${allowance.excess} além do limite. Confira os registros dos dias.`
+                      : 'Opcionais · de segunda a domingo.'
+                  }}</small>
+                </span>
+              </div>
             </div>
           </section> </template
         ><template v-else-if="tab === 'month'">
@@ -1396,7 +1437,7 @@ onUnmounted(() => {
           :error="messageIsError"
           @dismiss="message = ''"
         />
-        <footer>Feito para celebrar a constância, no seu tempo. ✦</footer>
+        <footer v-if="!mobileWeek">Feito para celebrar a constância, no seu tempo. ✦</footer>
       </main>
     </div>
     <FormDialog
