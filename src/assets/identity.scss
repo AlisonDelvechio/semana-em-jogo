@@ -1243,3 +1243,68 @@ html[data-theme='dark'] .days-grid .day-card.is-today {
     font-size: 0.96rem;
   }
 }
+
+/* Keep the avatar, theme and account actions on the same mobile alignment. */
+@media (max-width: 720px) {
+  .topbar {
+    height: auto;
+    min-height: 68px;
+    padding-block: 10px;
+    align-items: center;
+  }
+  .topbar .top-actions {
+    align-items: center;
+    flex: none;
+    gap: 8px;
+  }
+  .topbar .profile-corner,
+  html[data-theme='dark'] .topbar .profile-corner {
+    display: flex;
+    align-items: center;
+    flex: none;
+    max-width: none;
+    gap: 6px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+  .topbar .profile-avatar,
+  .topbar .theme-button,
+  .topbar .profile-exit {
+    display: grid;
+    place-items: center;
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    margin: 0;
+    padding: 0;
+    border-radius: 12px;
+    line-height: 1;
+  }
+  .topbar .profile-avatar {
+    background: var(--ui-accent);
+    color: var(--ui-on-accent);
+    font-size: 0.9rem;
+  }
+}
+@media (max-width: 350px) {
+  .topbar {
+    gap: 4px;
+  }
+  .topbar .brand {
+    font-size: 1rem;
+    gap: 6px;
+  }
+  .topbar .brand > span:last-child {
+    margin-left: -6px;
+  }
+  .topbar .brand-mark {
+    margin-right: 0;
+  }
+  .topbar .top-actions,
+  .topbar .profile-corner {
+    gap: 4px;
+  }
+}
