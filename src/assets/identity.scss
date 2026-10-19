@@ -1310,10 +1310,12 @@ html[data-theme='dark'] .days-grid .day-card.is-today {
 }
 
 :root {
-  --ui-hover: #dcead5;
+  --ui-hover: #b9dca4;
+  --ui-on-hover: #14201b;
 }
 html[data-theme='dark'] {
-  --ui-hover: #395940;
+  --ui-hover: #b9dca4;
+  --ui-on-hover: #14201b;
 }
 .meal-order-actions button:not(:disabled):hover,
 .meal-remove:not(:disabled):hover,
@@ -1321,15 +1323,19 @@ html[data-theme='dark'] {
 .number-stepper button:not(:disabled):hover,
 .day-edit-action:not(:disabled):hover,
 .small-button:not(:disabled):hover,
+.week-nav button:not(:disabled):hover,
+.calendar-nav > button:not(.today-link):not(:disabled):hover,
 html[data-theme='dark'] .meal-order-actions button:not(:disabled):hover,
 html[data-theme='dark'] .meal-remove:not(:disabled):hover,
 html[data-theme='dark'] .goal-editor-dialog .meal-option-chip button:not(:disabled):hover,
 html[data-theme='dark'] .number-stepper button:not(:disabled):hover,
 html[data-theme='dark'] .day-edit-action:not(:disabled):hover,
-html[data-theme='dark'] .small-button:not(:disabled):hover {
+html[data-theme='dark'] .small-button:not(:disabled):hover,
+html[data-theme='dark'] .week-nav button:not(:disabled):hover,
+html[data-theme='dark'] .calendar-nav > button:not(.today-link):not(:disabled):hover {
   background: var(--ui-hover);
-  color: var(--ui-text);
-  border-color: var(--ui-border);
+  color: var(--ui-on-hover);
+  border-color: var(--ui-focus);
   filter: none;
 }
 .page-heading > .small-button:not(:disabled):hover,
@@ -1348,5 +1354,20 @@ html[data-theme='dark'] .page-heading > .small-button:not(:disabled):hover {
 .task:hover .task-title,
 html[data-theme='dark'] .day-open:hover strong,
 html[data-theme='dark'] .task:hover .task-title {
-  color: var(--ui-text);
+  color: var(--ui-focus);
+}
+
+.week-nav button,
+.calendar-nav > button:not(.today-link) {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  line-height: 1;
+}
+.week-nav button > svg,
+.calendar-nav > button:not(.today-link) > svg {
+  margin: 0;
 }
