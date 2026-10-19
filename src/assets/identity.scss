@@ -1,6 +1,7 @@
 /* Component palette based on the approved visual reference. */
 :root {
   --ui-accent: #b9dca4;
+  --ui-accent-hover: #9fc789;
   --ui-on-accent: #14201b;
   --ui-surface: #fff;
   --ui-input: #f7faf5;
@@ -12,6 +13,8 @@
   font-family: Inter, system-ui, sans-serif;
 }
 html[data-theme='dark'] {
+  --ui-accent: #a8c994;
+  --ui-accent-hover: #91b879;
   --ui-surface: #203128;
   --ui-input: #14201b;
   --ui-secondary: #2a4433;
@@ -30,6 +33,16 @@ button {
   min-width: 44px;
   min-height: 44px;
   touch-action: manipulation;
+  transition:
+    background-color 220ms ease,
+    color 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    filter 220ms ease;
+}
+.day-open strong,
+.task-title {
+  transition: color 220ms ease;
 }
 button > svg {
   flex: none;
@@ -72,9 +85,12 @@ html[data-theme='dark'] .page-heading > .small-button {
   border-radius: 12px;
   font-weight: 700;
 }
-.primary-button:hover,
-.page-heading > .small-button:hover {
-  filter: brightness(1.04);
+.primary-button:not(.danger-button):not(:disabled):hover,
+html[data-theme='dark'] .primary-button:not(.danger-button):not(:disabled):hover {
+  background: var(--ui-accent-hover);
+  color: var(--ui-on-accent);
+  border-color: var(--ui-accent-hover);
+  filter: none;
 }
 .primary-button.danger-button,
 html[data-theme='dark'] .primary-button.danger-button {
@@ -1340,10 +1356,10 @@ html[data-theme='dark'] .calendar-nav > button:not(.today-link):not(:disabled):h
 }
 .page-heading > .small-button:not(:disabled):hover,
 html[data-theme='dark'] .page-heading > .small-button:not(:disabled):hover {
-  background: var(--ui-accent);
+  background: var(--ui-accent-hover);
   color: var(--ui-on-accent);
-  border-color: var(--ui-accent);
-  filter: brightness(1.04);
+  border-color: var(--ui-accent-hover);
+  filter: none;
 }
 .meal-order-actions button:disabled:hover,
 .goal-editor-dialog .meal-option-chip button:disabled:hover {
