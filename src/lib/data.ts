@@ -11,6 +11,7 @@ import {
   type MealOption,
 } from '../types'
 import { localKey } from './dates'
+import { retryFutureJwtRead } from './auth-retry'
 import type { BackupRecord } from './report'
 
 const url = import.meta.env.VITE_SUPABASE_URL
@@ -79,22 +80,25 @@ function errorIfPresent(error: { message: string } | null) {
 
 export async function loadData(): Promise<LocalData> {
   if (!supabase) return readLocal()
-  const [goals, completions, history, dayDetails] = await Promise.all([
-    supabase.from('goal_templates').select('*').order('created_at'),
-    supabase.from('goal_completions').select('*'),
-    supabase.from('goal_history').select('*'),
-    supabase.from('goal_day_details').select('*'),
-  ])
-  errorIfPresent(goals.error)
-  errorIfPresent(completions.error)
-  errorIfPresent(history.error)
-  errorIfPresent(dayDetails.error)
-  return {
-    goals: goals.data as Goal[],
-    completions: completions.data as Completion[],
-    history: history.data as GoalHistory[],
-    dayDetails: dayDetails.data as GoalDayDetail[],
-  }
+  const client = supabase
+  return retryFutureJwtRead(async () => {
+    const [goals, completions, history, dayDetails] = await Promise.all([
+      client.from('goal_templates').select('*').order('created_at'),
+      client.from('goal_completions').select('*'),
+      client.from('goal_history').select('*'),
+      client.from('goal_day_details').select('*'),
+    ])
+    errorIfPresent(goals.error)
+    errorIfPresent(completions.error)
+    errorIfPresent(history.error)
+    errorIfPresent(dayDetails.error)
+    return {
+      goals: goals.data as Goal[],
+      completions: completions.data as Completion[],
+      history: history.data as GoalHistory[],
+      dayDetails: dayDetails.data as GoalDayDetail[],
+    }
+  })
 }
 
 function snapshot(goal: Goal, validUntil: string): GoalHistory {

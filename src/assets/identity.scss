@@ -1308,3 +1308,45 @@ html[data-theme='dark'] .days-grid .day-card.is-today {
     gap: 4px;
   }
 }
+
+:root {
+  --ui-hover: #dcead5;
+}
+html[data-theme='dark'] {
+  --ui-hover: #395940;
+}
+.meal-order-actions button:not(:disabled):hover,
+.meal-remove:not(:disabled):hover,
+.goal-editor-dialog .meal-option-chip button:not(:disabled):hover,
+.number-stepper button:not(:disabled):hover,
+.day-edit-action:not(:disabled):hover,
+.small-button:not(:disabled):hover,
+html[data-theme='dark'] .meal-order-actions button:not(:disabled):hover,
+html[data-theme='dark'] .meal-remove:not(:disabled):hover,
+html[data-theme='dark'] .goal-editor-dialog .meal-option-chip button:not(:disabled):hover,
+html[data-theme='dark'] .number-stepper button:not(:disabled):hover,
+html[data-theme='dark'] .day-edit-action:not(:disabled):hover,
+html[data-theme='dark'] .small-button:not(:disabled):hover {
+  background: var(--ui-hover);
+  color: var(--ui-text);
+  border-color: var(--ui-border);
+  filter: none;
+}
+.page-heading > .small-button:not(:disabled):hover,
+html[data-theme='dark'] .page-heading > .small-button:not(:disabled):hover {
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+  border-color: var(--ui-accent);
+  filter: brightness(1.04);
+}
+.meal-order-actions button:disabled:hover,
+.goal-editor-dialog .meal-option-chip button:disabled:hover {
+  background: var(--ui-secondary);
+  color: var(--ui-text);
+}
+.day-open:hover strong,
+.task:hover .task-title,
+html[data-theme='dark'] .day-open:hover strong,
+html[data-theme='dark'] .task:hover .task-title {
+  color: var(--ui-text);
+}

@@ -1,10 +1,11 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Goal, GoalDayDetail, GoalInput, MealAdherence } from '../types'
 import { freeMealUsage, goalForDate, isGoalDone, isMealAllowed, weekStats } from './dates'
 import { monthStats } from './month'
 import { createGoal, importGoalBackup, loadData, saveDayDetail, updateGoal } from './data'
 import { parseGoalBackup } from './backup'
 import { createGoalReport } from './report'
+afterEach(() => vi.useRealTimers())
 
 const goal: Goal = {
   id: 'b8620e36-e80a-43e3-bb57-4bd7e3d97741',
@@ -216,6 +217,8 @@ describe('refeições livres opcionais', () => {
   })
 
   it('persists a day correction through CSV export and restore without changing the goal limit', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 9, 16, 12))
     const savedGoal = await createGoal({ ...goalInput(), free_meals_per_week: 0 })
     await saveDayDetail({
       ...detail('2026-10-16', 'free'),

@@ -87,3 +87,6 @@ O painel semanal inclui **Hoje**, com refeições contabilizadas, atividades fix
 
 
 A ordem dos resumos é Hoje, Semana e Mês. Ver registros e selecionar uma data no calendário abrem modais com fechamento por Escape, foco controlado e fundo inativo. Ao seguir para a edição do dia, o resumo fecha antes de abrir o editor, sem empilhar modais. Relatórios e backups têm áreas separadas: CSV para relatório/restauração e **Salvar PDF** para abrir uma versão de impressão A4 no navegador. Escolha **Salvar como PDF** na janela de impressão. O PDF usa o mesmo período e os mesmos registros do CSV, inclui anotações e classificações, omite os dados técnicos de restauração e não serve como backup.
+
+
+A leitura inicial trata especificamente a rejeição temporária “JWT issued at future”, repetindo somente consultas com esperas de 0,5s, 1s, 2s e 4s. Outras falhas e gravações não são repetidas. Se persistir, a mensagem orienta tentar novamente e preserva a causa original. A validação de JWT e as regras do banco não foram alteradas. Eventos de autenticação agendam a leitura fora do callback, ignoram respostas antigas após troca de sessão/saída e cancelam a assinatura ao desmontar a tela. Os hovers dos controles usam pares de fundo/texto do tema e preservam os estados desabilitados.
