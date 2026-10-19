@@ -741,18 +741,24 @@ async function saveDay() {
     busy.value = false
   }
 }
+let refreshVersion = 0
+let authRefreshTimer: ReturnType<typeof setTimeout> | undefined
+let unsubscribeAuth: (() => void) | undefined
+let disposed = false
 async function refresh() {
+  const version = ++refreshVersion
   loading.value = true
   try {
     const result = await loadData()
+    if (version !== refreshVersion || disposed) return
     goals.value = result.goals
     completions.value = result.completions
     history.value = result.history
     dayDetails.value = result.dayDetails
   } catch (error) {
-    errorMessage(error)
+    if (version === refreshVersion && !disposed) errorMessage(error)
   } finally {
-    loading.value = false
+    if (version === refreshVersion && !disposed) loading.value = false
   }
 }
 async function auth() {
@@ -990,12 +996,29 @@ onMounted(async () => {
   mobileQuery.addEventListener('change', syncMobileWeek)
   if (supabase) {
     const { data, error } = await supabase.auth.getSession()
+    if (disposed) return
     if (error) errorMessage(error)
     session.value = data.session
-    supabase.auth.onAuthStateChange((_event, next) => {
+    const subscription = supabase.auth.onAuthStateChange((event, next) => {
+      if (session.value?.user.id !== next?.user.id) {
+        refreshVersion++
+        goals.value = []
+        completions.value = []
+        history.value = []
+        dayDetails.value = []
+      }
       session.value = next
-      if (next) void refresh()
-      else {
+      clearTimeout(authRefreshTimer)
+      if (next) {
+        // getSession already covers startup. Defer later reads until the auth callback returns.
+        if (event !== 'INITIAL_SESSION') {
+          refreshVersion++
+          authRefreshTimer = setTimeout(() => {
+            if (!disposed && session.value?.access_token === next.access_token) void refresh()
+          }, 0)
+        }
+      } else {
+        refreshVersion++
         goals.value = []
         completions.value = []
         history.value = []
@@ -1003,11 +1026,16 @@ onMounted(async () => {
         loading.value = false
       }
     })
+    unsubscribeAuth = () => subscription.data.subscription.unsubscribe()
   }
   if (!cloudEnabled || session.value) await refresh()
   else loading.value = false
 })
 onUnmounted(() => {
+  disposed = true
+  refreshVersion++
+  clearTimeout(authRefreshTimer)
+  unsubscribeAuth?.()
   finishConfirmation(false)
   mobileQuery.removeEventListener('change', syncMobileWeek)
   systemTheme.removeEventListener('change', syncSystemTheme)
