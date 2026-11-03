@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # Lint without --fix so problems fail the build instead of being rewritten.
+      - name: Lint
+        run: npx oxlint . && npx eslint .
+      - name: Unit tests
+        run: npx vitest --run
+      # `npm run build` runs vue-tsc type-check and the Vite build in parallel.
+      - name: Type-check and build
+        run: npm run build

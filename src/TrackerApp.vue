@@ -31,10 +31,10 @@ import {
   deleteGoal,
   importGoalBackup,
   loadData,
-  saveDayDetail,
-  setCompleted,
+  saveDay,
   supabase,
   updateGoal,
+  type DayEntry,
 } from './lib/data'
 import {
   addDays,
@@ -704,34 +704,35 @@ async function saveDay() {
       if (limit !== null && (!Number.isInteger(limit) || limit < 0 || limit > 84))
         throw new Error('Escolha de 0 a 84 refeições livres para corrigir este dia.')
     }
-    for (const goal of planned(date)) {
+    const day = localKey(date)
+    // All goals of the day are stored together, so a failure never leaves half a day saved.
+    const entries: DayEntry[] = planned(date).map((goal) => {
       const draft = dayDrafts.value[goal.id]!
-      await saveDayDetail({
-        goal_id: goal.id,
-        local_date: localKey(date),
-        meals: goal.category === 'alimentacao' ? draft.items : {},
-        adherence_recorded: goal.category === 'alimentacao' && draft.trackAdherence,
-        free_meals_limit_override:
-          goal.category === 'alimentacao' ? draft.freeMealLimitOverride : null,
-        meal_options:
-          goal.category === 'alimentacao' ? draft.options : goal.meal_options || defaultMealOptions,
-        checklist: goal.category === 'alimentacao' ? {} : draft.items,
-        checklist_options: goal.category === 'alimentacao' ? [] : draft.options,
-        note: draft.note,
-      })
-      if (goal.category !== 'alimentacao') {
-        const completed = draft.options.length
+      const food = goal.category === 'alimentacao'
+      const completed = food
+        ? undefined
+        : draft.options.length
           ? draft.options.every(({ id }) => draft.items[id]?.checked)
           : draft.completed
-        if (
-          completed !==
-          completions.value.some(
-            (entry) => entry.goal_id === goal.id && entry.local_date === localKey(date),
-          )
-        )
-          await setCompleted(goal.id, localKey(date), completed)
+      const wasCompleted = completions.value.some(
+        (entry) => entry.goal_id === goal.id && entry.local_date === day,
+      )
+      return {
+        detail: {
+          goal_id: goal.id,
+          local_date: day,
+          meals: food ? draft.items : {},
+          adherence_recorded: food && draft.trackAdherence,
+          free_meals_limit_override: food ? draft.freeMealLimitOverride : null,
+          meal_options: food ? draft.options : goal.meal_options || defaultMealOptions,
+          checklist: food ? {} : draft.items,
+          checklist_options: food ? [] : draft.options,
+          note: draft.note,
+        },
+        completed: completed === wasCompleted ? undefined : completed,
       }
-    }
+    })
+    await saveDay(day, entries)
     selectedDay.value = null
     await refresh()
     message.value = 'Registro do dia salvo.'

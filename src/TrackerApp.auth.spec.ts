@@ -22,8 +22,7 @@ vi.mock('./lib/data', () => ({
   createGoal: vi.fn<() => void>(),
   deleteGoal: vi.fn<() => void>(),
   importGoalBackup: vi.fn<() => void>(),
-  saveDayDetail: vi.fn<() => void>(),
-  setCompleted: vi.fn<() => void>(),
+  saveDay: vi.fn<() => void>(),
   updateGoal: vi.fn<() => void>(),
 }))
 const session = {

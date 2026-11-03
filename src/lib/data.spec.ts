@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { createGoal, loadData, saveDayDetail, updateGoal } from './data'
+import { CORRUPTED_KEY_PREFIX, createGoal, loadData, saveDayDetail, updateGoal } from './data'
 import { defaultMealOptions } from '../types'
 import { addDays, localKey, mondayOf, weekStats } from './dates'
 
@@ -162,5 +162,47 @@ describe('local goal history', () => {
     expect(
       weekStats(loaded.goals, [], new Date(2026, 8, 21), [], loaded.dayDetails).completed,
     ).toBe(1)
+  })
+})
+
+const corruptedKeys = () =>
+  Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index)!).filter(
+    (key) => key.startsWith(CORRUPTED_KEY_PREFIX),
+  )
+
+describe('damaged local storage', () => {
+  beforeEach(() => localStorage.clear())
+
+  it('keeps an unreadable copy aside before new data is written', async () => {
+    localStorage.setItem('semana-em-jogo-v1', '{"goals": [ quebrado')
+    expect(await loadData()).toEqual({ goals: [], completions: [], history: [], dayDetails: [] })
+    await loadData()
+    const saved = corruptedKeys()
+    // Reading twice must not create a second copy.
+    expect(saved).toHaveLength(1)
+    expect(localStorage.getItem(saved[0]!)).toBe('{"goals": [ quebrado')
+    await createGoal({
+      title: 'Nova meta',
+      category: 'outro',
+      scheduled_weekdays: [1],
+      goal_mode: 'fixed',
+      weekly_target: 1,
+      start_date: null,
+      duration_days: null,
+      points: 10,
+      active: true,
+      meal_options: defaultMealOptions,
+      meal_options_by_weekday: {},
+      checklist_options: [],
+      checklist_options_by_weekday: {},
+    })
+    expect(localStorage.getItem(saved[0]!)).toBe('{"goals": [ quebrado')
+    expect((await loadData()).goals).toHaveLength(1)
+  })
+
+  it('treats valid JSON with the wrong shape as damaged too', async () => {
+    localStorage.setItem('semana-em-jogo-v1', '[1, 2, 3]')
+    expect((await loadData()).goals).toEqual([])
+    expect(corruptedKeys()).toHaveLength(1)
   })
 })
