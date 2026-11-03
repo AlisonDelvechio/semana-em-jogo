@@ -16,7 +16,7 @@ Sem variáveis de ambiente, o app funciona em **modo local**. Os dados ficam ape
 ## Ativar sincronização
 
 1. Crie um projeto no [Supabase](https://supabase.com/dashboard).
-2. No SQL Editor, execute o conteúdo dos arquivos `supabase/migrations/001_initial.sql` até `009_day_free_meal_limit.sql`, na ordem numérica. Se as oito primeiras já foram executadas, execute **apenas `009_day_free_meal_limit.sql` antes de publicar esta versão do app**. Digitar o nome do arquivo no editor não executa a migração.
+2. No SQL Editor, execute o conteúdo dos arquivos `supabase/migrations/001_initial.sql` até `010_atomic_writes.sql`, na ordem numérica. Se as nove primeiras já foram executadas, execute **apenas `010_atomic_writes.sql` antes de publicar esta versão do app**. Digitar o nome do arquivo no editor não executa a migração.
 3. Em Authentication, configure o provedor Email. Se a confirmação por email estiver ativa, confirme a conta pelo link enviado.
 4. Copie `.env.example` para `.env.local` e preencha `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` com a URL e a chave pública (publishable/anon) do projeto. Nunca use a chave secret/service role no navegador.
 5. Reinicie `npm run dev`, crie uma conta e entre.
@@ -90,3 +90,15 @@ A ordem dos resumos é Hoje, Semana e Mês. Ver registros e selecionar uma data 
 
 
 A leitura inicial trata especificamente a rejeição temporária “JWT issued at future”, repetindo somente consultas com esperas de 0,5s, 1s, 2s e 4s. Outras falhas e gravações não são repetidas. Se persistir, a mensagem orienta tentar novamente e preserva a causa original. A validação de JWT e as regras do banco não foram alteradas. Eventos de autenticação agendam a leitura fora do callback, ignoram respostas antigas após troca de sessão/saída e cancelam a assinatura ao desmontar a tela. Os hovers dos controles usam pares de fundo/texto do tema e preservam os estados desabilitados.
+
+## Integridade dos dados
+
+A leitura da conta é paginada: o app busca todas as linhas de cada tabela, mesmo acima do limite de linhas por resposta do Supabase (1000 por padrão). Antes, contas com mais de 1000 conclusões ou registros diários perdiam dados antigos no calendário, nos relatórios e no CSV de backup sem nenhum aviso.
+
+`010_atomic_writes.sql` cria duas funções que gravam em uma única transação: `update_goal_with_history` (versão anterior da meta + alteração) e `save_day` (todos os registros e conclusões de uma data). Se uma etapa falhar, nada é gravado. As funções rodam com as permissões de quem chama, então as políticas RLS continuam valendo. Se o app for publicado antes da migração, ele volta a gravar etapa por etapa.
+
+A importação grava em lotes e ignora registros que já existem. Ao restaurar o backup de outra conta cujas metas ainda existem, cada meta recebe um novo ID estável derivado do original; uma segunda importação do mesmo arquivo continua sem criar duplicatas.
+
+No modo local, se os dados salvos no navegador estiverem ilegíveis, uma cópia é guardada em uma chave `semana-em-jogo-v1-corrompido-<data>` antes de o app gravar novos dados, para permitir a recuperação manual.
+
+O workflow `.github/workflows/ci.yml` executa lint, testes, type-check e build em cada pull request.

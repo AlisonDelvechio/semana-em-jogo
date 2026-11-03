@@ -213,12 +213,16 @@ export function parseGoalBackup(csv: string): BackupRecord[] {
     const completions: Completion[] = raw.completions.map((value) => {
       const item = object(value)
       if (id(item.goal_id) !== goalId) throw new Error('Conclusão de outra meta no backup.')
+      const completedAt = text(item.completed_at, 40)
+      // Reject here instead of failing halfway through the database inserts.
+      if (Number.isNaN(Date.parse(completedAt)))
+        throw new Error('Horário de conclusão inválido no backup.')
       return {
         id: id(item.id),
         goal_id: goalId,
         user_id: '',
         local_date: day(item.local_date),
-        completed_at: text(item.completed_at, 40),
+        completed_at: completedAt,
       }
     })
     const dayDetails: GoalDayDetail[] = raw.dayDetails.map((value) => {

@@ -30,9 +30,29 @@ export function emptyMeals(options: MealOption[] = defaultMealOptions): MealEntr
   return Object.fromEntries(options.map(({ id }) => [id, { checked: false, description: '' }]))
 }
 
-function readLocal(): LocalData {
+// Keep unreadable local data aside before the app writes over it, so a damaged
+// value can still be recovered manually instead of being replaced by an empty store.
+export const CORRUPTED_KEY_PREFIX = `${STORAGE_KEY}-corrompido-`
+function preserveCorrupted(raw: string | null) {
+  if (!raw) return
   try {
-    const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') as Partial<LocalData>
+    const keys = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
+    const alreadySaved = keys.some(
+      (key) => key?.startsWith(CORRUPTED_KEY_PREFIX) && localStorage.getItem(key) === raw,
+    )
+    if (!alreadySaved) localStorage.setItem(`${CORRUPTED_KEY_PREFIX}${Date.now()}`, raw)
+  } catch {
+    // Storage unavailable or full: nothing else can be preserved here.
+  }
+}
+function readLocal(): LocalData {
+  let raw: string | null = null
+  try {
+    raw = localStorage.getItem(STORAGE_KEY)
+    const parsed: unknown = JSON.parse(raw || '{}')
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
+      throw new Error('Formato local inválido.')
+    const data = parsed as Partial<LocalData>
     return {
       goals: (data.goals || []).map((goal) => ({
         ...goal,
@@ -68,6 +88,7 @@ function readLocal(): LocalData {
       })),
     }
   } catch {
+    preserveCorrupted(raw)
     return { goals: [], completions: [], history: [], dayDetails: [] }
   }
 }
@@ -78,26 +99,39 @@ function errorIfPresent(error: { message: string } | null) {
   if (error) throw new Error(error.message)
 }
 
+// PostgREST caps each response (1000 rows by default, configurable per project)
+// without signalling truncation. Page with a stable order until the exact count
+// is reached so calendars, reports and backups never silently lose old records.
+export const PAGE_SIZE = 1000
+async function readAll<T>(
+  client: NonNullable<typeof supabase>,
+  table: string,
+  orderBy: string[],
+): Promise<T[]> {
+  const rows: T[] = []
+  for (;;) {
+    let query = client.from(table).select('*', { count: 'exact' })
+    for (const column of orderBy) query = query.order(column)
+    const { data, error, count } = await query.range(rows.length, rows.length + PAGE_SIZE - 1)
+    errorIfPresent(error)
+    const page = (data || []) as T[]
+    rows.push(...page)
+    // Stop on an empty page as well: rows may be deleted between requests.
+    if (!page.length || count == null || rows.length >= count) return rows
+  }
+}
+
 export async function loadData(): Promise<LocalData> {
   if (!supabase) return readLocal()
   const client = supabase
   return retryFutureJwtRead(async () => {
     const [goals, completions, history, dayDetails] = await Promise.all([
-      client.from('goal_templates').select('*').order('created_at'),
-      client.from('goal_completions').select('*'),
-      client.from('goal_history').select('*'),
-      client.from('goal_day_details').select('*'),
+      readAll<Goal>(client, 'goal_templates', ['created_at', 'id']),
+      readAll<Completion>(client, 'goal_completions', ['local_date', 'id']),
+      readAll<GoalHistory>(client, 'goal_history', ['goal_id', 'valid_until']),
+      readAll<GoalDayDetail>(client, 'goal_day_details', ['local_date', 'goal_id']),
     ])
-    errorIfPresent(goals.error)
-    errorIfPresent(completions.error)
-    errorIfPresent(history.error)
-    errorIfPresent(dayDetails.error)
-    return {
-      goals: goals.data as Goal[],
-      completions: completions.data as Completion[],
-      history: history.data as GoalHistory[],
-      dayDetails: dayDetails.data as GoalDayDetail[],
-    }
+    return { goals, completions, history, dayDetails }
   })
 }
 
@@ -129,6 +163,26 @@ function validateFreeMealLimit(input: GoalInput) {
     throw new Error('Escolha de 0 a 84 refeições livres por semana.')
 }
 
+type ApiError = { message: string; code?: string } | null
+// Migration 010 may not be applied yet when a new build is published.
+// In that case keep working with the previous step-by-step writes.
+export function isMissingFunction(error: ApiError): boolean {
+  return (
+    error?.code === 'PGRST202' ||
+    /could not find the function/i.test(error?.message || '')
+  )
+}
+
+// The session is already in memory/storage; RLS validates the token on every request,
+// so writes do not need an extra round trip to the auth server.
+async function currentUserId(missingMessage: string): Promise<string> {
+  const { data, error } = await supabase!.auth.getSession()
+  errorIfPresent(error)
+  const id = data.session?.user.id
+  if (!id) throw new Error(missingMessage)
+  return id
+}
+
 export async function createGoal(input: GoalInput): Promise<Goal> {
   validateFreeMealLimit(input)
   if (!supabase) {
@@ -143,12 +197,10 @@ export async function createGoal(input: GoalInput): Promise<Goal> {
     saveLocal(data)
     return goal
   }
-  const { data: userData, error: userError } = await supabase.auth.getUser()
-  errorIfPresent(userError)
-  if (!userData.user) throw new Error('Entre na sua conta para salvar a meta.')
+  const userId = await currentUserId('Entre na sua conta para salvar a meta.')
   const { data, error } = await supabase
     .from('goal_templates')
-    .insert({ ...input, user_id: userData.user.id })
+    .insert({ ...input, user_id: userId })
     .select()
     .single()
   errorIfPresent(error)
@@ -168,6 +220,14 @@ export async function updateGoal(id: string, input: GoalInput): Promise<void> {
     saveLocal(data)
     return
   }
+  // Snapshot and update run in one transaction (supabase/migrations/010_atomic_writes.sql).
+  const { error: rpcError } = await supabase.rpc('update_goal_with_history', {
+    p_goal_id: id,
+    p_input: input,
+    p_today: today,
+  })
+  if (!isMissingFunction(rpcError)) return errorIfPresent(rpcError)
+
   const { data: previous, error: readError } = await supabase
     .from('goal_templates')
     .select('*')
@@ -199,7 +259,11 @@ export async function deleteGoal(id: string): Promise<void> {
   errorIfPresent(error)
 }
 
-export async function saveDayDetail(detail: Omit<GoalDayDetail, 'user_id'>): Promise<void> {
+type DayDetailInput = Omit<GoalDayDetail, 'user_id'>
+
+// Validates and trims one day record. Shared by every write path so local mode,
+// the atomic RPC and the fallback store exactly the same shape.
+function normalizeDayDetail(detail: DayDetailInput): DayDetailInput {
   const override = detail.free_meals_limit_override
   if (override != null && (!Number.isInteger(override) || override < 0 || override > 84))
     throw new Error('Escolha de 0 a 84 refeições livres para corrigir este dia.')
@@ -242,43 +306,53 @@ export async function saveDayDetail(detail: Omit<GoalDayDetail, 'user_id'>): Pro
       },
     ]),
   ) as MealEntries
-  const note = detail.note.trim().slice(0, 500)
+  return {
+    goal_id: detail.goal_id,
+    local_date: detail.local_date,
+    meal_options,
+    meals,
+    adherence_recorded: Boolean(detail.adherence_recorded),
+    free_meals_limit_override: override ?? null,
+    checklist_options,
+    checklist,
+    note: detail.note.trim().slice(0, 500),
+  }
+}
+
+function putLocalDetail(data: LocalData, detail: DayDetailInput) {
+  if (!data.goals.some((goal) => goal.id === detail.goal_id)) throw new Error('Meta não encontrada.')
+  data.dayDetails = data.dayDetails.filter(
+    (entry) => !(entry.goal_id === detail.goal_id && entry.local_date === detail.local_date),
+  )
+  data.dayDetails.push({ ...detail, user_id: 'local' })
+}
+
+function putLocalCompletion(data: LocalData, goalId: string, date: string, completed: boolean) {
+  data.completions = data.completions.filter(
+    (entry) => !(entry.goal_id === goalId && entry.local_date === date),
+  )
+  if (completed)
+    data.completions.push({
+      id: crypto.randomUUID(),
+      user_id: 'local',
+      goal_id: goalId,
+      local_date: date,
+      completed_at: new Date().toISOString(),
+    })
+}
+
+export async function saveDayDetail(input: DayDetailInput): Promise<void> {
+  const detail = normalizeDayDetail(input)
   if (!supabase) {
     const data = readLocal()
-    if (!data.goals.some((goal) => goal.id === detail.goal_id))
-      throw new Error('Meta não encontrada.')
-    data.dayDetails = data.dayDetails.filter(
-      (entry) => !(entry.goal_id === detail.goal_id && entry.local_date === detail.local_date),
-    )
-    data.dayDetails.push({
-      ...detail,
-      meal_options,
-      meals,
-      adherence_recorded: Boolean(detail.adherence_recorded),
-      checklist_options,
-      checklist,
-      note,
-      user_id: 'local',
-    })
+    putLocalDetail(data, detail)
     saveLocal(data)
     return
   }
-  const { data: userData, error: userError } = await supabase.auth.getUser()
-  errorIfPresent(userError)
-  if (!userData.user) throw new Error('Sua sessão expirou. Entre novamente.')
-  const { error } = await supabase.from('goal_day_details').upsert(
-    {
-      ...detail,
-      meal_options,
-      meals,
-      adherence_recorded: Boolean(detail.adherence_recorded),
-      checklist_options,
-      checklist,
-      note,
-      user_id: userData.user.id,
-    },
-    { onConflict: 'goal_id,local_date' },
-  )
+  const userId = await currentUserId('Sua sessão expirou. Entre novamente.')
+  const { error } = await supabase
+    .from('goal_day_details')
+    .upsert({ ...detail, user_id: userId }, { onConflict: 'goal_id,local_date' })
   errorIfPresent(error)
 }
 
@@ -289,28 +363,16 @@ export async function setCompleted(
 ): Promise<void> {
   if (!supabase) {
     const data = readLocal()
-    data.completions = data.completions.filter(
-      (entry) => !(entry.goal_id === goalId && entry.local_date === date),
-    )
-    if (completed)
-      data.completions.push({
-        id: crypto.randomUUID(),
-        user_id: 'local',
-        goal_id: goalId,
-        local_date: date,
-        completed_at: new Date().toISOString(),
-      })
+    putLocalCompletion(data, goalId, date, completed)
     saveLocal(data)
     return
   }
   if (completed) {
-    const { data: userData, error: userError } = await supabase.auth.getUser()
-    errorIfPresent(userError)
-    if (!userData.user) throw new Error('Sua sessão expirou. Entre novamente.')
+    const userId = await currentUserId('Sua sessão expirou. Entre novamente.')
     const { error } = await supabase
       .from('goal_completions')
       .upsert(
-        { user_id: userData.user.id, goal_id: goalId, local_date: date },
+        { user_id: userId, goal_id: goalId, local_date: date },
         { onConflict: 'goal_id,local_date' },
       )
     errorIfPresent(error)
@@ -320,6 +382,81 @@ export async function setCompleted(
       .delete()
       .eq('goal_id', goalId)
       .eq('local_date', date)
+    errorIfPresent(error)
+  }
+}
+
+export type DayEntry = {
+  detail: DayDetailInput
+  // undefined keeps the current completion untouched (food goals derive it from meals).
+  completed?: boolean
+}
+
+// Saves every goal of one date together: either all records are stored or none is.
+export async function saveDay(localDate: string, entries: DayEntry[]): Promise<void> {
+  const details = entries.map(({ detail }) => {
+    if (detail.local_date !== localDate) throw new Error('Data inconsistente no registro do dia.')
+    return normalizeDayDetail(detail)
+  })
+  const completions = entries.flatMap(({ detail, completed }) =>
+    completed === undefined ? [] : [{ goal_id: detail.goal_id, completed }],
+  )
+  if (!supabase) {
+    const data = readLocal()
+    details.forEach((detail) => putLocalDetail(data, detail))
+    completions.forEach(({ goal_id, completed }) =>
+      putLocalCompletion(data, goal_id, localDate, completed),
+    )
+    saveLocal(data)
+    return
+  }
+  const { error } = await supabase.rpc('save_day', {
+    p_local_date: localDate,
+    p_details: details,
+    p_completions: completions,
+  })
+  if (!isMissingFunction(error)) return errorIfPresent(error)
+  for (const detail of details) await saveDayDetail(detail)
+  for (const { goal_id, completed } of completions)
+    await setCompleted(goal_id, localDate, completed)
+}
+
+// Deterministic UUID-shaped id for a goal restored into an account where its
+// original id already belongs to someone else. Being deterministic keeps a second
+// import of the same file idempotent. (cyrb128: fast, non-cryptographic.)
+export function scopedGoalId(userId: string, goalId: string): string {
+  const input = `semana-em-jogo:${userId}:${goalId}`
+  let h1 = 1779033703,
+    h2 = 3144134277,
+    h3 = 1013904242,
+    h4 = 2773480762
+  for (let i = 0; i < input.length; i++) {
+    const k = input.charCodeAt(i)
+    h1 = h2 ^ Math.imul(h1 ^ k, 597399067)
+    h2 = h3 ^ Math.imul(h2 ^ k, 2869860233)
+    h3 = h4 ^ Math.imul(h3 ^ k, 951274213)
+    h4 = h1 ^ Math.imul(h4 ^ k, 2716044179)
+  }
+  h1 = Math.imul(h3 ^ (h1 >>> 18), 597399067)
+  h2 = Math.imul(h4 ^ (h2 >>> 22), 2869860233)
+  h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213)
+  h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179)
+  h1 ^= h2 ^ h3 ^ h4
+  h2 ^= h1
+  h3 ^= h1
+  h4 ^= h1
+  const hex = [h1, h2, h3, h4].map((value) => (value >>> 0).toString(16).padStart(8, '0')).join('')
+  // Mark as a version-4/variant-1 UUID so database and backup validation accept it.
+  const variant = ((parseInt(hex[16]!, 16) & 0x3) | 0x8).toString(16)
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-${variant}${hex.slice(17, 20)}-${hex.slice(20, 32)}`
+}
+
+const IMPORT_BATCH = 500
+async function insertMissing(table: string, rows: object[], onConflict: string) {
+  for (let start = 0; start < rows.length; start += IMPORT_BATCH) {
+    const { error } = await supabase!
+      .from(table)
+      .upsert(rows.slice(start, start + IMPORT_BATCH), { onConflict, ignoreDuplicates: true })
     errorIfPresent(error)
   }
 }
@@ -334,60 +471,62 @@ export async function importGoalBackup(records: BackupRecord[]) {
     existing.completions.map((item) => `${item.goal_id}:${item.local_date}`),
   )
   const counts = { goals: 0, history: 0, dayDetails: 0, completions: 0 }
-  const userId = supabase ? (await supabase.auth.getUser()).data.user?.id : 'local'
-  if (!userId) throw new Error('Entre na sua conta antes de importar.')
+  const userId = supabase
+    ? await currentUserId('Entre na sua conta antes de importar.')
+    : 'local'
   for (const record of records) {
-    const goal = { ...record.goal, user_id: userId }
-    if (!goals.has(goal.id)) {
-      if (supabase) errorIfPresent((await supabase.from('goal_templates').insert(goal)).error)
-      else {
-        existing.goals.push(goal)
-        saveLocal(existing)
-      }
-      goals.add(goal.id)
+    let goalId = record.goal.id
+    // Restoring into another account: the original id may already be taken there.
+    if (supabase && !goals.has(goalId) && goals.has(scopedGoalId(userId, goalId)))
+      goalId = scopedGoalId(userId, goalId)
+    if (!goals.has(goalId)) {
+      const goal = { ...record.goal, id: goalId, user_id: userId }
+      if (supabase) {
+        const { error } = await supabase.from('goal_templates').insert(goal)
+        if ((error as ApiError)?.code === '23505') {
+          goalId = scopedGoalId(userId, record.goal.id)
+          errorIfPresent(
+            (await supabase.from('goal_templates').insert({ ...goal, id: goalId })).error,
+          )
+        } else errorIfPresent(error)
+      } else existing.goals.push(goal)
+      goals.add(goalId)
       counts.goals++
     }
-    for (const entry of record.history) {
-      const key = `${goal.id}:${entry.valid_until}`
-      if (history.has(key)) continue
-      const value = { ...entry, user_id: userId }
-      if (supabase) errorIfPresent((await supabase.from('goal_history').insert(value)).error)
-      else {
-        existing.history.push(value)
-        saveLocal(existing)
-      }
-      history.add(key)
-      counts.history++
-    }
-    for (const entry of record.dayDetails) {
-      const key = `${goal.id}:${entry.local_date}`
-      if (details.has(key)) continue
-      const value = { ...entry, user_id: userId }
-      if (supabase) errorIfPresent((await supabase.from('goal_day_details').insert(value)).error)
-      else {
-        existing.dayDetails.push(value)
-        saveLocal(existing)
-      }
-      details.add(key)
-      counts.dayDetails++
-    }
-    for (const entry of record.completions) {
-      const key = `${goal.id}:${entry.local_date}`
-      if (completions.has(key)) continue
-      const value = {
-        goal_id: goal.id,
+
+    // Each key is claimed as soon as it is seen, so duplicates inside one file are skipped too.
+    const claim = (seen: Set<string>, key: string) => !seen.has(key) && Boolean(seen.add(key))
+    const newHistory = record.history
+      .filter((entry) => claim(history, `${goalId}:${entry.valid_until}`))
+      .map((entry) => ({ ...entry, goal_id: goalId, user_id: userId }))
+    const newDetails = record.dayDetails
+      .filter((entry) => claim(details, `${goalId}:${entry.local_date}`))
+      .map((entry) => ({ ...entry, goal_id: goalId, user_id: userId }))
+    const newCompletions = record.completions
+      .filter((entry) => claim(completions, `${goalId}:${entry.local_date}`))
+      .map((entry) => ({
+        goal_id: goalId,
         local_date: entry.local_date,
         user_id: userId,
         completed_at: entry.completed_at,
-      }
-      if (supabase) errorIfPresent((await supabase.from('goal_completions').insert(value)).error)
-      else {
-        existing.completions.push({ ...value, id: crypto.randomUUID() })
-        saveLocal(existing)
-      }
-      completions.add(key)
-      counts.completions++
+      }))
+
+    if (supabase) {
+      await insertMissing('goal_history', newHistory, 'goal_id,valid_until')
+      await insertMissing('goal_day_details', newDetails, 'goal_id,local_date')
+      await insertMissing('goal_completions', newCompletions, 'goal_id,local_date')
+    } else {
+      existing.history.push(...newHistory)
+      existing.dayDetails.push(...newDetails)
+      existing.completions.push(
+        ...newCompletions.map((entry) => ({ ...entry, id: crypto.randomUUID() })),
+      )
     }
+    counts.history += newHistory.length
+    counts.dayDetails += newDetails.length
+    counts.completions += newCompletions.length
   }
+  // Local mode writes once, so an invalid record cannot leave a partial import.
+  if (!supabase) saveLocal(existing)
   return counts
 }
