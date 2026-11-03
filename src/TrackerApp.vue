@@ -31,7 +31,7 @@ import {
   deleteGoal,
   importGoalBackup,
   loadData,
-  saveDay,
+  saveDay as saveDayRecords,
   supabase,
   updateGoal,
   type DayEntry,
@@ -732,7 +732,7 @@ async function saveDay() {
         completed: completed === wasCompleted ? undefined : completed,
       }
     })
-    await saveDay(day, entries)
+    await saveDayRecords(day, entries)
     selectedDay.value = null
     await refresh()
     message.value = 'Registro do dia salvo.'
