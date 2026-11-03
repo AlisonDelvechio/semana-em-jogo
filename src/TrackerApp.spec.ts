@@ -469,6 +469,46 @@ it('validates PDF dates before opening a printable report for the selected range
     expect(reportDocument.querySelectorAll('.record')).toHaveLength(1)
     popup.onload!()
     expect(popup.print).toHaveBeenCalledOnce()
+    // The popup inherits the page CSP, so the button has no inline handler.
+    const printButton = reportDocument.querySelector<HTMLButtonElement>('[data-print]')!
+    expect(printButton.getAttribute('onclick')).toBeNull()
+    printButton.click()
+    expect(popup.print).toHaveBeenCalledTimes(2)
+  } finally {
+    wrapper.unmount()
+  }
+})
+
+it('reloads records and moves to the new day when the page becomes visible again', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-11-08T23:58:00'))
+  const goal = {
+    category: 'treino' as const,
+    scheduled_weekdays: [0, 1, 2, 3, 4, 5, 6],
+    goal_mode: 'fixed' as const,
+    weekly_target: 1,
+    points: 10,
+    active: true,
+    meal_options: [],
+    meal_options_by_weekday: {},
+    checklist_options: [],
+    checklist_options_by_weekday: {},
+    start_date: null,
+    duration_days: null,
+  }
+  await createGoal({ ...goal, title: 'Alongar' })
+  const wrapper = mount(TrackerApp)
+  try {
+    await flushPromises()
+    expect(wrapper.find('.day-card.is-today').text()).toContain('Alongar')
+    // Another tab saves a goal while this one sits in the background past midnight.
+    await createGoal({ ...goal, title: 'Caminhar' })
+    vi.setSystemTime(new Date('2026-11-09T07:00:00'))
+    document.dispatchEvent(new Event('visibilitychange'))
+    await flushPromises()
+    const today = wrapper.find('.day-card.is-today')
+    expect(today.exists()).toBe(true)
+    expect(today.text()).toContain('Caminhar')
   } finally {
     wrapper.unmount()
   }

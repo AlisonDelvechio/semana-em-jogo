@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createGoal,
   importGoalBackup,
@@ -238,4 +238,36 @@ it('imports both the previous CSV with points columns and the current CSV withou
   expect(current.split('\r\n')[0]).not.toContain('Pontos')
   expect(parseGoalBackup(current)[0]?.goal.points).toBe(25)
   expect(parseGoalBackup(old)[0]?.goal.points).toBe(25)
+})
+
+it('accepts backup dates in time zones at UTC+12 or beyond', () => {
+  // Node applies a TZ change immediately to new Date objects.
+  vi.stubEnv('TZ', 'Pacific/Auckland')
+  try {
+    const goal: Goal = {
+      id: 'b8620e36-e80a-43e3-bb57-4bd7e3d97741',
+      user_id: 'u',
+      title: 'Treino',
+      category: 'outro',
+      scheduled_weekdays: [2],
+      active: true,
+      points: 10,
+      meal_options: defaultMealOptions,
+      meal_options_by_weekday: {},
+      created_at: '2026-11-02T12:00:00Z',
+    }
+    const completion = {
+      id: '0b0d4c6e-8f1a-4c7e-9a52-1f3d2b6c7a10',
+      user_id: 'u',
+      goal_id: goal.id,
+      local_date: '2026-11-03',
+      completed_at: '2026-11-03T08:00:00Z',
+    }
+    const csv = createGoalReport([goal], [completion], [], [], new Date(2026, 10, 3))
+    expect(parseGoalBackup(csv)[0]?.completions.map((entry) => entry.local_date)).toEqual([
+      '2026-11-03',
+    ])
+  } finally {
+    vi.unstubAllEnvs()
+  }
 })

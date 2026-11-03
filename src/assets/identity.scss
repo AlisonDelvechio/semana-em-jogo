@@ -496,7 +496,6 @@ html[data-theme='dark'] .period-progress-date {
   }
   .goal-editor-dialog .meal-option-chip {
     grid-template-columns: minmax(0, 1fr);
-    gap: 8px;
   }
   .option-item-actions {
     justify-content: flex-end;
@@ -575,10 +574,6 @@ input[type='file']::file-selector-button {
     white-space: normal;
     line-height: 1.4;
   }
-  .week-nav button {
-    width: 44px;
-    height: 44px;
-  }
 }
 .calendar-grid-scroll {
   max-width: 100%;
@@ -602,17 +597,6 @@ input[type='file']::file-selector-button {
   }
   .top-actions {
     gap: 8px;
-  }
-  .calendar-grid {
-    min-width: 314px;
-    gap: 1px;
-  }
-  .calendar-day {
-    min-width: 44px;
-    min-height: 56px;
-  }
-  .calendar-panel {
-    padding: 8px;
   }
 }
 @media (max-width: 360px) {
@@ -687,13 +671,6 @@ input[type='file']::file-selector-button {
   grid-auto-rows: 1fr;
   align-items: stretch;
   gap: 16px;
-}
-.days-grid .day-card {
-  min-height: 290px;
-  padding: 18px;
-}
-.days-grid .day-card.is-today {
-  padding: 17px;
 }
 .day-heading {
   min-height: 76px;
@@ -823,10 +800,6 @@ html[data-theme='dark'] .calendar-day.selected {
   align-items: center;
   gap: 7px;
 }
-.calendar-nav > button:not(.today-link) {
-  width: 44px;
-  height: 44px;
-}
 .selected-day-card {
   margin-top: 20px;
   min-height: 0;
@@ -954,7 +927,6 @@ html[data-theme='dark'] .calendar-day.selected {
   }
   .days-grid .day-card,
   .days-grid .day-card.is-today {
-    padding: 16px;
     min-height: 0;
   }
   .day-heading {

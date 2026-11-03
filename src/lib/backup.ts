@@ -8,6 +8,7 @@ import {
   type MealAdherence,
   type MealOption,
 } from '../types'
+import { localKey } from './dates'
 import type { BackupRecord } from './report'
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -23,11 +24,10 @@ const text = (value: unknown, max: number): string => {
 }
 const day = (value: unknown): string => {
   const key = text(value, 10)
-  if (
-    !date.test(key) ||
-    Number.isNaN(new Date(`${key}T12:00:00`).getTime()) ||
-    new Date(`${key}T12:00:00`).toISOString().slice(0, 10) !== key
-  )
+  // Compare in local time: toISOString() is UTC and shifts noon to the previous day
+  // in zones at UTC+12 or beyond (e.g. New Zealand in summer), rejecting valid dates.
+  const parsed = new Date(`${key}T12:00:00`)
+  if (!date.test(key) || Number.isNaN(parsed.getTime()) || localKey(parsed) !== key)
     throw new Error('Data inválida no backup.')
   return key
 }
