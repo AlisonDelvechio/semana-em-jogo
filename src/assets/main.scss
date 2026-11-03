@@ -1,7 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
 
 :root {
-  font-family: 'Inter', sans-serif;
   color: #26342e;
   background: #f8f7f3;
   font-synthesis: none;
@@ -24,13 +23,6 @@ button {
 button:disabled {
   cursor: wait;
   opacity: 0.55;
-}
-button:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
-  outline: 3px solid #e1a55c;
-  outline-offset: 3px;
 }
 h1,
 h2,
@@ -280,11 +272,7 @@ p {
   margin: 0;
 }
 .small-button {
-  border: 1px solid #bfd2b9;
-  background: #eef5eb;
-  color: #517950;
   padding: 12px 17px;
-  border-radius: 11px;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -432,9 +420,7 @@ p {
   font-size: 0.82rem;
 }
 .calendar-panel {
-  background: white;
   border: 1px solid #e5ebe2;
-  border-radius: 19px;
   padding: 22px;
   box-shadow: 0 8px 30px #384b350a;
 }
@@ -460,10 +446,6 @@ p {
   font-size: 0.78rem;
 }
 .calendar-nav > button:not(.today-link) {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
   border: 1px solid #e4e9e1;
   background: #fff;
   border-radius: 9px;
@@ -472,7 +454,6 @@ p {
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 6px;
 }
 .calendar-weekday {
   text-align: center;
@@ -484,26 +465,18 @@ p {
 .calendar-day {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
   min-width: 0;
-  min-height: 100px;
-  padding: 10px;
-  border: 1px solid #e8ede6;
   border-radius: 10px;
-  background: #fafcf9;
   text-align: left;
-  color: #314637;
   transition:
     border-color 0.15s,
     background 0.15s;
 }
 .calendar-day:hover {
   border-color: #7fa273;
-  background: #f1f7ed;
 }
 .calendar-day.outside-month {
   opacity: 0.43;
-  background: #f6f7f5;
 }
 .calendar-day.is-today {
   border: 2px solid #789e73;
@@ -515,9 +488,6 @@ p {
     700 0.92rem 'Plus Jakarta Sans',
     sans-serif;
   border-radius: 7px;
-}
-.calendar-day.is-today .calendar-date {
-  color: #527b4f;
 }
 .calendar-day-content {
   width: 100%;
@@ -567,14 +537,11 @@ p {
   white-space: nowrap;
 }
 .week-nav button {
-  width: 34px;
-  height: 34px;
   border: 1px solid #e4e9e1;
   background: white;
   border-radius: 9px;
   color: #5f7760;
   font-size: 1.4rem;
-  line-height: 1;
 }
 .today-link {
   margin: -7px 0 12px;
@@ -583,19 +550,15 @@ p {
 .days-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
 }
 .day-card {
   min-height: 183px;
   border: 1px solid #e5ebe2;
-  border-radius: 16px;
-  background: #fff;
   padding: 17px;
   display: flex;
   flex-direction: column;
 }
 .day-card.is-today {
-  border: 2px solid #8eaf84;
   padding: 16px;
   box-shadow: 0 8px 25px #7c9a761c;
 }
@@ -629,9 +592,6 @@ p {
   padding: 0;
   color: inherit;
 }
-.day-open:hover strong {
-  color: #668c61;
-}
 .day-detail-icon {
   border: 0;
   background: #f2f6f0;
@@ -643,17 +603,7 @@ p {
   place-items: center;
 }
 .day-edit-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
   align-self: flex-start;
-  margin-top: auto;
-  padding: 12px 0 0;
-  border: 0;
-  background: transparent;
-  color: #60855b;
-  font-size: 0.73rem;
-  font-weight: 800;
 }
 .day-edit-action:hover {
   color: #375f38;
@@ -673,51 +623,28 @@ p {
   gap: 9px;
 }
 .task {
-  display: flex;
-  align-items: center;
-  gap: 9px;
   cursor: pointer;
   min-width: 0;
   text-align: left;
   border: 0;
   background: transparent;
-  padding: 3px 0;
   color: inherit;
 }
 .check-visual {
-  width: 19px;
-  height: 19px;
-  border: 1.6px solid #bccbb9;
-  border-radius: 6px;
   display: grid;
   place-items: center;
   color: transparent;
   flex: none;
   font-size: 0.8rem;
 }
-.task.done .check-visual {
-  background: #78a06e;
-  border-color: #78a06e;
-  color: white;
-}
 .task-title {
   font-weight: 700;
-  font-size: 0.78rem;
   overflow-wrap: anywhere;
-  line-height: 1.3;
 }
 .task-title small {
   display: block;
   font-weight: 500;
-  color: #a1a99e;
   margin-top: 3px;
-}
-.task.done .task-title {
-  text-decoration: line-through;
-  color: #879487;
-}
-.task:hover .task-title {
-  color: #547b50;
 }
 .dialog-backdrop {
   position: fixed;
@@ -826,24 +753,6 @@ p {
   grid-column: 1 / -1;
   grid-row: 3;
 }
-.meal-order-actions {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-.meal-order-actions button {
-  display: grid;
-  place-items: center;
-  width: 27px;
-  height: 27px;
-  border: 1px solid #e2e9df;
-  border-radius: 7px;
-  background: #f7faf5;
-  color: #60825c;
-}
-.meal-order-actions button:not(:disabled):hover {
-  background: #e9f2e5;
-}
 .meal-order-actions button:disabled,
 .meal-option-chip button:disabled {
   opacity: 0.3;
@@ -890,9 +799,7 @@ p {
   margin: 0 0 10px;
 }
 .meal-option-list {
-  display: flex;
   flex-wrap: wrap;
-  gap: 8px;
 }
 .meal-option-chip {
   display: inline-flex;
@@ -956,7 +863,6 @@ p {
 .weekday-editor-list li {
   display: flex;
   align-items: center;
-  gap: 10px;
   border: 1px solid #e5ece2;
   background: #fafcf9;
   border-radius: 10px;
@@ -988,16 +894,12 @@ p {
 .day-note textarea {
   width: 100%;
   border: 1px solid #dfe6dc;
-  background: #fafbf9;
-  border-radius: 9px;
   padding: 10px;
-  color: #25352b;
 }
 .meal-description {
   min-width: 0;
   font-size: 0.82rem;
   line-height: 1.4;
-  min-height: 43px;
   resize: vertical;
   overflow-y: hidden;
 }
@@ -1046,16 +948,7 @@ p {
   font-size: 0.9rem;
 }
 .primary-button {
-  border: 0;
-  border-radius: 11px;
-  background: #789e73;
-  color: white;
   padding: 13px 19px;
-  font-weight: 800;
-  display: inline-flex;
-  justify-content: space-between;
-  gap: 26px;
-  align-items: center;
 }
 .primary-button:hover,
 .small-button:hover {
@@ -1068,9 +961,7 @@ p {
   align-items: start;
 }
 .panel {
-  background: white;
   border: 1px solid #e6eae3;
-  border-radius: 19px;
   padding: 28px;
   box-shadow: 0 8px 30px #384b350a;
 }
@@ -1123,12 +1014,9 @@ p {
 .report-panel select {
   display: block;
   width: 100%;
-  min-height: 42px;
   margin-top: 5px;
   padding: 8px;
   border: 1px solid #dfe6dc;
-  border-radius: 8px;
-  background: #fafbf9;
 }
 .report-panel p {
   font-size: 0.78rem;
@@ -1194,9 +1082,7 @@ p {
   line-height: 1.5;
 }
 .day-limit-correction summary {
-  cursor: pointer;
   font-weight: 700;
-  min-height: 32px;
 }
 .day-limit-correction p {
   margin: 10px 0;
@@ -1232,11 +1118,7 @@ html[data-theme='dark'] .free-meal-warning {
 }
 .meal-adherence select {
   max-width: 100%;
-  min-height: 38px;
   border: 1px solid #dfe6dc;
-  border-radius: 8px;
-  background: #fafbf9;
-  color: #25352b;
   padding: 6px;
 }
 .goal-form fieldset {
@@ -1247,7 +1129,6 @@ html[data-theme='dark'] .free-meal-warning {
 .goal-form legend {
   font-weight: 700;
   color: #4e5e51;
-  font-size: 0.83rem;
   margin-bottom: 10px;
 }
 .day-picker {
@@ -1302,9 +1183,6 @@ html[data-theme='dark'] .free-meal-warning {
   border-top: 1px solid #eef1ec;
   padding: 16px 0;
 }
-.goal-item.inactive {
-  opacity: 0.58;
-}
 .goal-icon {
   width: 40px;
   height: 40px;
@@ -1330,7 +1208,6 @@ html[data-theme='dark'] .free-meal-warning {
 }
 .goal-details strong {
   display: block;
-  font-size: 0.89rem;
 }
 .goal-details span,
 .goal-details small {
@@ -1340,16 +1217,10 @@ html[data-theme='dark'] .free-meal-warning {
   margin-top: 4px;
   line-height: 1.4;
 }
-.goal-actions {
-  display: flex;
-  gap: 3px;
-}
 .goal-actions button {
   border: 0;
   background: #f5f7f3;
   border-radius: 7px;
-  width: 28px;
-  height: 28px;
   color: #70836f;
 }
 .notice {
@@ -1452,7 +1323,6 @@ footer {
 }
 @media (max-width: 720px) {
   .week-layout {
-    display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     column-gap: 9px;
   }
@@ -1468,7 +1338,6 @@ footer {
     display: none;
   }
   .week-layout .page-heading h1 {
-    font-size: 1.25rem;
     margin: 5px 0 0;
   }
   .week-layout .page-heading .small-button {
@@ -1494,7 +1363,6 @@ footer {
     order: 3;
   }
   .topbar {
-    height: 60px;
     padding: 0 16px;
     gap: 8px;
   }
@@ -1512,8 +1380,6 @@ footer {
   }
   .profile-corner {
     max-width: 145px;
-    padding: 4px;
-    gap: 5px;
   }
   .profile-avatar {
     width: 30px;
@@ -1647,30 +1513,15 @@ footer {
   }
   .week-nav {
     align-self: stretch;
-    width: 100%;
-    gap: 7px;
     justify-content: space-between;
     font-size: 0.81rem;
   }
   .week-nav .mobile-date-label {
     display: block;
     flex: 1;
-    text-align: center;
-  }
-  .week-nav button,
-  .calendar-nav > button:not(.today-link) {
-    display: grid;
-    flex: none;
-    place-items: center;
-    width: 42px;
-    height: 42px;
-  }
-  .today-link {
-    min-height: 40px;
   }
   .days-grid {
     grid-template-columns: 1fr;
-    gap: 10px;
   }
   .day-card {
     min-height: 110px;
@@ -1715,14 +1566,9 @@ footer {
   }
   .calendar-panel {
     max-width: 100%;
-    padding: 11px;
     box-shadow: none;
   }
-  .calendar-header {
-    align-items: center;
-  }
   .calendar-header h2 {
-    font-size: 1.3rem;
     line-height: 1.1;
   }
   .calendar-nav {
@@ -1731,16 +1577,10 @@ footer {
   .calendar-nav .today-link {
     margin: 0;
   }
-  .calendar-grid {
-    gap: 3px;
-  }
   .calendar-weekday {
     font-size: 0.7rem;
   }
   .calendar-day {
-    min-width: 0;
-    min-height: 72px;
-    padding: 6px;
     border-radius: 7px;
     touch-action: manipulation;
   }
@@ -1790,10 +1630,7 @@ footer {
     margin-left: auto;
   }
   .goal-actions button {
-    display: grid;
     place-items: center;
-    width: 40px;
-    height: 40px;
   }
   .day-picker button {
     min-width: 44px;
@@ -1801,9 +1638,6 @@ footer {
   }
   .weekday-meals-header {
     flex-wrap: wrap;
-  }
-  .weekday-meals-header .text-button {
-    min-height: 40px;
   }
   .weekday-meals-card > small,
   .goal-details span {
@@ -1878,27 +1712,14 @@ footer {
     grid-column: 2;
     grid-row: 2;
   }
-  .meal-row .meal-order-actions button {
-    width: 34px;
-    height: 36px;
-  }
   .meal-row .meal-remove {
     grid-column: 3;
     grid-row: 2;
-    width: 36px;
-    height: 36px;
   }
   .weekday-editor-list .meal-order-actions button,
   .weekday-editor-list .meal-remove {
     width: 36px;
     height: 36px;
-  }
-  .weekday-editor-list li {
-    gap: 5px;
-  }
-  .weekday-editor-list li > span {
-    min-width: 0;
-    overflow-wrap: anywhere;
   }
   .weekday-dialog .dialog-actions {
     margin-top: 14px;
@@ -1937,36 +1758,19 @@ footer {
     min-height: 44px;
   }
   .mobile-nav {
-    display: flex;
-    position: sticky;
-    top: 0;
-    z-index: 10;
     justify-content: space-around;
-    gap: 8px;
     padding: 6px 12px;
-    background: #fff;
     border-bottom: 1px solid #e7ebe3;
-    box-shadow: 0 5px 18px #26342e0d;
   }
   .mobile-nav button {
     flex: 1;
-    display: grid;
     place-items: center;
-    gap: 2px;
-    min-height: 44px;
-    padding: 4px;
     grid-template-columns: auto auto;
     justify-content: center;
-    gap: 6px;
     border: 0;
     border-radius: 12px;
     background: none;
-    color: #95a294;
     touch-action: manipulation;
-  }
-  .mobile-nav button.selected {
-    background: #edf5e9;
-    color: #4b754c;
   }
   .mobile-nav button span {
     font-size: 0.74rem;
@@ -1995,9 +1799,6 @@ footer {
   }
   .month-overview strong {
     font-size: 1.8rem;
-  }
-  .calendar-day {
-    min-height: 62px;
   }
   .calendar-weekday {
     font-size: 0.65rem;
@@ -2043,10 +1844,6 @@ footer {
   }
   .calendar-panel {
     padding: 8px;
-  }
-  .calendar-day {
-    min-height: 56px;
-    padding: 4px;
   }
   .calendar-day.is-today {
     padding: 3px;
@@ -2146,7 +1943,6 @@ html[data-theme='dark'] .dialog-close:hover {
   border-color: #8bb57e;
 }
 html[data-theme='dark'] .calendar-day.outside-month {
-  background: #202b23;
   opacity: 0.65;
 }
 html[data-theme='dark'] .calendar-day.is-today .calendar-date,
@@ -2206,10 +2002,6 @@ html[data-theme='dark'] .notice {
   border-color: #638962;
   color: #e5f3dd;
 }
-html[data-theme='dark'] .primary-button {
-  background: #679260;
-  color: #fff;
-}
 html[data-theme='dark'] .goal-form input:not([type='checkbox']),
 html[data-theme='dark'] .goal-form select,
 html[data-theme='dark'] .auth-card input,
@@ -2248,10 +2040,7 @@ html[data-theme='dark'] .featured .progress-main span {
 }
 .period-progress-card {
   min-width: 0;
-  padding: 22px;
   border: 1px solid #dce5d7;
-  border-radius: 18px;
-  background: #fff;
 }
 .period-progress-heading {
   display: flex;
@@ -2265,14 +2054,10 @@ html[data-theme='dark'] .featured .progress-main span {
   letter-spacing: -0.02em;
 }
 .period-progress-heading > span {
-  color: #52664e;
   font-size: 0.74rem;
 }
 .period-progress-date {
   display: block;
-  color: #5e705c;
-  margin: 8px 0 16px;
-  font-size: 0.8rem;
   line-height: 1.4;
 }
 .period-progress-value {
@@ -2281,24 +2066,19 @@ html[data-theme='dark'] .featured .progress-main span {
     600 2.7rem/1 'Plus Jakarta Sans',
     sans-serif;
   letter-spacing: -0.04em;
-  color: #3b613a;
 }
 .period-progress-value > span {
-  font-size: 1.3rem;
   margin-left: 3px;
 }
 .period-progress-bar {
   margin-top: 16px;
-  height: 7px;
   border-radius: 10px;
   overflow: hidden;
-  background: #e6eee2;
 }
 .period-progress-bar > span {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: #709567;
 }
 .goal-editor-backdrop {
   z-index: 30;
@@ -2311,8 +2091,6 @@ html[data-theme='dark'] .featured .progress-main span {
   max-height: calc(100dvh - 36px);
   overflow-y: auto;
   overscroll-behavior: contain;
-  border-radius: 20px;
-  background: #fff;
   box-shadow: 0 22px 65px #172b243b;
 }
 .goal-editor-header {
@@ -2328,7 +2106,6 @@ html[data-theme='dark'] .featured .progress-main span {
   border-bottom: 1px solid #dfe6dc;
 }
 .goal-editor-header h2 {
-  margin: 5px 0 0;
   font-size: 1.4rem;
 }
 .goal-editor-dialog .goal-form {
@@ -2358,18 +2135,13 @@ html[data-theme='dark'] .featured .progress-main span {
   overflow-wrap: anywhere;
 }
 .goal-actions button {
-  width: 44px;
   height: 44px;
 }
 .report-tools {
   margin-top: 18px;
 }
 .report-tools > h2 {
-  margin: 0 0 16px;
   font-size: 1.2rem;
-}
-.report-tools .report-panel {
-  margin: 18px 0 0;
 }
 .report-tools .report-button {
   display: flex;
@@ -2379,22 +2151,7 @@ html[data-theme='dark'] .period-progress-card,
 html[data-theme='dark'] .goal-editor-dialog,
 html[data-theme='dark'] .goal-editor-header,
 html[data-theme='dark'] .goal-editor-dialog .form-actions {
-  background: #202d25;
-  border-color: #3d5141;
   color: #e9f0e8;
-}
-html[data-theme='dark'] .period-progress-heading > span,
-html[data-theme='dark'] .period-progress-date {
-  color: #c0d0bb;
-}
-html[data-theme='dark'] .period-progress-value {
-  color: #d3edc7;
-}
-html[data-theme='dark'] .period-progress-bar {
-  background: #3d5141;
-}
-html[data-theme='dark'] .period-progress-bar > span {
-  background: #a6cc91;
 }
 @media (max-width: 720px) {
   .week-layout .progress-overview {
@@ -2403,10 +2160,6 @@ html[data-theme='dark'] .period-progress-bar > span {
     gap: 10px;
     margin-bottom: 20px;
   }
-  .period-progress-card {
-    padding: 14px;
-    border-radius: 14px;
-  }
   .period-progress-heading {
     align-items: flex-start;
     flex-direction: column;
@@ -2414,14 +2167,6 @@ html[data-theme='dark'] .period-progress-bar > span {
   }
   .period-progress-heading h2 {
     font-size: 0.95rem;
-  }
-  .period-progress-date {
-    min-height: 2.8em;
-    margin: 8px 0 12px;
-    font-size: 0.72rem;
-  }
-  .period-progress-value {
-    font-size: 2.1rem;
   }
   .period-progress-bar {
     margin-top: 12px;
@@ -2433,7 +2178,6 @@ html[data-theme='dark'] .period-progress-bar > span {
   .goal-editor-dialog {
     width: 100%;
     max-height: calc(100dvh - max(12px, env(safe-area-inset-top)));
-    border-radius: 20px 20px 0 0;
   }
   .goal-editor-header {
     padding: 16px;
@@ -2444,9 +2188,7 @@ html[data-theme='dark'] .period-progress-bar > span {
   .goal-editor-dialog .form-actions {
     margin-inline: -16px;
     padding-inline: 16px;
-    gap: 10px;
     display: flex;
-    flex-wrap: wrap;
   }
   .goal-editor-dialog .form-actions button {
     flex: 1;
@@ -2485,9 +2227,6 @@ html[data-theme='dark'] .period-progress-bar > span {
   }
 }
 @media (max-width: 360px) {
-  .period-progress-card {
-    padding: 12px;
-  }
   .period-progress-heading > span {
     font-size: 0.68rem;
   }
@@ -2506,7 +2245,6 @@ html[data-theme='dark'] .period-progress-bar > span {
   .goal-editor-dialog .meal-option-chip button,
   .weekday-dialog .meal-order-actions button,
   .weekday-dialog .meal-remove {
-    min-width: 40px;
     min-height: 44px;
   }
   .goal-editor-dialog .weekday-meals-header > div {
@@ -2541,7 +2279,6 @@ html[data-theme='dark'] .period-progress-bar > span {
     overflow-wrap: anywhere;
   }
   .meal-adherence select {
-    min-height: 44px;
     font-size: 16px;
   }
   .day-goal-title > div {
@@ -2636,11 +2373,5 @@ html[data-theme='dark'] .goal-actions button:last-child {
   .goal-actions button {
     padding: 10px;
     font-size: 0.75rem;
-  }
-  .goal-editor-dialog .form-actions .primary-button {
-    flex: 1 1 190px;
-  }
-  .goal-editor-dialog .form-actions .text-button {
-    flex: 0 1 auto;
   }
 }
