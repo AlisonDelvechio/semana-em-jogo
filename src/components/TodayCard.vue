@@ -11,6 +11,7 @@ import {
   scheduledFor,
   weeklyEntries,
 } from '../lib/dates'
+import { currentDate } from '../lib/today'
 const props = defineProps<{
   goals: Goal[]
   completions: Completion[]
@@ -18,7 +19,7 @@ const props = defineProps<{
   dayDetails: GoalDayDetail[]
 }>()
 const emit = defineEmits<{ openDay: [date: Date] }>()
-const today = computed(() => new Date())
+const today = computed(() => currentDate())
 const planned = computed(() =>
   props.goals
     .map((goal) => goalForDate(goal, props.history, today.value))

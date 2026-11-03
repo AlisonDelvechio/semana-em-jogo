@@ -22,6 +22,7 @@ import {
   scheduledFor,
   weekdays,
 } from '../lib/dates'
+import { currentDate, todayKey } from '../lib/today'
 import { monthStats } from '../lib/month'
 
 const props = defineProps<{
@@ -35,7 +36,7 @@ const emit = defineEmits<{
   currentWeek: []
   overlayChange: [open: boolean]
 }>()
-const selectedDate = ref(new Date())
+const selectedDate = ref(currentDate())
 const summaryOpen = ref(false)
 watch(summaryOpen, (open) => emit('overlayChange', open), { flush: 'sync' })
 onUnmounted(() => emit('overlayChange', false))
@@ -48,15 +49,15 @@ async function editSelectedDay() {
   await nextTick()
   emit('openDay', selectedDate.value)
 }
-const monthDate = ref(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
+const monthDate = ref(new Date(currentDate().getFullYear(), currentDate().getMonth(), 1))
 const monthDays = computed(() => calendarDays(monthDate.value))
 const monthTitle = computed(() =>
   monthDate.value.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
 )
 const isCurrentMonth = computed(
   () =>
-    monthDate.value.getFullYear() === new Date().getFullYear() &&
-    monthDate.value.getMonth() === new Date().getMonth(),
+    monthDate.value.getFullYear() === currentDate().getFullYear() &&
+    monthDate.value.getMonth() === currentDate().getMonth(),
 )
 const progress = computed(() =>
   monthStats(
@@ -65,16 +66,28 @@ const progress = computed(() =>
     props.history,
     props.dayDetails,
     monthDate.value,
-    new Date(),
+    currentDate(),
   ),
 )
 const monthCaption = computed(() =>
-  isCurrentMonth.value ? 'Até hoje' : monthDate.value > new Date() ? 'Mês futuro' : 'Mês encerrado',
+  isCurrentMonth.value
+    ? 'Até hoje'
+    : monthDate.value > currentDate()
+      ? 'Mês futuro'
+      : 'Mês encerrado',
 )
 function selectMonth(date: Date) {
   monthDate.value = new Date(date.getFullYear(), date.getMonth(), 1)
-  selectedDate.value = isCurrentMonth.value ? new Date() : new Date(monthDate.value)
+  selectedDate.value = isCurrentMonth.value ? currentDate() : new Date(monthDate.value)
 }
+// Left open across midnight on the last day of a month: keep showing "this month".
+watch(todayKey, (next, previous) => {
+  if (
+    localKey(monthDate.value).slice(0, 7) === previous.slice(0, 7) &&
+    next.slice(0, 7) !== previous.slice(0, 7)
+  )
+    selectMonth(currentDate())
+})
 function shiftMonth(amount: number) {
   selectMonth(new Date(monthDate.value.getFullYear(), monthDate.value.getMonth() + amount, 1))
 }
@@ -150,7 +163,7 @@ function goalCounts(goal: Goal) {
           v-if="!isCurrentMonth"
           type="button"
           class="today-link"
-          @click="selectMonth(new Date())"
+          @click="selectMonth(currentDate())"
         >
           Mês atual
         </button>
@@ -179,7 +192,7 @@ function goalCounts(goal: Goal) {
           class="calendar-day"
           :class="{
             'outside-month': date.getMonth() !== monthDate.getMonth(),
-            'is-today': localKey(date) === localKey(new Date()),
+            'is-today': localKey(date) === localKey(currentDate()),
             selected: localKey(date) === localKey(selectedDate),
           }"
           :aria-pressed="localKey(date) === localKey(selectedDate)"
@@ -199,11 +212,11 @@ function goalCounts(goal: Goal) {
           <span class="calendar-desktop-detail" aria-hidden="true">
             <span v-if="daySummary(date).total" class="calendar-day-totals">
               <span>{{
-                localKey(date) > localKey(new Date())
+                localKey(date) > localKey(currentDate())
                   ? `${daySummary(date).total} metas previstas`
                   : `${daySummary(date).completed}/${daySummary(date).total} concluídas`
               }}</span>
-              <strong v-if="localKey(date) <= localKey(new Date())"
+              <strong v-if="localKey(date) <= localKey(currentDate())"
                 >{{ daySummary(date).percent }}%</strong
               >
             </span>

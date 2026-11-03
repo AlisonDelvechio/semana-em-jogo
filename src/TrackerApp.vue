@@ -54,6 +54,7 @@ import {
   weekdays,
   weeklyEntries,
 } from './lib/dates'
+import { currentDate, startTodayClock, syncToday, todayKey } from './lib/today'
 import { moveMeal } from './lib/meals'
 import { parseGoalBackup } from './lib/backup'
 import { createPrintableReport } from './lib/print-report'
@@ -83,7 +84,7 @@ const goals = ref<Goal[]>([]),
   completions = ref<Completion[]>([]),
   history = ref<GoalHistory[]>([])
 const dayDetails = ref<GoalDayDetail[]>([])
-const monday = ref(mondayOf(new Date())),
+const monday = ref(mondayOf(currentDate())),
   tab = ref<'week' | 'month' | 'goals'>('week')
 const loading = ref(true),
   busy = ref(false),
@@ -143,9 +144,9 @@ const dayDrafts = ref<Record<string, DayDraft>>({})
 const newGoalMeal = ref('')
 const newGoalChecklist = ref('')
 const reportMode = ref<'all' | 'month' | 'range'>('all')
-const reportMonth = ref(localKey(new Date()).slice(0, 7))
-const reportFrom = ref(localKey(new Date()))
-const reportTo = ref(localKey(new Date()))
+const reportMonth = ref(localKey(currentDate()).slice(0, 7))
+const reportFrom = ref(localKey(currentDate()))
+const reportTo = ref(localKey(currentDate()))
 const pendingBackup = ref<BackupRecord[] | null>(null)
 const pendingBackupName = ref('')
 const reportMessage = ref('')
@@ -211,12 +212,12 @@ const mobileQuery = window.matchMedia('(max-width: 720px)')
 const syncMobileWeek = () => {
   mobileWeek.value = mobileQuery.matches
 }
-const selectedWeekDay = ref(localKey(new Date()))
+const selectedWeekDay = ref(localKey(currentDate()))
 watch(
   monday,
   () => {
-    selectedWeekDay.value = days.value.some((date) => localKey(date) === localKey(new Date()))
-      ? localKey(new Date())
+    selectedWeekDay.value = days.value.some((date) => localKey(date) === localKey(currentDate()))
+      ? localKey(currentDate())
       : localKey(days.value[0]!)
   },
   { flush: 'sync' },
@@ -231,13 +232,13 @@ const pace = computed(() =>
     goals.value,
     completions.value,
     monday.value,
-    new Date(),
+    currentDate(),
     history.value,
     dayDetails.value,
   ),
 )
 const overviewMonth = computed(() =>
-  current.value ? new Date() : new Date(monday.value.getFullYear(), monday.value.getMonth(), 1),
+  current.value ? currentDate() : new Date(monday.value.getFullYear(), monday.value.getMonth(), 1),
 )
 const monthlyProgress = computed(() =>
   monthStats(
@@ -246,7 +247,7 @@ const monthlyProgress = computed(() =>
     history.value,
     dayDetails.value,
     overviewMonth.value,
-    new Date(),
+    currentDate(),
   ),
 )
 const overviewMonthLabel = computed(() =>
@@ -254,7 +255,7 @@ const overviewMonthLabel = computed(() =>
 )
 const monthCaption = computed(() => {
   const key = localKey(overviewMonth.value).slice(0, 7),
-    today = localKey(new Date()).slice(0, 7)
+    today = localKey(currentDate()).slice(0, 7)
   return key === today ? 'Até hoje' : key < today ? 'Mês encerrado' : 'Mês futuro'
 })
 const label = computed(
@@ -265,8 +266,8 @@ const compactWeekLabel = computed(
   () =>
     `${days.value[0]!.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })} – ${days.value[6]!.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })}`,
 )
-const current = computed(() => localKey(monday.value) === localKey(mondayOf(new Date())))
-const future = computed(() => localKey(monday.value) > localKey(mondayOf(new Date())))
+const current = computed(() => localKey(monday.value) === localKey(mondayOf(currentDate())))
+const future = computed(() => localKey(monday.value) > localKey(mondayOf(currentDate())))
 const monthLabel = computed(() => {
   const start = days.value[0]!,
     end = days.value[6]!
@@ -363,7 +364,7 @@ function downloadReport(format: 'csv' | 'pdf' = 'csv') {
     completions.value,
     history.value,
     dayDetails.value,
-    new Date(),
+    currentDate(),
     range,
   )
   if (format === 'pdf') {
@@ -374,7 +375,7 @@ function downloadReport(format: 'csv' | 'pdf' = 'csv') {
     }
     popup.opener = null
     popup.document.open()
-    popup.document.write(createPrintableReport(csv, new Date(), range))
+    popup.document.write(createPrintableReport(csv, currentDate(), range))
     popup.onload = () => {
       popup.focus()
       popup.print()
@@ -385,7 +386,7 @@ function downloadReport(format: 'csv' | 'pdf' = 'csv') {
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
   const link = document.createElement('a')
   link.href = url
-  link.download = `semana-em-jogo-relatorio-${localKey(new Date())}.csv`
+  link.download = `semana-em-jogo-relatorio-${localKey(currentDate())}.csv`
   document.body.append(link)
   link.click()
   link.remove()
@@ -432,8 +433,8 @@ function openWeekOf(date: Date) {
   tab.value = 'week'
 }
 function goToCurrentWeek() {
-  selectedWeekDay.value = localKey(new Date())
-  monday.value = mondayOf(new Date())
+  selectedWeekDay.value = localKey(currentDate())
+  monday.value = mondayOf(currentDate())
   tab.value = 'week'
 }
 const mealCount = (goal: Goal, date: Date) => {
@@ -746,9 +747,11 @@ let refreshVersion = 0
 let authRefreshTimer: ReturnType<typeof setTimeout> | undefined
 let unsubscribeAuth: (() => void) | undefined
 let disposed = false
-async function refresh() {
+// `silent` reloads in the background (returning to the tab) without replacing the
+// screen with the loading state or reporting transient network errors.
+async function refresh({ silent = false } = {}) {
   const version = ++refreshVersion
-  loading.value = true
+  if (!silent) loading.value = true
   try {
     const result = await loadData()
     if (version !== refreshVersion || disposed) return
@@ -757,11 +760,36 @@ async function refresh() {
     history.value = result.history
     dayDetails.value = result.dayDetails
   } catch (error) {
-    if (version === refreshVersion && !disposed) errorMessage(error)
+    if (version === refreshVersion && !disposed && !silent) errorMessage(error)
   } finally {
-    if (version === refreshVersion && !disposed) loading.value = false
+    if (version === refreshVersion && !disposed && !silent) loading.value = false
   }
 }
+// Another device or tab may have saved records while this one was in the background.
+// Reload them when the page is shown again so a later save does not overwrite them
+// with stale data. Skipped while a write is running or the first load is pending.
+const RESUME_REFRESH_MS = 30_000
+let lastResumeRefresh = 0
+function onPageVisible() {
+  if (document.visibilityState !== 'visible') return
+  syncToday()
+  if (busy.value || loading.value || (cloudEnabled && !session.value)) return
+  // An open editor keeps its draft; reloading under it could drop a goal it still references.
+  if (selectedDay.value || goalEditorOpen.value) return
+  if (Date.now() - lastResumeRefresh < RESUME_REFRESH_MS) return
+  lastResumeRefresh = Date.now()
+  void refresh({ silent: true })
+}
+// Moves the week view to the new day when the app stays open past midnight,
+// unless the user was browsing another week or another day.
+watch(todayKey, (next, previous) => {
+  const previousMonday = localKey(mondayOf(new Date(`${previous}T12:00:00`)))
+  if (localKey(monday.value) !== previousMonday) return
+  const followToday = selectedWeekDay.value === previous
+  if (localKey(mondayOf(new Date(`${next}T12:00:00`))) !== previousMonday)
+    monday.value = mondayOf(currentDate())
+  if (followToday) selectedWeekDay.value = next
+})
 async function auth() {
   if (!supabase) return
   busy.value = true
@@ -799,7 +827,7 @@ function changeMode(event: Event) {
 }
 function togglePeriod(event: Event) {
   if ((event.target as HTMLInputElement).checked) {
-    form.value.start_date = localKey(new Date())
+    form.value.start_date = localKey(currentDate())
     form.value.duration_days = 14
     if (form.value.goal_mode === 'fixed' && !form.value.scheduled_weekdays.length)
       form.value.scheduled_weekdays = [0, 1, 2, 3, 4, 5, 6]
@@ -991,7 +1019,11 @@ async function pause(goal: Goal) {
     busy.value = false
   }
 }
+let stopTodayClock: (() => void) | undefined
 onMounted(async () => {
+  stopTodayClock = startTodayClock()
+  document.addEventListener('visibilitychange', onPageVisible)
+  window.addEventListener('focus', onPageVisible)
   systemTheme.addEventListener('change', syncSystemTheme)
   syncMobileWeek()
   mobileQuery.addEventListener('change', syncMobileWeek)
@@ -1034,6 +1066,9 @@ onMounted(async () => {
 })
 onUnmounted(() => {
   disposed = true
+  stopTodayClock?.()
+  document.removeEventListener('visibilitychange', onPageVisible)
+  window.removeEventListener('focus', onPageVisible)
   refreshVersion++
   clearTimeout(authRefreshTimer)
   unsubscribeAuth?.()
@@ -1220,7 +1255,7 @@ onUnmounted(() => {
               </div>
             </div>
             <button
-              v-if="!current || (mobileWeek && selectedWeekDay !== localKey(new Date()))"
+              v-if="!current || (mobileWeek && selectedWeekDay !== localKey(currentDate()))"
               class="today-link"
               @click="goToCurrentWeek"
             >
@@ -1260,7 +1295,7 @@ onUnmounted(() => {
                 type="button"
                 :class="{
                   selected: localKey(date) === selectedWeekDay,
-                  'is-today': localKey(date) === localKey(new Date()),
+                  'is-today': localKey(date) === localKey(currentDate()),
                 }"
                 :aria-label="`Selecionar dia ${date.toLocaleDateString('pt-BR')}`"
                 :aria-pressed="localKey(date) === selectedWeekDay"
@@ -1268,7 +1303,7 @@ onUnmounted(() => {
               >
                 <span>{{ fullWeekdays[date.getDay()]!.slice(0, 1) }}</span
                 ><strong>{{ date.getDate() }}</strong
-                ><small>{{ localKey(date) === localKey(new Date()) ? 'Hoje' : '' }}</small>
+                ><small>{{ localKey(date) === localKey(currentDate()) ? 'Hoje' : '' }}</small>
               </button>
             </div>
             <div v-if="!days.some((date) => planned(date).length)" class="empty-state">
@@ -1281,7 +1316,7 @@ onUnmounted(() => {
               <article
                 v-for="date in visibleDays"
                 :key="localKey(date)"
-                :class="['day-card', { 'is-today': localKey(date) === localKey(new Date()) }]"
+                :class="['day-card', { 'is-today': localKey(date) === localKey(currentDate()) }]"
               >
                 <div class="day-heading">
                   <button
@@ -1298,7 +1333,7 @@ onUnmounted(() => {
                       }}</small></strong
                     >
                   </button>
-                  <span v-if="localKey(date) === localKey(new Date())" class="today-pill"
+                  <span v-if="localKey(date) === localKey(currentDate())" class="today-pill"
                     >HOJE</span
                   >
                 </div>
@@ -1964,7 +1999,7 @@ onUnmounted(() => {
               <details
                 v-if="
                   goal.category === 'alimentacao' &&
-                  (localKey(selectedDay) < localKey(new Date()) ||
+                  (localKey(selectedDay) < localKey(currentDate()) ||
                     dayDrafts[goal.id]!.freeMealLimitOverride !== null)
                 "
                 class="day-limit-correction"

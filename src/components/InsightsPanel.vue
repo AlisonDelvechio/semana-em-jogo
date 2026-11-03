@@ -4,6 +4,7 @@ import FormDialog from './FormDialog.vue'
 import { Target, ScanSearch, Dumbbell, Utensils, ClipboardList } from '@lucide/vue'
 import type { Completion, Goal, GoalDayDetail, GoalHistory } from '../types'
 import { addDays, localKey } from '../lib/dates'
+import { currentDate } from '../lib/today'
 import { periodInsights } from '../lib/insights'
 const props = defineProps<{
   goals: Goal[]
@@ -31,13 +32,13 @@ const analysis = computed(() =>
     props.dayDetails,
     range.value.start,
     range.value.end,
-    new Date(),
+    currentDate(),
   ),
 )
 const rangeLabel = computed(() => {
   const format = (date: Date) =>
     date.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', year: 'numeric' })
-  const today = new Date()
+  const today = currentDate()
   if (localKey(range.value.start) > localKey(today))
     return 'Período futuro · ainda sem progresso a analisar'
   return `${format(range.value.start)} a ${format(localKey(range.value.end) < localKey(today) ? range.value.end : today)}`
