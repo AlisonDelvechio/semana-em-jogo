@@ -469,6 +469,11 @@ it('validates PDF dates before opening a printable report for the selected range
     expect(reportDocument.querySelectorAll('.record')).toHaveLength(1)
     popup.onload!()
     expect(popup.print).toHaveBeenCalledOnce()
+    // The popup inherits the page CSP, so the button has no inline handler.
+    const printButton = reportDocument.querySelector<HTMLButtonElement>('[data-print]')!
+    expect(printButton.getAttribute('onclick')).toBeNull()
+    printButton.click()
+    expect(popup.print).toHaveBeenCalledTimes(2)
   } finally {
     wrapper.unmount()
   }
