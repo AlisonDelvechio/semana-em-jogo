@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { ChevronDown, Download } from '@lucide/vue'
+import { ChevronDown, Download, Paperclip } from '@lucide/vue'
 import { parseGoalBackup } from '../lib/backup'
 import { localKey } from '../lib/dates'
 import { createPrintableReport } from '../lib/print-report'
 import { createGoalReport, type BackupRecord, type ReportRange } from '../lib/report'
 import { currentDate } from '../lib/today'
 import type { Completion, Goal, GoalDayDetail, GoalHistory } from '../types'
+import InlineAlert from './InlineAlert.vue'
 
 const props = defineProps<{
   goals: Goal[]
@@ -25,11 +26,15 @@ const reportTo = ref(localKey(currentDate()))
 const pendingBackup = ref<BackupRecord[] | null>(null)
 const pendingBackupName = ref('')
 const reportMessage = ref('')
+// Success messages use the informational style; everything else is an error.
+const reportIsInfo = ref(false)
+const fileInput = ref<HTMLInputElement | null>(null)
 
 function selectedRange(): ReportRange | null {
   if (reportMode.value === 'month') {
     if (!/^\d{4}-\d{2}$/.test(reportMonth.value)) {
       reportMessage.value = 'Escolha um mês válido.'
+      reportIsInfo.value = false
       return null
     }
     const [year, month] = reportMonth.value.split('-').map(Number)
@@ -38,6 +43,7 @@ function selectedRange(): ReportRange | null {
   if (reportMode.value === 'range') {
     if (!reportFrom.value || !reportTo.value || reportFrom.value > reportTo.value) {
       reportMessage.value = 'Escolha um intervalo de datas válido.'
+      reportIsInfo.value = false
       return null
     }
     return { from: reportFrom.value, to: reportTo.value }
@@ -61,6 +67,7 @@ function downloadReport(format: 'csv' | 'pdf') {
     const popup = window.open('', '_blank')
     if (!popup) {
       reportMessage.value = 'Permita abrir a janela do relatório para salvar o PDF.'
+      reportIsInfo.value = false
       return
     }
     popup.opener = null
@@ -98,6 +105,7 @@ async function selectBackup(event: Event) {
     reportMessage.value = ''
   } catch (error) {
     reportMessage.value = error instanceof Error ? error.message : 'Não foi possível ler o CSV.'
+    reportIsInfo.value = false
   }
   input.value = ''
 }
@@ -106,10 +114,12 @@ async function restoreBackup() {
   if (!pendingBackup.value) return
   try {
     reportMessage.value = await props.restore(pendingBackup.value)
+    reportIsInfo.value = true
     pendingBackup.value = null
   } catch (error) {
     reportMessage.value =
       error instanceof Error ? error.message : 'Não foi possível importar o CSV.'
+    reportIsInfo.value = false
   }
 }
 </script>
@@ -161,9 +171,21 @@ async function restoreBackup() {
       <div>
         <h3>Restaurar backup</h3>
         <p class="report-description">Importe os registros de um CSV exportado pelo app.</p>
-        <label
-          >Arquivo CSV<input type="file" accept=".csv,text/csv" @change="selectBackup"
-        /></label>
+        <!-- The native file input shows browser-language text ("Choose File"), so it is
+             hidden and opened by a styled button instead. -->
+        <input
+          ref="fileInput"
+          type="file"
+          accept=".csv,text/csv"
+          class="visually-hidden"
+          tabindex="-1"
+          aria-hidden="true"
+          @change="selectBackup"
+        />
+        <button type="button" class="file-picker" @click="fileInput?.click()">
+          <Paperclip :size="18" aria-hidden="true" />
+          <span>{{ pendingBackup ? pendingBackupName : 'Selecionar arquivo CSV' }}</span>
+        </button>
         <p v-if="pendingBackup">
           {{ pendingBackupName }} · {{ pendingBackup.length }} metas reconhecidas. A importação
           adiciona apenas registros ausentes.
@@ -182,9 +204,12 @@ async function restoreBackup() {
           importados com segurança.
         </p>
       </div>
-      <p v-if="reportMessage" role="status" class="notice report-notice">
-        {{ reportMessage }}
-      </p>
+      <InlineAlert
+        v-if="reportMessage"
+        class="report-notice"
+        :message="reportMessage"
+        :tone="reportIsInfo ? 'info' : 'error'"
+      />
     </section>
   </section>
 </template>

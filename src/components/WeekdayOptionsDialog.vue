@@ -5,6 +5,7 @@ import { fullWeekdays } from '../lib/dates'
 import { trapFocus } from '../lib/focus'
 import { createOption, moveMeal, OPTION_NAME_ERROR } from '../lib/meals'
 import type { Category, MealOption } from '../types'
+import InlineAlert from './InlineAlert.vue'
 
 const props = defineProps<{ day: number; options: MealOption[]; category: Category }>()
 const emit = defineEmits<{ close: []; apply: [options: MealOption[]] }>()
@@ -113,7 +114,7 @@ onUnmounted(() => trigger?.focus())
           <Plus :size="18" /> Adicionar
         </button>
       </div>
-      <p v-if="error" class="notice" role="alert">{{ error }}</p>
+      <InlineAlert v-if="error" :message="error" />
       <div class="dialog-actions">
         <button type="button" class="text-button" @click="emit('close')">Cancelar</button
         ><button type="button" class="primary-button" @click="emit('apply', draft)">

@@ -26,6 +26,7 @@ import {
   weekPace,
   weeklyEntries,
 } from '../lib/dates'
+import { capitalizeFirst } from '../lib/format'
 import { categoryName, plannedGoals } from '../lib/goals'
 import { monthStats } from '../lib/month'
 import { currentDate } from '../lib/today'
@@ -43,6 +44,8 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{
   openDay: [date: Date]
+  // Marks or unmarks a simple goal (no meals or checklist items) on a date.
+  toggle: [goal: Goal, date: Date]
   newGoal: []
   showGoals: []
   currentWeek: []
@@ -105,16 +108,20 @@ const monthLabel = computed(() => {
     end = days.value[6]!
   const format = (date: Date) =>
     date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
-  return format(start) === format(end) ? format(start) : `${format(start)} · ${format(end)}`
+  return capitalizeFirst(
+    format(start) === format(end) ? format(start) : `${format(start)} · ${format(end)}`,
+  )
 })
 const compactMonthLabel = computed(() => {
   const start = days.value[0]!,
     end = days.value[6]!
   const short = (date: Date) =>
     date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')
-  return start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()
-    ? `${short(start)} ${start.getFullYear()}`
-    : `${short(start)} · ${short(end)} ${end.getFullYear()}`
+  return capitalizeFirst(
+    start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()
+      ? `${short(start)} ${start.getFullYear()}`
+      : `${short(start)} · ${short(end)} ${end.getFullYear()}`,
+  )
 })
 
 const planned = (date: Date) => plannedGoals(props.goals, props.history, date)
@@ -172,6 +179,10 @@ const weeklyCount = (goal: Goal, date: Date) =>
     props.history,
     props.dayDetails,
   )[0]
+// Simple goals are marked straight from the card; goals with meals or checklist
+// items open the day record, where each item is filled in.
+const canQuickToggle = (goal: Goal, date: Date) =>
+  goal.category !== 'alimentacao' && checklistCount(goal, date).total === 0
 const taskSummary = (goal: Goal, date: Date) => {
   if (goal.category === 'alimentacao') {
     const count = mealCount(goal, date)
@@ -202,8 +213,8 @@ const taskSummary = (goal: Goal, date: Date) => {
       <h1>Uma semana de <em>cada vez.</em></h1>
       <p>O que importa é continuar no seu ritmo.</p>
     </div>
-    <button class="small-button" @click="emit('newGoal')">
-      <Plus :size="17" aria-hidden="true" /> Nova meta
+    <button class="small-button heading-action" @click="emit('newGoal')">
+      <Plus :size="17" aria-hidden="true" /><span class="heading-action-label">Nova meta</span>
     </button>
   </div>
   <section class="progress-overview" aria-label="Progresso da semana e do mês">
@@ -318,24 +329,39 @@ const taskSummary = (goal: Goal, date: Date) => {
           <span v-if="localKey(date) === todayKey()" class="today-pill">HOJE</span>
         </div>
         <div v-if="planned(date).length" class="tasks">
-          <button
-            type="button"
+          <div
             v-for="goal in planned(date)"
             :key="goal.id"
             :class="['task', goal.category, { done: isDone(goal, date) }]"
-            :aria-label="`${goal.title}: ${isDone(goal, date) ? 'Concluída' : 'Pendente'}. Detalhar em ${date.toLocaleDateString('pt-BR')}`"
-            @click="emit('openDay', date)"
           >
-            <span class="check-visual" aria-hidden="true"><Check :size="18" /></span
-            ><span class="task-title"
-              >{{ goal.title }}<small>{{ taskSummary(goal, date) }} </small></span
+            <button
+              v-if="canQuickToggle(goal, date)"
+              type="button"
+              class="task-check"
+              role="checkbox"
+              :aria-checked="isDone(goal, date)"
+              :aria-label="`Marcar ${goal.title} em ${date.toLocaleDateString('pt-BR')}`"
+              @click="emit('toggle', goal, date)"
             >
+              <span class="check-visual" aria-hidden="true"><Check :size="18" /></span>
+            </button>
+            <span v-else class="check-visual" aria-hidden="true"><Check :size="18" /></span>
+            <button
+              type="button"
+              class="task-open"
+              :aria-label="`${goal.title}: ${isDone(goal, date) ? 'Concluída' : 'Pendente'}. Detalhar em ${date.toLocaleDateString('pt-BR')}`"
+              @click="emit('openDay', date)"
+            >
+              <span class="task-title"
+                >{{ goal.title }}<small>{{ taskSummary(goal, date) }}</small></span
+              >
+            </button>
             <span class="task-category-icon" :class="goal.category" aria-hidden="true"
               ><Dumbbell v-if="goal.category === 'treino'" :size="20" /><Utensils
                 v-else-if="goal.category === 'alimentacao'"
                 :size="20" /><ClipboardList v-else :size="20"
             /></span>
-          </button>
+          </div>
         </div>
         <p v-else class="rest-day">Dia livre para respirar ☀</p>
         <button

@@ -33,8 +33,7 @@ p {
 h1,
 h2,
 h3,
-.brand,
-.stat-number {
+.brand {
   font-family: 'Plus Jakarta Sans', sans-serif;
 }
 h1 {
@@ -46,7 +45,7 @@ h1 {
 }
 h1 em {
   font-style: normal;
-  color: #829e73;
+  color: var(--ui-accent-text);
 }
 h2 {
   font-size: 1.55rem;
@@ -54,11 +53,11 @@ h2 {
   margin: 0.35rem 0 1.35rem;
 }
 p {
-  color: #819087;
+  color: var(--ui-muted);
 }
 .eyebrow {
   display: block;
-  color: #879a83;
+  color: var(--ui-muted);
   font-size: 0.7rem;
   font-weight: 800;
   letter-spacing: 0.16em;
@@ -81,7 +80,7 @@ p {
   gap: 9px;
 }
 .brand > span:last-child {
-  color: #80a174;
+  color: var(--ui-accent-text);
   margin-left: -9px;
 }
 .brand-mark {
@@ -115,20 +114,12 @@ p {
 .theme-button:hover {
   background: #eaf2e7;
 }
-.local-badge {
-  background: #eaf2e7;
-  color: #547a52;
-  padding: 7px 12px;
-  border-radius: 999px;
-  font-size: 0.78rem;
-  font-weight: 700;
-}
 .text-button,
 .auth-switch,
 .today-link {
   border: 0;
   background: none;
-  color: #66865f;
+  color: var(--ui-accent-text);
   font-weight: 700;
   padding: 8px;
 }
@@ -156,7 +147,7 @@ p {
   gap: 12px;
   border: 0;
   background: transparent;
-  color: #718076;
+  color: var(--ui-muted);
   text-align: left;
   padding: 15px 17px;
   border-radius: 12px;
@@ -165,20 +156,6 @@ p {
 .nav-button.selected {
   background: #e7f0e2;
   color: #4b754c;
-}
-.sidebar-note {
-  margin-top: auto;
-  background: #eef2e8;
-  border-radius: 18px;
-  padding: 20px;
-  color: #8da983;
-  font-size: 1.5rem;
-}
-.sidebar-note p {
-  margin: 7px 0 0;
-  line-height: 1.5;
-  font-size: 0.88rem;
-  color: #71836e;
 }
 .content {
   padding: 48px clamp(24px, 5vw, 78px) 22px;
@@ -220,7 +197,7 @@ p {
   font-size: 0.78rem;
 }
 .profile-copy small {
-  color: #859387;
+  color: var(--ui-muted);
   font-size: 0.65rem;
   margin-top: 2px;
 }
@@ -230,7 +207,7 @@ p {
   place-items: center;
   border: 0;
   background: transparent;
-  color: #728374;
+  color: var(--ui-muted);
   padding: 8px;
   border-radius: 8px;
 }
@@ -243,20 +220,12 @@ p {
   align-items: center;
   gap: 7px;
   margin-top: 13px;
-  color: #688a65;
+  color: var(--ui-accent-text);
   font-size: 0.85rem;
   font-weight: 700;
-  text-transform: capitalize;
 }
 .mobile-date-label {
   display: none;
-}
-.week-total {
-  border-top: 1px solid #ffffff43;
-  color: #e8f1e7;
-  font-size: 0.73rem;
-  margin-top: 14px;
-  padding-top: 10px;
 }
 .page-heading,
 .section-heading {
@@ -282,142 +251,11 @@ p {
   justify-content: center;
   gap: 7px;
 }
-.summary-grid {
-  display: grid;
-  grid-template-columns: 1.45fr 1fr 1fr;
-  gap: 18px;
-  margin-bottom: 47px;
-}
-.summary-card {
-  border: 1px solid #e6eae3;
-  background: white;
-  min-height: 210px;
-  border-radius: 19px;
-  padding: 25px;
-  box-shadow: 0 8px 30px #384b3510;
-}
-.summary-card.featured {
-  background: #789c73;
-  color: #fff;
-  border-color: #789c73;
-}
-.card-top {
-  font-size: 0.72rem;
-  letter-spacing: 0.13em;
-  font-weight: 800;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: #8d9a8e;
-}
-.featured .card-top {
-  color: #e7f2e4;
-}
-.card-top span {
-  font-size: 1.5rem;
-  color: #d2a775;
-}
-.featured .card-top span {
-  color: #e5eaba;
-}
-.progress-main {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  margin: 18px 0 14px;
-}
-.progress-main strong {
-  font: 700 3.4rem 'Plus Jakarta Sans';
-  letter-spacing: -0.06em;
-  line-height: 1;
-}
-.progress-main span {
-  font-size: 0.82rem;
-  color: #e9f1e7;
-}
-.progress-track {
-  height: 7px;
-  border-radius: 10px;
-  background: #ffffff45;
-  overflow: hidden;
-  margin-bottom: 12px;
-}
-.progress-track div {
-  height: 100%;
-  background: #f4e4ad;
-  border-radius: 10px;
-  transition: width 0.25s;
-}
-.featured small {
-  color: #e9f1e7;
-}
-.stat-number {
-  display: block;
-  font-size: 3.6rem;
-  letter-spacing: -0.07em;
-  line-height: 1;
-  margin: 27px 0 13px;
-}
-.stat-number small {
-  font-size: 1.2rem;
-  color: #9baa9b;
-}
-.summary-card p {
-  font-size: 0.83rem;
-  margin: 0;
-}
 .week-section {
   padding-bottom: 30px;
 }
 .month-page-heading {
   margin-bottom: 25px;
-}
-.month-overview {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1.15fr;
-  gap: 12px;
-  margin-bottom: 22px;
-}
-.month-overview > div {
-  min-height: 125px;
-  padding: 19px 21px;
-  border: 1px solid #e5ebe2;
-  border-radius: 16px;
-  background: #fff;
-}
-.month-overview strong {
-  display: block;
-  font:
-    700 2.2rem 'Plus Jakarta Sans',
-    sans-serif;
-  letter-spacing: -0.05em;
-  line-height: 1.15;
-  margin: 9px 0 2px;
-  color: #314b37;
-}
-.month-overview strong span {
-  color: #a5b2a2;
-  font-size: 1.2rem;
-}
-.month-overview small {
-  color: #869588;
-  font-size: 0.73rem;
-}
-.month-overview .month-overview-tip {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  background: #edf4e9;
-  color: #6c9268;
-}
-.month-overview-tip svg {
-  flex: none;
-}
-.month-overview-tip p {
-  margin: 0;
-  color: #597659;
-  line-height: 1.5;
-  font-size: 0.82rem;
 }
 .calendar-panel {
   border: 1px solid #e5ebe2;
@@ -433,7 +271,6 @@ p {
 }
 .calendar-header h2 {
   margin: 5px 0 0;
-  text-transform: capitalize;
 }
 .calendar-nav {
   display: flex;
@@ -459,7 +296,7 @@ p {
   text-align: center;
   font-size: 0.72rem;
   font-weight: 800;
-  color: #8b9d8a;
+  color: var(--ui-muted);
   padding: 9px 0;
 }
 .calendar-day {
@@ -488,38 +325,6 @@ p {
     700 0.92rem 'Plus Jakarta Sans',
     sans-serif;
   border-radius: 7px;
-}
-.calendar-day-content {
-  width: 100%;
-  display: grid;
-  gap: 4px;
-  margin-top: auto;
-}
-.calendar-count {
-  font-size: 0.76rem;
-  font-weight: 800;
-}
-.calendar-progress {
-  display: block;
-  width: 100%;
-  height: 5px;
-  background: #e2ebe0;
-  border-radius: 8px;
-  overflow: hidden;
-}
-.calendar-progress > span {
-  display: block;
-  height: 100%;
-  background: #80a477;
-  border-radius: inherit;
-}
-.calendar-day-content small,
-.calendar-free {
-  font-size: 0.65rem;
-  color: #8b9b8c;
-}
-.calendar-free {
-  margin-top: auto;
 }
 .section-heading {
   margin-bottom: 18px;
@@ -572,7 +377,7 @@ p {
 }
 .day-open > span {
   display: block;
-  color: #8b998e;
+  color: var(--ui-muted);
   font-size: 0.78rem;
   font-weight: 700;
   margin-bottom: 5px;
@@ -582,7 +387,7 @@ p {
 }
 .day-heading small {
   font-size: 0.8rem;
-  color: #8f9c90;
+  color: var(--ui-muted);
   text-transform: uppercase;
 }
 .day-open {
@@ -591,16 +396,6 @@ p {
   text-align: left;
   padding: 0;
   color: inherit;
-}
-.day-detail-icon {
-  border: 0;
-  background: #f2f6f0;
-  color: #73926b;
-  width: 27px;
-  height: 27px;
-  border-radius: 8px;
-  display: grid;
-  place-items: center;
 }
 .day-edit-action {
   align-self: flex-start;
@@ -679,7 +474,7 @@ p {
   gap: 8px;
   padding: 12px 0;
   border-bottom: 1px solid #e8eee7;
-  color: #6f836e;
+  color: var(--ui-muted);
   font-size: 0.78rem;
   font-weight: 700;
 }
@@ -689,14 +484,13 @@ p {
   gap: 2px;
   border: 0;
   background: transparent;
-  color: #578451;
+  color: var(--ui-accent-text);
   font-size: 0.77rem;
   font-weight: 800;
   white-space: nowrap;
 }
 .dialog-header h2 {
   margin: 7px 0 0;
-  text-transform: capitalize;
 }
 .dialog-empty {
   margin: 24px 0 0;
@@ -716,42 +510,12 @@ p {
 }
 .day-goal-title small {
   font-size: 0.72rem;
-  color: #89988a;
+  color: var(--ui-muted);
   margin-top: 3px;
 }
 .meal-hint {
   font-size: 0.79rem;
   margin: 14px 0 8px;
-}
-.meal-row {
-  display: grid;
-  grid-template-columns: 150px minmax(0, 1fr) 58px 30px;
-  align-items: center;
-  gap: 12px;
-  margin: 10px 0;
-}
-.meal-row.food-row {
-  grid-template-columns: minmax(0, 1fr) 72px 36px;
-}
-.meal-row.food-row .meal-check {
-  grid-column: 1;
-  grid-row: 1;
-}
-.meal-row.food-row .meal-order-actions {
-  grid-column: 2;
-  grid-row: 1;
-}
-.meal-row.food-row .meal-remove {
-  grid-column: 3;
-  grid-row: 1;
-}
-.meal-row.food-row .meal-adherence {
-  grid-column: 1 / -1;
-  grid-row: 2;
-}
-.meal-row.food-row .meal-description {
-  grid-column: 1 / -1;
-  grid-row: 3;
 }
 .meal-order-actions button:disabled,
 .meal-option-chip button:disabled {
@@ -764,7 +528,7 @@ p {
   place-items: center;
   border: 0;
   background: transparent;
-  color: #7c8d7f;
+  color: var(--ui-muted);
   padding: 5px;
   border-radius: 6px;
 }
@@ -794,7 +558,7 @@ p {
   padding: 10px;
 }
 .meal-options-field p {
-  color: #819087;
+  color: var(--ui-muted);
   font-size: 0.78rem;
   margin: 0 0 10px;
 }
@@ -842,7 +606,7 @@ p {
 .weekday-meals-card > small {
   display: block;
   font-size: 0.72rem;
-  color: #829083;
+  color: var(--ui-muted);
   line-height: 1.5;
 }
 .weekday-dialog {
@@ -927,7 +691,7 @@ p {
 }
 .rest-day {
   font-size: 0.8rem;
-  color: #a0aba0;
+  color: var(--ui-muted);
   margin-top: 25px;
 }
 .empty-state {
@@ -953,12 +717,6 @@ p {
 .primary-button:hover,
 .small-button:hover {
   filter: brightness(0.95);
-}
-.goals-layout {
-  display: grid;
-  grid-template-columns: minmax(300px, 0.9fr) minmax(0, 1.1fr);
-  gap: 20px;
-  align-items: start;
 }
 .panel {
   border: 1px solid #e6eae3;
@@ -1036,12 +794,6 @@ p {
     padding: 18px;
   }
 }
-.meal-adherence {
-  display: grid;
-  gap: 5px;
-  font-size: 0.73rem;
-  color: #526754;
-}
 .free-meal-overview {
   display: grid;
   gap: 8px;
@@ -1074,12 +826,15 @@ p {
   line-height: 1.5;
 }
 .day-limit-correction {
-  margin: 12px 0 18px;
-  padding: 12px;
+  margin: 10px 0 6px;
+  padding: 0 12px;
   border: 1px solid #dbe7d5;
   border-radius: 10px;
   font-size: 0.78rem;
   line-height: 1.5;
+}
+.day-limit-correction[open] {
+  padding-bottom: 12px;
 }
 .day-limit-correction summary {
   font-weight: 700;
@@ -1116,11 +871,6 @@ html[data-theme='dark'] .free-meal-summary {
 html[data-theme='dark'] .free-meal-warning {
   color: #f3c18f;
 }
-.meal-adherence select {
-  max-width: 100%;
-  border: 1px solid #dfe6dc;
-  padding: 6px;
-}
 .goal-form fieldset {
   border: 0;
   padding: 0;
@@ -1143,7 +893,7 @@ html[data-theme='dark'] .free-meal-warning {
   padding: 9px 10px;
   font-size: 0.72rem;
   font-weight: 700;
-  color: #758476;
+  color: var(--ui-muted);
 }
 .day-picker button.active {
   background: #e1efdd;
@@ -1166,13 +916,13 @@ html[data-theme='dark'] .free-meal-warning {
 .goal-list h2 span {
   font: 700 0.8rem 'Inter';
   background: #edf3e9;
-  color: #699065;
+  color: var(--ui-accent-text);
   border-radius: 20px;
   padding: 4px 9px;
   vertical-align: middle;
 }
 .list-empty {
-  color: #8e9b8f;
+  color: var(--ui-muted);
   font-size: 0.88rem;
   line-height: 1.5;
 }
@@ -1196,11 +946,11 @@ html[data-theme='dark'] .free-meal-warning {
 }
 .goal-icon.alimentacao {
   background: #fff0e2;
-  color: #ca9870;
+  color: #a5683c;
 }
 .goal-icon.outro {
-  background: #f2edfa;
-  color: #9b81b9;
+  background: #eaefe7;
+  color: var(--ui-muted);
 }
 .goal-details {
   min-width: 0;
@@ -1213,7 +963,7 @@ html[data-theme='dark'] .free-meal-warning {
 .goal-details small {
   display: block;
   font-size: 0.72rem;
-  color: #9aa69a;
+  color: var(--ui-muted);
   margin-top: 4px;
   line-height: 1.4;
 }
@@ -1221,24 +971,13 @@ html[data-theme='dark'] .free-meal-warning {
   border: 0;
   background: #f5f7f3;
   border-radius: 7px;
-  color: #70836f;
-}
-.notice {
-  background: #fff3dc;
-  color: #765d36;
-  padding: 12px 15px;
-  border-radius: 10px;
-  font-size: 0.86rem;
-  margin: 14px 0;
-}
-.dashboard-notice {
-  margin-top: 20px;
+  color: var(--ui-muted);
 }
 footer {
   border-top: 1px solid #e9ede7;
   padding: 23px 0;
   margin-top: 40px;
-  color: #9ba79a;
+  color: var(--ui-muted);
   font-size: 0.74rem;
 }
 .loading {
@@ -1302,23 +1041,8 @@ footer {
   display: none;
 }
 @media (max-width: 1100px) {
-  .month-overview {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .month-overview-tip {
-    grid-column: span 2;
-  }
   .days-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .summary-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .summary-card.featured {
-    grid-column: span 2;
-  }
-  .goals-layout {
-    grid-template-columns: 1fr;
   }
 }
 @media (max-width: 720px) {
@@ -1350,17 +1074,6 @@ footer {
     order: 2;
     grid-column: 1 / -1;
     padding-bottom: 12px;
-  }
-  .week-layout .summary-grid {
-    display: contents;
-  }
-  .week-layout .summary-card.featured {
-    order: 1;
-    grid-column: 1 / -1;
-    margin-bottom: 18px;
-  }
-  .week-layout .summary-card:not(.featured) {
-    order: 3;
   }
   .topbar {
     padding: 0 16px;
@@ -1449,58 +1162,6 @@ footer {
   .month-page-heading {
     margin-bottom: 18px;
   }
-  .summary-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 9px;
-    margin-bottom: 27px;
-  }
-  .summary-card {
-    min-width: 0;
-    min-height: 88px;
-    padding: 12px;
-    box-shadow: none;
-  }
-  .summary-card.featured {
-    grid-column: span 2;
-    min-height: 0;
-    padding: 14px;
-  }
-  .card-top {
-    font-size: 0.61rem;
-    line-height: 1.25;
-  }
-  .card-top svg {
-    flex: none;
-    width: 18px;
-    height: 18px;
-  }
-  .progress-main {
-    margin: 7px 0;
-  }
-  .progress-main strong {
-    font-size: 2rem;
-  }
-  .progress-main span {
-    font-size: 0.75rem;
-  }
-  .progress-track {
-    margin-bottom: 9px;
-  }
-  .week-total {
-    margin-top: 7px;
-    padding-top: 6px;
-  }
-  .stat-number {
-    font-size: 1.8rem;
-    margin: 8px 0 3px;
-  }
-  .stat-number small {
-    font-size: 0.9rem;
-  }
-  .summary-card p {
-    font-size: 0.72rem;
-    line-height: 1.3;
-  }
   .section-heading {
     align-items: flex-start;
     flex-direction: column;
@@ -1545,25 +1206,6 @@ footer {
   .rest-day {
     margin: 10px 0;
   }
-  .month-overview {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-    margin-bottom: 14px;
-  }
-  .month-overview > div {
-    min-width: 0;
-  }
-  .month-overview .month-overview-tip {
-    display: none;
-  }
-  .month-overview .eyebrow {
-    font-size: 0.61rem;
-    letter-spacing: 0.1em;
-  }
-  .month-overview small {
-    display: block;
-    line-height: 1.3;
-  }
   .calendar-panel {
     max-width: 100%;
     box-shadow: none;
@@ -1589,21 +1231,6 @@ footer {
   }
   .calendar-day:focus-visible {
     outline-offset: -3px;
-  }
-  .calendar-day-content small,
-  .calendar-free {
-    display: none;
-  }
-  .calendar-count {
-    font-size: 0.7rem;
-    white-space: nowrap;
-  }
-  .calendar-progress {
-    height: 4px;
-  }
-  .goals-layout {
-    grid-template-columns: 1fr;
-    gap: 14px;
   }
   .panel {
     padding: 20px;
@@ -1697,25 +1324,6 @@ footer {
     width: 21px;
     height: 21px;
   }
-  .meal-row {
-    grid-template-columns: minmax(0, 1fr) 72px 36px;
-    gap: 5px;
-  }
-  .meal-row .meal-check {
-    grid-column: 1 / -1;
-  }
-  .meal-description {
-    grid-column: 1;
-    grid-row: 2;
-  }
-  .meal-row .meal-order-actions {
-    grid-column: 2;
-    grid-row: 2;
-  }
-  .meal-row .meal-remove {
-    grid-column: 3;
-    grid-row: 2;
-  }
   .weekday-editor-list .meal-order-actions button,
   .weekday-editor-list .meal-remove {
     width: 36px;
@@ -1793,13 +1401,6 @@ footer {
   .page-heading .small-button {
     align-self: flex-start;
   }
-  .month-overview > div {
-    min-height: 96px;
-    padding: 12px;
-  }
-  .month-overview strong {
-    font-size: 1.8rem;
-  }
   .calendar-weekday {
     font-size: 0.65rem;
   }
@@ -1808,9 +1409,6 @@ footer {
   }
   .calendar-header h2 {
     font-size: 1.18rem;
-  }
-  .meal-row {
-    gap: 5px;
   }
 }
 @media (max-width: 390px) {
@@ -1830,15 +1428,6 @@ footer {
   .profile-corner {
     gap: 2px;
   }
-  .summary-card {
-    padding: 12px;
-  }
-  .summary-card.featured {
-    padding: 16px;
-  }
-  .stat-number {
-    font-size: 2.1rem;
-  }
   .week-nav {
     font-size: 0.76rem;
   }
@@ -1847,9 +1436,6 @@ footer {
   }
   .calendar-day.is-today {
     padding: 3px;
-  }
-  .calendar-count {
-    font-size: 0.63rem;
   }
   .day-dialog {
     padding-inline: 12px;
@@ -1864,11 +1450,7 @@ html[data-theme='dark'] {
 }
 html[data-theme='dark'] p,
 html[data-theme='dark'] .eyebrow,
-html[data-theme='dark'] .card-top,
-html[data-theme='dark'] .month-overview small,
 html[data-theme='dark'] .calendar-weekday,
-html[data-theme='dark'] .calendar-day-content small,
-html[data-theme='dark'] .calendar-free,
 html[data-theme='dark'] .day-open > span,
 html[data-theme='dark'] .day-heading small,
 html[data-theme='dark'] .task-title small,
@@ -1893,8 +1475,6 @@ html[data-theme='dark'] .task:hover .task-title {
 }
 html[data-theme='dark'] .topbar,
 html[data-theme='dark'] .mobile-nav,
-html[data-theme='dark'] .summary-card:not(.featured),
-html[data-theme='dark'] .month-overview > div,
 html[data-theme='dark'] .calendar-panel,
 html[data-theme='dark'] .day-card,
 html[data-theme='dark'] .day-dialog,
@@ -1922,7 +1502,6 @@ html[data-theme='dark'] .weekday-meals-card,
 html[data-theme='dark'] .weekday-editor-list li,
 html[data-theme='dark'] .meal-order-actions button,
 html[data-theme='dark'] .goal-actions button,
-html[data-theme='dark'] .day-detail-icon,
 html[data-theme='dark'] .day-picker button,
 html[data-theme='dark'] .calendar-day,
 html[data-theme='dark'] .decoration {
@@ -1946,10 +1525,7 @@ html[data-theme='dark'] .calendar-day.outside-month {
   opacity: 0.65;
 }
 html[data-theme='dark'] .calendar-day.is-today .calendar-date,
-html[data-theme='dark'] .month-overview strong,
-html[data-theme='dark'] .month-overview-tip p,
 html[data-theme='dark'] .meal-check,
-html[data-theme='dark'] .meal-adherence,
 html[data-theme='dark'] .day-note,
 html[data-theme='dark'] .goal-form label,
 html[data-theme='dark'] .goal-form legend,
@@ -1965,20 +1541,14 @@ html[data-theme='dark'] .meal-remove,
 html[data-theme='dark'] .meal-option-chip button {
   color: #b5c7b6;
 }
-html[data-theme='dark'] .sidebar-note,
-html[data-theme='dark'] .month-overview .month-overview-tip,
 html[data-theme='dark'] .meal-option-chip,
 html[data-theme='dark'] .goal-icon,
 html[data-theme='dark'] .goal-list h2 span,
-html[data-theme='dark'] .local-badge,
 html[data-theme='dark'] .today-pill {
   background: #314634;
   border-color: #506c50;
   color: #d3edcc;
 }
-html[data-theme='dark'] .sidebar-note p,
-html[data-theme='dark'] .stat-number small,
-html[data-theme='dark'] .month-overview strong span,
 html[data-theme='dark'] .weekday-meals-card > small,
 html[data-theme='dark'] .report-panel p,
 html[data-theme='dark'] .dialog-summary,
@@ -1990,14 +1560,10 @@ html[data-theme='dark'] .goal-icon.alimentacao {
   color: #f2c79b;
 }
 html[data-theme='dark'] .goal-icon.outro {
-  background: #40344f;
-  color: #dac5f1;
+  background: #2f4236;
+  color: #d4ddd2;
 }
-html[data-theme='dark'] .calendar-progress {
-  background: #415844;
-}
-html[data-theme='dark'] .small-button,
-html[data-theme='dark'] .notice {
+html[data-theme='dark'] .small-button {
   background: #36503a;
   border-color: #638962;
   color: #e5f3dd;
@@ -2009,7 +1575,6 @@ html[data-theme='dark'] .report-panel input,
 html[data-theme='dark'] .report-panel select,
 html[data-theme='dark'] .meal-add input,
 html[data-theme='dark'] .meal-description,
-html[data-theme='dark'] .meal-adherence select,
 html[data-theme='dark'] .day-limit-correction input,
 html[data-theme='dark'] .day-note textarea {
   background: #18231c;
@@ -2019,16 +1584,6 @@ html[data-theme='dark'] .day-note textarea {
 html[data-theme='dark'] input::placeholder,
 html[data-theme='dark'] textarea::placeholder {
   color: #a9baa9;
-}
-html[data-theme='dark'] .summary-card.featured {
-  background: #476f49;
-  border-color: #709a69;
-  color: #fff;
-}
-html[data-theme='dark'] .featured .card-top,
-html[data-theme='dark'] .featured small,
-html[data-theme='dark'] .featured .progress-main span {
-  color: #e5f0e2;
 }
 
 /* Resumo compacto: períodos separados, sem misturar contagens com percentuais. */
@@ -2041,20 +1596,6 @@ html[data-theme='dark'] .featured .progress-main span {
 .period-progress-card {
   min-width: 0;
   border: 1px solid #dce5d7;
-}
-.period-progress-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.period-progress-heading h2 {
-  margin: 0;
-  font-size: 1rem;
-  letter-spacing: -0.02em;
-}
-.period-progress-heading > span {
-  font-size: 0.74rem;
 }
 .period-progress-date {
   display: block;
@@ -2160,14 +1701,6 @@ html[data-theme='dark'] .goal-editor-dialog .form-actions {
     gap: 10px;
     margin-bottom: 20px;
   }
-  .period-progress-heading {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .period-progress-heading h2 {
-    font-size: 0.95rem;
-  }
   .period-progress-bar {
     margin-top: 12px;
   }
@@ -2227,9 +1760,6 @@ html[data-theme='dark'] .goal-editor-dialog .form-actions {
   }
 }
 @media (max-width: 360px) {
-  .period-progress-heading > span {
-    font-size: 0.68rem;
-  }
   .goal-list .goal-actions {
     width: 100%;
     justify-content: flex-end;
@@ -2265,22 +1795,6 @@ html[data-theme='dark'] .goal-editor-dialog .form-actions {
   }
 }
 @media (max-width: 720px) {
-  .meal-row,
-  .meal-row.food-row {
-    grid-template-columns: minmax(0, 1fr) 90px 44px;
-  }
-  .meal-row .meal-order-actions button,
-  .meal-row .meal-remove {
-    width: 44px;
-    height: 44px;
-  }
-  .meal-row .meal-check {
-    min-height: 44px;
-    overflow-wrap: anywhere;
-  }
-  .meal-adherence select {
-    font-size: 16px;
-  }
   .day-goal-title > div {
     min-width: 0;
     overflow-wrap: anywhere;
@@ -2351,10 +1865,10 @@ html[data-theme='dark'] .goal-editor-dialog .form-actions {
 .goal-actions button svg {
   flex: none;
 }
-.goal-actions button:last-child {
+.goal-actions .danger {
   color: #a73a31;
 }
-html[data-theme='dark'] .goal-actions button:last-child {
+html[data-theme='dark'] .goal-actions .danger {
   color: #ffb6a9;
 }
 .goal-icon svg {

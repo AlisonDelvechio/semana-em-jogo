@@ -8,6 +8,7 @@ Como cada parte do Semana em Jogo funciona. Instalação e publicação estão n
 - **Dias fixos:** a meta aparece nos dias da semana selecionados.
 - **Frequência semanal (Treino e Outro):** de 1 a 7 idas por semana, em dias livres. Marque os dias em que fez a atividade; o painel soma as presenças até o limite escolhido e conclui a meta ao atingir a frequência. No mês, cada semana é atribuída ao mês em que cai a sua segunda-feira.
 - **Período:** opcionalmente, uma data inicial e uma duração de 1 a 365 dias. Para um checklist diário de 14 dias, selecione todos os dias da semana. Em metas de frequência, semanas parciais usam no máximo os dias disponíveis. Sem período, a data de criação impede que a meta apareça antes de existir.
+- **Editar** fica ao lado de cada meta; **Pausar/Retomar** e **Excluir** ficam no menu **⋯**, longe de um toque acidental.
 - **Pausar e retomar:** a meta pausada deixa de aparecer nos próximos dias e preserva os registros.
 - **Excluir:** apaga a meta, suas conclusões e versões anteriores, como avisa a confirmação.
 
@@ -27,9 +28,10 @@ A criação e a edição abrem em um modal, com cabeçalho e ações visíveis d
 
 Clique em uma data na semana ou no calendário para abrir o registro. Todas as metas da data são salvas juntas: ou tudo é gravado, ou nada (`save_day` em `010_atomic_writes.sql`).
 
-- **Refeições:** marcar que comeu registra o item. Um campo separado indica se a refeição **seguiu o plano**, foi **refeição livre**, ficou **fora do plano** ou **não foi informada**. A descrição é opcional e o campo cresce enquanto você escreve.
-- **Checklists:** cada item tem check e descrição opcional.
-- **Itens só daquela data:** é possível adicionar, remover e reordenar itens no registro; a ordem ajustada vale só para a data.
+- **Refeições:** um toque em **No plano**, **Livre** ou **Fora do plano** registra a refeição e a classificação; tocar de novo na opção escolhida desmarca. Registros antigos marcados sem classificação aparecem como "Registrada sem classificação". A descrição é opcional e o campo cresce enquanto você escreve.
+- **Checklists:** cada item tem check e descrição opcional. Metas sem itens têm um check simples ("Meta concluída" ou "Fiz esta atividade hoje").
+- **Itens só daquela data:** em **Editar itens** é possível adicionar, remover e reordenar itens; a ordem ajustada vale só para a data. Fora desse modo, os controles ficam ocultos.
+- **Como funciona?:** as explicações de cada meta ficam recolhidas nesse link.
 - **Observação do dia:** texto livre de até 500 caracteres.
 
 Registros antigos com três refeições mantêm essa lista. Conclusões antigas sem detalhes continuam concluídas até que o dia seja detalhado.
@@ -49,6 +51,7 @@ Cada meta de alimentação permite de 0 a 84 refeições livres por semana (segu
 - **Resumos:** Hoje, Semana e Mês, nessa ordem. **Hoje** mostra refeições contabilizadas, atividades do dia e idas restantes das metas semanais, com atalho para registrar a data atual.
 - **Percentual:** o destaque considera só o que estava previsto até o dia exibido; o total da semana completa fica abaixo.
 - **Cards dos dias:** cada meta mostra estado e contagem (refeições válidas, itens ou idas). Hoje tem destaque de fundo e borda.
+- **Marcar direto:** em metas simples (treino ou Outro, sem checklist), o check do card marca e desmarca o dia na hora, sem abrir o registro. Metas com refeições ou itens abrem o registro do dia ao tocar no nome.
 - **Refeições livres da semana:** resumo de uso por meta, antes dos cards.
 - **Celular:** uma faixa com os sete dias escolhe qual card exibir; a semana atual abre no dia de hoje.
 
@@ -76,7 +79,7 @@ Em **Minhas metas → Relatórios e backups**, escolha tudo, um mês ou um inter
 
 - **CSV:** uma linha por refeição ou item, com descrição, classificação e observação do dia. Usa `;` e UTF-8 para abrir em planilhas em português, e a data é gravada como texto para não virar `####` no Excel. A última coluna contém os dados técnicos para restauração. Textos que começam com `=`, `+`, `-` ou `@` são protegidos para não virar fórmulas.
 - **PDF:** abre uma versão para impressão A4; escolha **Salvar como PDF** na janela de impressão. Usa o mesmo período e os mesmos registros do CSV, mas não serve como backup.
-- **Restaurar:** selecione um CSV exportado pelo app, confira as metas reconhecidas e clique em **Importar registros**. O arquivo inteiro é validado antes; só metas e registros ausentes são adicionados, sem sobrescrever dados atuais, e uma segunda importação não cria duplicatas. Ao restaurar o backup em outra conta cujas metas ainda existem, cada meta recebe um ID novo e estável derivado do original.
+- **Restaurar:** em **Selecionar arquivo CSV**, escolha um CSV exportado pelo app, confira as metas reconhecidas e clique em **Importar registros**. O arquivo inteiro é validado antes; só metas e registros ausentes são adicionados, sem sobrescrever dados atuais, e uma segunda importação não cria duplicatas. Ao restaurar o backup em outra conta cujas metas ainda existem, cada meta recebe um ID novo e estável derivado do original.
 - Quando o intervalo começa no meio da semana, a coluna técnica inclui também os registros alimentares desde a segunda-feira anterior, para preservar o uso do limite de refeições livres na restauração.
 - CSVs antigos sem a coluna técnica continuam legíveis como relatório, mas não podem ser restaurados. A importação aceita tanto o formato antigo de 14 colunas (com pontos) quanto o atual de 12.
 
@@ -95,4 +98,5 @@ Em **Minhas metas → Relatórios e backups**, escolha tudo, um mês ou um inter
 - Modais com foco inicial, foco preso dentro do diálogo, fechamento por Escape e retorno ao controle de origem. Confirmações iniciam em **Cancelar**.
 - Áreas de toque de pelo menos 44 px e checks de 22 px. Tarefas concluídas mostram check e "Concluída", também no nome acessível.
 - No celular, a navegação fica fixa na base respeitando a área segura, os modais abrem como painéis a partir da base e cada troca de menu começa no topo. Em telas muito estreitas, o calendário rola internamente para preservar os alvos de toque.
-- Mensagens de sucesso e erro podem ser fechadas e seguem o tema.
+- Mensagens de sucesso e erro podem ser fechadas e seguem o tema. Erros dentro de formulários aparecem em uma caixa com borda vermelha e ícone de alerta.
+- Textos atendem ao contraste mínimo WCAG AA (4,5:1) nos dois temas. No tema claro, o texto secundário usa `--ui-muted` e o verde de destaque usa `--ui-accent-text`.

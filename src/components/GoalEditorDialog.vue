@@ -6,6 +6,7 @@ import { emptyGoalInput, goalToInput, INVALID_GOAL_MESSAGE, normalizeGoalInput }
 import { createOption, moveMeal, OPTION_NAME_ERROR } from '../lib/meals'
 import { currentDate } from '../lib/today'
 import FormDialog from './FormDialog.vue'
+import InlineAlert from './InlineAlert.vue'
 import NumberStepper from './NumberStepper.vue'
 import WeekdayOptionsDialog from './WeekdayOptionsDialog.vue'
 import type { Goal, GoalInput, MealOption } from '../types'
@@ -93,6 +94,7 @@ function submit() {
   <FormDialog
     :inert="editingWeekday !== null || confirming"
     :title="goal ? 'Editar meta' : 'Nova meta'"
+    description="Defina os detalhes da sua meta. Você pode ajustar quando quiser."
     :busy="busy"
     @close="emit('close')"
   >
@@ -165,7 +167,10 @@ function submit() {
             type="checkbox"
             :checked="form.duration_days !== null"
             @change="togglePeriod"
-          />Definir período da meta <span class="optional-label">Opcional</span></label
+          /><span class="period-switch-text"
+            ><span>Definir período da meta <span class="optional-label">Opcional</span></span
+            ><small>Escolha quando a meta começa e por quantos dias ela vale.</small></span
+          ></label
         >
         <div v-if="form.duration_days !== null" class="form-row period-fields">
           <label>Começa em<input v-model="form.start_date" type="date" required /></label>
@@ -330,7 +335,7 @@ function submit() {
       <label class="active-switch"
         ><input v-model="form.active" type="checkbox" /> Meta ativa</label
       >
-      <p v-if="error || message" class="notice" role="alert">{{ error || message }}</p>
+      <InlineAlert v-if="error || message" :message="error || message" />
       <div class="form-actions">
         <button class="primary-button" :disabled="busy">
           <Check :size="20" aria-hidden="true" /><span>{{

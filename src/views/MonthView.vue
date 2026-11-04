@@ -23,6 +23,7 @@ import {
   weekdays,
 } from '../lib/dates'
 import { currentDate, todayKey } from '../lib/today'
+import { capitalizeFirst } from '../lib/format'
 import { monthStats } from '../lib/month'
 
 const props = defineProps<{
@@ -52,7 +53,7 @@ async function editSelectedDay() {
 const monthDate = ref(new Date(currentDate().getFullYear(), currentDate().getMonth(), 1))
 const monthDays = computed(() => calendarDays(monthDate.value))
 const monthTitle = computed(() =>
-  monthDate.value.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
+  capitalizeFirst(monthDate.value.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })),
 )
 const isCurrentMonth = computed(
   () =>
@@ -122,11 +123,13 @@ function daySummary(date: Date) {
 const selectedSummary = computed(() => daySummary(selectedDate.value))
 const selectedGoals = computed(() => entriesForDate(selectedDate.value))
 const selectedTitle = computed(() =>
-  selectedDate.value.toLocaleDateString('pt-BR', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  }),
+  capitalizeFirst(
+    selectedDate.value.toLocaleDateString('pt-BR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+    }),
+  ),
 )
 function goalCounts(goal: Goal) {
   return goalProgressCounts(goal, localKey(selectedDate.value), props.completions, props.dayDetails)
