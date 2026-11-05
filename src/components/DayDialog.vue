@@ -114,6 +114,17 @@ function initialDraft(goal: Goal): DayDraft {
     freeMealLimitOverride: detail?.free_meals_limit_override ?? null,
   }
 }
+// Version of each record when the dialog opened, sent with the save so the database can
+// refuse it if another device saved this day in the meantime. Records loaded before
+// migration 011 have no updated_at: the check is skipped for them.
+const openedVersions = new Map(
+  planned.map((goal) => {
+    const detail = props.dayDetails.find(
+      (entry) => entry.goal_id === goal.id && entry.local_date === day,
+    )
+    return [goal.id, detail ? detail.updated_at : null] as const
+  }),
+)
 const drafts = ref<Record<string, DayDraft>>(
   Object.fromEntries(planned.map((goal) => [goal.id, initialDraft(goal)])),
 )
@@ -233,6 +244,7 @@ function submit() {
         note: current.note,
       },
       completed: completed === wasCompleted ? undefined : completed,
+      expectedUpdatedAt: openedVersions.get(goal.id),
     }
   })
   emit('save', day, entries)

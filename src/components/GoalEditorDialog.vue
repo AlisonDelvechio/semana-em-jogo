@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { ArrowDown, ArrowUp, Check, ChevronDown, Plus, X } from '@lucide/vue'
 import { fullWeekdays, localKey, weekdays } from '../lib/dates'
 import { emptyGoalInput, goalToInput, INVALID_GOAL_MESSAGE, normalizeGoalInput } from '../lib/goals'
@@ -29,6 +29,19 @@ const editingWeekday = ref<number | null>(null)
 type OptionList = 'meal_options' | 'checklist_options'
 // Text typed in each list's "add" field.
 const newItem = ref<Record<OptionList, string>>({ meal_options: '', checklist_options: '' })
+// The add field opens from an "Adicionar item" button, as in the visual reference.
+const addingTo = ref<OptionList | null>(null)
+const addInput = ref<HTMLInputElement | null>(null)
+async function startAdding(list: OptionList) {
+  addingTo.value = list
+  error.value = ''
+  await nextTick()
+  addInput.value?.focus()
+}
+function stopAdding() {
+  addingTo.value = null
+  error.value = ''
+}
 function addItem(list: OptionList) {
   const option = createOption(form.value[list], newItem.value[list])
   error.value = option ? '' : OPTION_NAME_ERROR
@@ -223,18 +236,23 @@ function submit() {
                 <X :size="18" /></button></span
           ></span>
         </div>
-        <div class="meal-add">
+        <div v-if="addingTo === 'meal_options'" class="meal-add">
           <input
+            ref="addInput"
             v-model="newItem.meal_options"
             type="text"
             maxlength="40"
             placeholder="Ex.: Ceia"
             aria-label="Nova refeição da meta"
             @keydown.enter.prevent="addItem('meal_options')"
+            @keydown.esc.stop.prevent="stopAdding"
           /><button type="button" class="small-button" @click="addItem('meal_options')">
             <Plus :size="18" /> Adicionar
           </button>
         </div>
+        <button v-else type="button" class="add-item-button" @click="startAdding('meal_options')">
+          <Plus :size="18" aria-hidden="true" /> Adicionar refeição
+        </button>
       </fieldset>
       <fieldset v-if="form.category !== 'alimentacao'" class="meal-options-field">
         <legend>Checklist da meta (opcional)</legend>
@@ -268,18 +286,28 @@ function submit() {
                 <X :size="18" /></button></span
           ></span>
         </div>
-        <div class="meal-add">
+        <div v-if="addingTo === 'checklist_options'" class="meal-add">
           <input
+            ref="addInput"
             v-model="newItem.checklist_options"
             type="text"
             maxlength="40"
             placeholder="Ex.: Aquecer, treinar, alongar"
             aria-label="Novo item do checklist"
             @keydown.enter.prevent="addItem('checklist_options')"
+            @keydown.esc.stop.prevent="stopAdding"
           /><button type="button" class="small-button" @click="addItem('checklist_options')">
             <Plus :size="18" /> Adicionar
           </button>
         </div>
+        <button
+          v-else
+          type="button"
+          class="add-item-button"
+          @click="startAdding('checklist_options')"
+        >
+          <Plus :size="18" aria-hidden="true" /> Adicionar item
+        </button>
       </fieldset>
       <fieldset v-if="form.category === 'alimentacao' || form.goal_mode === 'fixed'">
         <legend>Em quais dias?</legend>

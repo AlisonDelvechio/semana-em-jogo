@@ -22,6 +22,7 @@ A criação e a edição abrem em um modal, com cabeçalho e ações visíveis d
 
 - **Alimentação:** café da manhã, almoço, lanche da tarde e jantar aparecem por padrão e podem ser removidos, acrescentados ou reordenados (até 12, com nomes de até 40 caracteres).
 - **Treino e Outro:** checklist opcional, sem itens predefinidos. Sem itens, a meta usa um check simples. Com itens, todos precisam ser marcados para concluir o dia.
+- **Adicionar itens:** o botão **Adicionar refeição** ou **Adicionar item** abre o campo; Enter adiciona e mantém o campo aberto para o próximo, Escape fecha só o campo.
 - **Por dia da semana:** em metas de dias fixos, cada dia pode ter sua própria lista. A personalização abre em um modal; **Aplicar opções** leva a lista para o rascunho, que só é gravado ao salvar a meta. **Usar padrão** volta à lista geral.
 
 ## Registro do dia
@@ -88,6 +89,7 @@ Em **Minhas metas → Relatórios e backups**, escolha tudo, um mês ou um inter
 - **Leitura paginada:** o app busca todas as linhas de cada tabela, mesmo acima do limite por resposta do Supabase (1000 por padrão).
 - **Gravações atômicas:** edição de meta e registro do dia usam as funções de `010_atomic_writes.sql`. Elas rodam com as permissões de quem chama, então o RLS continua valendo. Se o app for publicado antes da migração, ele volta a gravar etapa por etapa.
 - **Voltar ao app:** ao voltar para a aba ou janela, os dados são recarregados em segundo plano (no máximo a cada 30 segundos e nunca com um modal de edição aberto), para que um dispositivo não sobrescreva o que outro salvou.
+- **Mesmo dia em dois dispositivos:** com `011_day_conflicts.sql`, cada registro guarda a data da última gravação. Ao salvar, o app informa qual versão abriu; se outro dispositivo salvou o mesmo dia depois disso, nada é gravado e aparece o aviso para fechar e abrir o dia de novo. O rascunho continua na tela para você copiar o que quiser manter. Versões antigas do app e registros carregados antes da migração continuam gravando sem a conferência.
 - **Virada do dia:** com o app aberto à meia-noite, "hoje", os resumos e a semana ou o mês exibidos avançam sozinhos, se você estava vendo o período atual.
 - **Sessão:** a leitura inicial repete apenas a rejeição temporária "JWT issued at future", com esperas de 0,5 s, 1 s, 2 s e 4 s. Outras falhas e as gravações não são repetidas.
 - **Modo local:** se os dados do navegador estiverem ilegíveis, uma cópia é guardada em `semana-em-jogo-v1-corrompido-<data>` antes de o app gravar novos dados, para recuperação manual.

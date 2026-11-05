@@ -167,10 +167,7 @@ type ApiError = { message: string; code?: string } | null
 // Migration 010 may not be applied yet when a new build is published.
 // In that case keep working with the previous step-by-step writes.
 export function isMissingFunction(error: ApiError): boolean {
-  return (
-    error?.code === 'PGRST202' ||
-    /could not find the function/i.test(error?.message || '')
-  )
+  return error?.code === 'PGRST202' || /could not find the function/i.test(error?.message || '')
 }
 
 // The session is already in memory/storage; RLS validates the token on every request,
@@ -320,7 +317,8 @@ function normalizeDayDetail(detail: DayDetailInput): DayDetailInput {
 }
 
 function putLocalDetail(data: LocalData, detail: DayDetailInput) {
-  if (!data.goals.some((goal) => goal.id === detail.goal_id)) throw new Error('Meta não encontrada.')
+  if (!data.goals.some((goal) => goal.id === detail.goal_id))
+    throw new Error('Meta não encontrada.')
   data.dayDetails = data.dayDetails.filter(
     (entry) => !(entry.goal_id === detail.goal_id && entry.local_date === detail.local_date),
   )
@@ -390,6 +388,10 @@ export type DayEntry = {
   detail: DayDetailInput
   // undefined keeps the current completion untouched (food goals derive it from meals).
   completed?: boolean
+  // Version of the record when the day was opened: its updated_at, or null when there was
+  // no record yet. The database refuses the save if another device changed it since
+  // (migration 011). undefined skips the check.
+  expectedUpdatedAt?: string | null
 }
 
 // Saves every goal of one date together: either all records are stored or none is.
@@ -412,7 +414,10 @@ export async function saveDay(localDate: string, entries: DayEntry[]): Promise<v
   }
   const { error } = await supabase.rpc('save_day', {
     p_local_date: localDate,
-    p_details: details,
+    p_details: details.map((detail, index) => {
+      const expected = entries[index]!.expectedUpdatedAt
+      return expected === undefined ? detail : { ...detail, expected_updated_at: expected }
+    }),
     p_completions: completions,
   })
   if (!isMissingFunction(error)) return errorIfPresent(error)
@@ -471,9 +476,7 @@ export async function importGoalBackup(records: BackupRecord[]) {
     existing.completions.map((item) => `${item.goal_id}:${item.local_date}`),
   )
   const counts = { goals: 0, history: 0, dayDetails: 0, completions: 0 }
-  const userId = supabase
-    ? await currentUserId('Entre na sua conta antes de importar.')
-    : 'local'
+  const userId = supabase ? await currentUserId('Entre na sua conta antes de importar.') : 'local'
   for (const record of records) {
     let goalId = record.goal.id
     // Restoring into another account: the original id may already be taken there.

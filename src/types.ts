@@ -53,6 +53,8 @@ export interface GoalDayDetail {
   adherence_recorded?: boolean
   free_meals_limit_override?: number | null
   note: string
+  // Set by the database on every write (migration 011); used to detect conflicts.
+  updated_at?: string
 }
 export interface GoalHistory {
   goal_id: string
