@@ -18,7 +18,7 @@ Sem variáveis de ambiente, o app funciona em **modo local**: os dados ficam ape
 ## Ativar sincronização (Supabase)
 
 1. Crie um projeto no [Supabase](https://supabase.com/dashboard).
-2. No **SQL Editor**, cole e execute o conteúdo de cada arquivo de `supabase/migrations/`, em ordem numérica (`001` a `010`). Digitar o nome do arquivo no editor não executa a migração. Em um projeto existente, execute só as que faltam, **antes** de publicar a versão do app que depende delas.
+2. No **SQL Editor**, cole e execute o conteúdo de cada arquivo de `supabase/migrations/`, em ordem numérica (`001` a `011`). Digitar o nome do arquivo no editor não executa a migração. Em um projeto existente, execute só as que faltam, **antes** de publicar a versão do app que depende delas.
 3. Em **Authentication**, ative o provedor Email. Se a confirmação por email estiver ativa, confirme a conta pelo link recebido.
 4. Copie `.env.example` para `.env.local` e preencha `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` com a URL e a chave pública (publishable/anon) do projeto. **Nunca** use a chave secret/service role no navegador.
 5. Reinicie `npm run dev`, crie uma conta e entre.
@@ -35,8 +35,9 @@ Sem variáveis de ambiente, o app funciona em **modo local**: os dados ficam ape
 | `008_free_meals.sql`                | Limite semanal de refeições livres                                       |
 | `009_day_free_meal_limit.sql`       | Correção do limite em um dia específico                                  |
 | `010_atomic_writes.sql`             | Funções que gravam a edição da meta e o registro do dia em uma transação |
+| `011_day_conflicts.sql`             | Impede que um dispositivo sobrescreva um dia salvo por outro             |
 
-Todas as migrações só acrescentam colunas, tabelas ou funções; nenhuma apaga ou reclassifica dados existentes.
+Todas as migrações só acrescentam colunas, tabelas, funções ou gatilhos; nenhuma apaga ou reclassifica dados existentes.
 
 ## Publicar na Netlify
 
@@ -65,6 +66,8 @@ npm run lint
 ```bash
 npm run build
 ```
+
+Os testes também executam todas as migrações num Postgres real em memória (PGlite), sem precisar de conta no Supabase.
 
 O workflow `.github/workflows/ci.yml` executa lint, testes, type-check e build em cada pull request e em cada push na `main`.
 

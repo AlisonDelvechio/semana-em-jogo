@@ -1,17 +1,9 @@
 <script setup lang="ts">
-import {
-  CirclePause,
-  CirclePlay,
-  ClipboardList,
-  Dumbbell,
-  Pencil,
-  Plus,
-  Trash2,
-  Utensils,
-} from '@lucide/vue'
+import { ClipboardList, Dumbbell, Pencil, Plus, Utensils } from '@lucide/vue'
 import { weekdays } from '../lib/dates'
 import { categoryName } from '../lib/goals'
 import type { BackupRecord } from '../lib/report'
+import GoalMenu from '../components/GoalMenu.vue'
 import ReportsPanel from '../components/ReportsPanel.vue'
 import type { Completion, Goal, GoalDayDetail, GoalHistory } from '../types'
 
@@ -77,25 +69,15 @@ const schedule = (goal: Goal) =>
         ><small v-if="!goal.active">Pausada</small>
       </div>
       <div class="goal-actions">
-        <button
-          :disabled="busy"
-          :aria-label="goal.active ? `Pausar ${goal.title}` : `Ativar ${goal.title}`"
-          @click="emit('pause', goal)"
-        >
-          <CirclePause v-if="goal.active" :size="20" aria-hidden="true" /><CirclePlay
-            v-else
-            :size="20"
-            aria-hidden="true"
-          /><span>{{ goal.active ? 'Pausar' : 'Retomar' }}</span></button
-        ><button :aria-label="`Editar ${goal.title}`" @click="emit('edit', goal)">
-          <Pencil :size="20" aria-hidden="true" /><span>Editar</span></button
-        ><button
-          :disabled="busy"
-          :aria-label="`Excluir ${goal.title}`"
-          @click="emit('remove', goal)"
-        >
-          <Trash2 :size="20" aria-hidden="true" /><span>Excluir</span>
+        <button :aria-label="`Editar ${goal.title}`" @click="emit('edit', goal)">
+          <Pencil :size="20" aria-hidden="true" /><span>Editar</span>
         </button>
+        <GoalMenu
+          :goal="goal"
+          :busy="busy"
+          @pause="emit('pause', goal)"
+          @remove="emit('remove', goal)"
+        />
       </div>
     </article>
   </section>

@@ -9,6 +9,8 @@
   --ui-border: #b8c9b2;
   --ui-text: #22352a;
   --ui-muted: #50654f;
+  /* Green used for text: links, title highlights, counters. */
+  --ui-accent-text: #4a7541;
   --ui-focus: #456e37;
   font-family: Inter, system-ui, sans-serif;
 }
@@ -21,6 +23,7 @@ html[data-theme='dark'] {
   --ui-border: #627e67;
   --ui-text: #f1f5ed;
   --ui-muted: #bbcabb;
+  --ui-accent-text: #b9dca4;
   --ui-focus: #b9dca4;
 }
 button,
@@ -165,14 +168,12 @@ html[data-theme='dark'] .goal-editor-dialog .form-actions {
 .goal-editor-dialog .goal-form select,
 .report-panel input,
 .report-panel select,
-.meal-adherence select,
 .meal-description,
 .day-note textarea,
 html[data-theme='dark'] .goal-editor-dialog .goal-form input:not([type='checkbox']),
 html[data-theme='dark'] .goal-editor-dialog .goal-form select,
 html[data-theme='dark'] .report-panel input,
 html[data-theme='dark'] .report-panel select,
-html[data-theme='dark'] .meal-adherence select,
 html[data-theme='dark'] .meal-description,
 html[data-theme='dark'] .day-note textarea {
   background: var(--ui-input);
@@ -189,8 +190,7 @@ html[data-theme='dark'] .day-note textarea {
   margin-top: 8px;
 }
 .goal-form .select-control select,
-.report-panel .select-control select,
-.meal-adherence .select-control select {
+.report-panel .select-control select {
   appearance: none;
   -webkit-appearance: none;
   display: block;
@@ -206,9 +206,6 @@ html[data-theme='dark'] .day-note textarea {
   top: 50%;
   transform: translateY(-50%);
   color: var(--ui-text);
-}
-.meal-adherence .select-control {
-  margin-top: 0;
 }
 .frequency-field {
   margin: 18px 0;
@@ -299,25 +296,6 @@ html[data-theme='dark'] .meal-order-actions button {
   color: var(--ui-text);
   line-height: 1;
 }
-.meal-row,
-.meal-row.food-row {
-  grid-template-columns: minmax(0, 1fr) 94px 44px;
-}
-.meal-row:not(.food-row) .meal-check {
-  grid-column: 1 / -1;
-}
-.meal-row:not(.food-row) .meal-description {
-  grid-row: 2;
-  grid-column: 1;
-}
-.meal-row:not(.food-row) .meal-order-actions {
-  grid-row: 2;
-  grid-column: 2;
-}
-.meal-row:not(.food-row) .meal-remove {
-  grid-row: 2;
-  grid-column: 3;
-}
 .weekday-editor-list li {
   min-width: 0;
   gap: 8px;
@@ -355,15 +333,6 @@ html[data-theme='dark'] .task.done .task-title {
 html[data-theme='dark'] .task.done .task-title small {
   color: var(--ui-muted);
 }
-.task-state {
-  font-size: 0.68rem;
-  font-weight: 700;
-  border: 1px solid var(--ui-border);
-  border-radius: 20px;
-  padding: 4px 8px;
-  background: var(--ui-secondary);
-  color: var(--ui-text);
-}
 .check-visual {
   width: 26px;
   height: 26px;
@@ -396,17 +365,20 @@ html[data-theme='dark'] .task.done .task-title small {
 html[data-theme='dark'] .period-progress-value {
   color: var(--ui-text);
 }
-.period-progress-bar > span,
+/* The filled part must stand out from the track: dark on light, light on dark. */
+.period-progress-bar > span {
+  background: var(--ui-accent-text);
+}
+.period-progress-bar {
+  background: #dfe8da;
+}
 html[data-theme='dark'] .period-progress-bar > span {
   background: #b9dca4;
 }
-.period-progress-bar,
 html[data-theme='dark'] .period-progress-bar {
   background: #45624d;
 }
-.period-progress-heading > span,
 .period-progress-date,
-html[data-theme='dark'] .period-progress-heading > span,
 html[data-theme='dark'] .period-progress-date {
   color: var(--ui-muted);
 }
@@ -530,11 +502,6 @@ html[data-theme='dark'] .period-progress-date {
     transition-duration: 0s !important;
     animation-duration: 0s !important;
   }
-}
-.task-state {
-  grid-column: 3;
-  justify-self: start;
-  margin: -4px 0 0;
 }
 .meal-check,
 .active-switch {
@@ -815,7 +782,6 @@ html[data-theme='dark'] .calendar-day.selected {
 .selected-day-heading h2 {
   margin: 0;
   font-size: 1rem;
-  text-transform: capitalize;
 }
 .selected-day-heading > span {
   font-size: 0.8rem;
@@ -823,10 +789,6 @@ html[data-theme='dark'] .calendar-day.selected {
 }
 .selected-day-card .task {
   grid-template-columns: 26px 22px minmax(0, 1fr) auto;
-}
-.selected-day-card .task-state {
-  grid-column: 4;
-  margin: 0;
 }
 @media (min-width: 721px) and (max-width: 1200px) {
   .days-grid {
@@ -952,12 +914,6 @@ html[data-theme='dark'] .calendar-day.selected {
     gap: 9px;
     min-height: 62px;
   }
-  .day-card .task-state {
-    grid-column: 4;
-    margin: 0;
-    padding: 4px 7px;
-    font-size: 0.62rem;
-  }
   .month-progress-summary .period-progress-card {
     grid-template-columns: 38px minmax(0, 1fr) auto;
     padding: 14px;
@@ -974,7 +930,6 @@ html[data-theme='dark'] .calendar-day.selected {
     font-size: 0.95rem;
     font-weight: 700;
     color: var(--ui-text);
-    text-transform: capitalize;
   }
   .month-progress-summary .period-progress-result > span {
     font-size: 0.7rem;
@@ -1019,10 +974,6 @@ html[data-theme='dark'] .calendar-day.selected {
 @media (max-width: 360px) {
   .day-card .task {
     grid-template-columns: 26px 22px minmax(0, 1fr);
-  }
-  .day-card .task-state {
-    grid-column: 3;
-    margin-top: -4px;
   }
 }
 
@@ -1085,19 +1036,6 @@ html[data-theme='dark'] .days-grid .day-card.is-today {
 .days-grid .task-title small {
   font-size: 0.72rem;
   line-height: 1.45;
-}
-.days-grid .task-state {
-  display: inline;
-  padding: 0;
-  margin: 0;
-  border: 0;
-  background: transparent;
-  font-size: inherit;
-  color: inherit;
-  white-space: nowrap;
-}
-.days-grid .task-state::before {
-  content: ' · ';
 }
 .days-grid .tasks {
   gap: 0;
@@ -1358,4 +1296,340 @@ html[data-theme='dark'] .task:hover .task-title {
 .week-nav button > svg,
 .calendar-nav > button:not(.today-link) > svg {
   margin: 0;
+}
+
+/* ===== Components added in the UX review ===== */
+
+/* Utility: must beat any component rule (e.g. `.report-panel input { width: 100% }`). */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Status colors shared by the adherence options and alerts. */
+:root {
+  --ui-danger: #a3392b;
+  --ui-danger-bg: #fdf0ed;
+  --ui-danger-border: #d58374;
+  --ui-free: #6b4b1c;
+  --ui-free-bg: #f6ead3;
+  --ui-free-border: #c9a46c;
+}
+html[data-theme='dark'] {
+  --ui-danger: #f4b4a8;
+  --ui-danger-bg: #3a2320;
+  --ui-danger-border: #b9645a;
+  --ui-free: #f3dfb8;
+  --ui-free-bg: #45392a;
+  --ui-free-border: #9a7d50;
+}
+
+/* Inline messages (reference: red border with an alert icon). */
+.inline-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border: 1px solid var(--ui-danger-border);
+  border-radius: 12px;
+  background: var(--ui-danger-bg);
+  color: var(--ui-danger);
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.45;
+}
+.inline-alert > svg {
+  flex: none;
+  margin-top: 1px;
+}
+.inline-alert.info {
+  border-color: var(--ui-border);
+  background: var(--ui-secondary);
+  color: var(--ui-text);
+}
+.inline-alert.info > svg {
+  color: var(--ui-accent-text);
+}
+.report-panel .inline-alert {
+  font-size: 0.86rem;
+  color: var(--ui-danger);
+}
+.report-panel .inline-alert.info {
+  color: var(--ui-text);
+}
+
+/* Styled replacement for the native file input. */
+.file-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  margin: 12px 0 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  background: var(--ui-input);
+  color: var(--ui-text);
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.file-picker > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.file-picker:hover {
+  border-color: var(--ui-accent-text);
+}
+
+/* Week cards: the check marks simple goals; the title opens the day record. */
+.task-check,
+.task-open {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.task-check {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: -10px;
+  border-radius: 10px;
+}
+.task-check:hover .check-visual {
+  border-color: var(--ui-accent-text);
+}
+.task-open {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  text-align: left;
+}
+.task:has(.task-open:hover) .task-title {
+  color: var(--ui-focus);
+}
+
+/* Day record. */
+.day-goal-title {
+  flex-wrap: wrap;
+}
+.day-goal-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-inline-start: auto;
+  font-size: 0.82rem;
+}
+.dialog-help {
+  margin: 10px 0 4px;
+  font-size: 0.84rem;
+  color: var(--ui-muted);
+}
+.dialog-help summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  color: var(--ui-accent-text);
+  font-weight: 700;
+  cursor: pointer;
+}
+.dialog-help p {
+  margin: 6px 0 0;
+  line-height: 1.5;
+}
+.meal-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  margin: 0;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--ui-border);
+}
+.meal-name {
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+.adherence-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.adherence-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 44px;
+  padding: 8px 6px;
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  background: var(--ui-input);
+  color: var(--ui-text);
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+}
+.adherence-option:hover {
+  border-color: var(--ui-accent-text);
+}
+.adherence-option[aria-pressed='true'].on-plan {
+  border-color: var(--ui-accent);
+  background: var(--ui-accent);
+  color: var(--ui-on-accent);
+}
+.adherence-option[aria-pressed='true'].free {
+  border-color: var(--ui-free-border);
+  background: var(--ui-free-bg);
+  color: var(--ui-free);
+}
+.adherence-option[aria-pressed='true'].off-plan {
+  border-color: var(--ui-danger-border);
+  background: var(--ui-danger-bg);
+  color: var(--ui-danger);
+}
+.meal-legacy {
+  color: var(--ui-muted);
+  font-size: 0.78rem;
+}
+.meal-row .meal-description {
+  width: 100%;
+}
+.meal-item-tools {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.meal-item-tools .meal-order-actions {
+  display: flex;
+  gap: 6px;
+}
+.meal-item-tools button {
+  width: 44px;
+  height: 44px;
+}
+.day-goal .meal-add {
+  margin-top: 12px;
+}
+
+/* Goal list: Edit plus a "more actions" menu. */
+.goal-menu {
+  position: relative;
+}
+.goal-actions .goal-menu-toggle {
+  width: 44px;
+  padding: 0;
+}
+.goal-menu-list {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  right: 0;
+  display: grid;
+  gap: 2px;
+  min-width: 180px;
+  padding: 6px;
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  background: var(--ui-surface);
+  box-shadow: 0 12px 28px rgb(0 0 0 / 22%);
+}
+.goal-actions .goal-menu-list button {
+  justify-content: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ui-text);
+  font-size: 0.86rem;
+}
+.goal-actions .goal-menu-list button:not(:disabled):hover,
+.goal-actions .goal-menu-list button:focus-visible {
+  background: var(--ui-secondary);
+}
+.goal-actions .goal-menu-list .danger {
+  color: var(--ui-danger);
+}
+
+/* Goal editor. */
+.add-item-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  margin-top: 12px;
+  border: 1.5px solid var(--ui-accent-text);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ui-text);
+  font-weight: 700;
+  cursor: pointer;
+}
+.add-item-button:hover {
+  background: var(--ui-secondary);
+}
+.goal-editor-description {
+  margin: 4px 0 0;
+  color: var(--ui-muted);
+  font-size: 0.88rem;
+  font-weight: 400;
+}
+.period-switch-text {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+}
+.period-switch-text .optional-label {
+  margin-inline-start: 6px;
+}
+.period-switch-text small {
+  color: var(--ui-muted);
+  font-size: 0.78rem;
+  font-weight: 400;
+}
+
+/* Phone: "Nova meta" becomes a compact button beside the week title. */
+@media (max-width: 720px) {
+  .week-layout .page-heading {
+    position: relative;
+  }
+  .week-layout .page-heading .heading-action {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+  .week-layout .page-heading .heading-action-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .adherence-option {
+    font-size: 0.8rem;
+  }
 }

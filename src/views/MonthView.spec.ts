@@ -66,7 +66,7 @@ it('uses actual meal progress for calendar circles and edits the selected date',
     await wrapper.get('.selected-day-card .day-edit-action').trigger('click')
     expect(localKey(wrapper.emitted('openDay')![0]![0] as Date)).toBe('2026-10-13')
     await wrapper.get('[aria-label="Próximo mês"]').trigger('click')
-    expect(wrapper.get('.calendar-header h2').text()).toBe('novembro de 2026')
+    expect(wrapper.get('.calendar-header h2').text()).toBe('Novembro de 2026')
     expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
     await wrapper.get('.calendar-day[aria-label^="domingo, 1 de novembro"]').trigger('click')
     expect(wrapper.get('#selected-day-title').text()).toContain('1 de novembro')

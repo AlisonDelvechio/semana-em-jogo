@@ -2,7 +2,13 @@
 import { nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { X } from '@lucide/vue'
 const props = withDefaults(
-  defineProps<{ title: string; busy?: boolean; titleId?: string; closeLabel?: string }>(),
+  defineProps<{
+    title: string
+    description?: string
+    busy?: boolean
+    titleId?: string
+    closeLabel?: string
+  }>(),
   { titleId: 'goal-editor-title', closeLabel: 'Fechar edição da meta' },
 )
 const emit = defineEmits<{ close: [] }>()
@@ -56,8 +62,8 @@ onUnmounted(() => {
     >
       <header class="goal-editor-header">
         <div>
-          <span class="eyebrow">SEU PLANO</span>
           <h2 :id="titleId">{{ title }}</h2>
+          <p v-if="description" class="goal-editor-description">{{ description }}</p>
         </div>
         <button
           type="button"

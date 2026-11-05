@@ -136,13 +136,18 @@ it('edits the allowance and saves a compliant day with an optional free meal on 
     expect(wrapper.find('.days-grid .task-category-icon').exists()).toBe(true)
     await wrapper.get('.day-edit-action').trigger('click')
     const meals = wrapper.findAll('.meal-row')
-    for (const meal of meals) {
-      await meal.get('input[type="checkbox"]').setValue(true)
-      await meal.get('select').setValue('free')
-    }
+    const option = (meal: (typeof meals)[number], label: string) =>
+      meal.findAll('.adherence-option').find((button) => button.text() === label)!
+    // One tap registers the meal and its adherence.
+    for (const meal of meals) await option(meal, 'Livre').trigger('click')
+    expect(option(meals[0]!, 'Livre').attributes('aria-pressed')).toBe('true')
     expect(wrapper.get('.day-dialog .free-meal-summary').text()).toContain('2 de 1 permitidas')
     expect(wrapper.findAll('.free-meal-warning')).toHaveLength(1)
-    await meals[1]!.get('select').setValue('true')
+    // Tapping the chosen option again clears the meal.
+    await option(meals[1]!, 'Livre').trigger('click')
+    expect(option(meals[1]!, 'Livre').attributes('aria-pressed')).toBe('false')
+    expect(wrapper.get('.day-dialog .free-meal-summary').text()).toContain('1 de 1 permitidas')
+    await option(meals[1]!, 'No plano').trigger('click')
     expect(wrapper.findAll('.free-meal-warning')).toHaveLength(0)
     expect(wrapper.get('.day-dialog .free-meal-summary').text()).toContain('1 de 1 permitidas')
     await wrapper.get('.day-dialog form').trigger('submit')
@@ -178,9 +183,16 @@ it('confirms deletion, supports Escape and restores focus without deleting on ca
   try {
     await flushPromises()
     await wrapper.findAll('.mobile-nav button')[2]!.trigger('click')
-    const trigger = wrapper.get('[aria-label="Excluir Academia"]')
-    ;(trigger.element as HTMLButtonElement).focus()
+    // Delete lives in the "more actions" menu; focus returns to the menu button.
+    const trigger = wrapper.get('[aria-label="Mais ações para Academia"]')
+    expect(wrapper.find('[aria-label="Excluir Academia"]').exists()).toBe(false)
     await trigger.trigger('click')
+    expect(trigger.attributes('aria-expanded')).toBe('true')
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('Pausar Academia')
+    await wrapper.get('[role="menu"]').trigger('keydown', { key: 'ArrowDown' })
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('Excluir Academia')
+    await wrapper.get('[aria-label="Excluir Academia"]').trigger('click')
+    expect(wrapper.find('[role="menu"]').exists()).toBe(false)
     expect(wrapper.get('[role="alertdialog"]').text()).toContain('não pode ser desfeita')
     expect(document.activeElement?.textContent).toBe('Cancelar')
     expect((await loadData()).goals[0]?.id).toBe(goal.id)
@@ -189,6 +201,7 @@ it('confirms deletion, supports Escape and restores focus without deleting on ca
     expect(document.activeElement).toBe(trigger.element)
     expect((await loadData()).goals).toHaveLength(1)
     await trigger.trigger('click')
+    await wrapper.get('[aria-label="Excluir Academia"]').trigger('click')
     await wrapper.get('.confirmation-actions .primary-button').trigger('click')
     await flushPromises()
     expect((await loadData()).goals).toHaveLength(0)
@@ -288,7 +301,8 @@ it('keeps completed state accessible without a visual label and preserves freque
   try {
     await flushPromises()
     expect(wrapper.find('.task.done .task-state').exists()).toBe(false)
-    expect(wrapper.get('.task.done').attributes('aria-label')).toContain('Concluída')
+    expect(wrapper.get('.task.done .task-open').attributes('aria-label')).toContain('Concluída')
+    expect(wrapper.get('.task.done .task-check').attributes('aria-checked')).toBe('true')
     await wrapper.findAll('.mobile-nav button')[2]!.trigger('click')
     await wrapper.get('[aria-label="Editar Treinar"]').trigger('click')
     const select = wrapper.get('.goal-basics-row .select-control select')
@@ -509,6 +523,66 @@ it('reloads records and moves to the new day when the page becomes visible again
     const today = wrapper.find('.day-card.is-today')
     expect(today.exists()).toBe(true)
     expect(today.text()).toContain('Caminhar')
+  } finally {
+    wrapper.unmount()
+  }
+})
+
+it('marks a simple goal straight from the week card and opens the record for detailed goals', async () => {
+  const base = {
+    scheduled_weekdays: [0, 1, 2, 3, 4, 5, 6],
+    goal_mode: 'fixed' as const,
+    weekly_target: 1,
+    points: 10,
+    active: true,
+    meal_options: [],
+    meal_options_by_weekday: {},
+    checklist_options_by_weekday: {},
+    start_date: null,
+    duration_days: null,
+  }
+  await createGoal({ ...base, title: 'Meditar', category: 'outro', checklist_options: [] })
+  await createGoal({
+    ...base,
+    title: 'Treino guiado',
+    category: 'treino',
+    checklist_options: [{ id: 'aquecer', label: 'Aquecer' }],
+  })
+  const wrapper = mount(TrackerApp, { attachTo: document.body })
+  try {
+    await flushPromises()
+    const today = localKey(new Date())
+    const check = wrapper.get('.day-card.is-today [aria-label^="Marcar Meditar"]')
+    expect(check.attributes('aria-checked')).toBe('false')
+    await check.trigger('click')
+    // The card updates at once, before the write finishes.
+    expect(check.attributes('aria-checked')).toBe('true')
+    await flushPromises()
+    expect((await loadData()).completions.map((entry) => entry.local_date)).toEqual([today])
+    expect(document.querySelector('[role="dialog"]')).toBeNull()
+    await check.trigger('click')
+    await flushPromises()
+    expect((await loadData()).completions).toHaveLength(0)
+    // Goals with checklist items have no quick check: the title opens the record.
+    expect(wrapper.find('.day-card.is-today [aria-label^="Marcar Treino guiado"]').exists()).toBe(
+      false,
+    )
+    await wrapper
+      .findAll('.day-card.is-today .task-open')
+      .find((button) => button.text().includes('Treino guiado'))!
+      .trigger('click')
+    expect(document.querySelector('[role="dialog"]')).not.toBeNull()
+    // Item tools stay hidden until "Editar itens" is opened.
+    expect(document.querySelector('[aria-label="Remover Aquecer deste dia"]')).toBeNull()
+    ;(document.querySelector('[aria-label="Editar itens de Treino guiado"]') as HTMLElement).click()
+    await flushPromises()
+    expect(document.querySelector('[aria-label="Remover Aquecer deste dia"]')).not.toBeNull()
+    // Only the goal without items keeps the separate "Meta concluída" checkbox.
+    const goals = [...document.querySelectorAll('.day-goal')]
+    expect(goals.map((goal) => Boolean(goal.querySelector('.completion-check')))).toEqual([
+      true,
+      false,
+    ])
   } finally {
     wrapper.unmount()
   }

@@ -11,6 +11,7 @@ import {
   importGoalBackup,
   loadData,
   saveDay,
+  setCompleted,
   supabase,
   updateGoal,
   type DayEntry,
@@ -145,6 +146,8 @@ let refreshVersion = 0
 let authRefreshTimer: ReturnType<typeof setTimeout> | undefined
 let unsubscribeAuth: (() => void) | undefined
 let disposed = false
+// Quick checks still being written (see toggleCompletion).
+let pendingToggles = 0
 function clearData() {
   refreshVersion++
   goals.value = []
@@ -178,7 +181,7 @@ let lastResumeRefresh = 0
 function onPageVisible() {
   if (document.visibilityState !== 'visible') return
   syncToday()
-  if (busy.value || loading.value || (cloudEnabled && !session.value)) return
+  if (busy.value || loading.value || pendingToggles || (cloudEnabled && !session.value)) return
   // An open editor keeps its draft; reload after it closes.
   if (selectedDay.value || goalEditorOpen.value) return
   if (Date.now() - lastResumeRefresh < RESUME_REFRESH_MS) return
@@ -212,6 +215,36 @@ async function saveDayRecords(localDate: string, entries: DayEntry[]) {
     await saveDay(localDate, entries)
     selectedDay.value = null
   }, 'Registro do dia salvo.')
+}
+
+// Quick check from the week cards. The card changes at once; the write runs in the
+// background and is undone if it fails. Data is reloaded after the last pending toggle.
+async function toggleCompletion(goal: Goal, date: Date) {
+  const day = localKey(date)
+  const matches = (entry: Completion) => entry.goal_id === goal.id && entry.local_date === day
+  const done = completions.value.some(matches)
+  const optimistic: Completion = {
+    id: `pending-${goal.id}-${day}`,
+    user_id: goal.user_id,
+    goal_id: goal.id,
+    local_date: day,
+    completed_at: new Date().toISOString(),
+  }
+  completions.value = done
+    ? completions.value.filter((entry) => !matches(entry))
+    : [...completions.value, optimistic]
+  message.value = ''
+  pendingToggles++
+  try {
+    await setCompleted(goal.id, day, !done)
+  } catch (error) {
+    completions.value = done
+      ? [...completions.value, optimistic]
+      : completions.value.filter((entry) => !matches(entry))
+    errorMessage(error)
+  } finally {
+    if (--pendingToggles === 0 && !disposed) void refresh({ silent: true })
+  }
 }
 
 function newGoal() {
@@ -412,10 +445,6 @@ onUnmounted(() => {
         ><button :class="['nav-button', { selected: tab === 'goals' }]" @click="tab = 'goals'">
           <Target :size="18" aria-hidden="true" /> Minhas metas
         </button>
-        <div class="sidebar-note">
-          <Sparkles :size="28" :stroke-width="1.5" aria-hidden="true" />
-          <p>O progresso acontece um dia de cada vez.</p>
-        </div>
       </aside>
       <main :class="['content', { 'week-layout': tab === 'week' }]">
         <div v-if="loading" role="status" class="loading">Carregando sua semana...</div>
@@ -429,6 +458,7 @@ onUnmounted(() => {
           :day-details="dayDetails"
           :mobile-week="mobileWeek"
           @open-day="openDay"
+          @toggle="toggleCompletion"
           @new-goal="newGoal"
           @show-goals="tab = 'goals'"
           @current-week="goToCurrentWeek"

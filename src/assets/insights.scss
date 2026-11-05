@@ -58,21 +58,27 @@
   font-size: 0.8rem;
   color: var(--ui-muted);
 }
+/* Segmented control: one track with the selected option raised inside it. */
 .insights-period {
   display: flex;
-  gap: 6px;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  background: var(--ui-secondary);
 }
 .insights-period button {
-  padding: 8px 16px;
-  border: 1px solid var(--ui-border);
-  background: var(--ui-surface);
+  padding: 8px 18px;
+  border: 0;
+  background: transparent;
   color: var(--ui-text);
-  border-radius: 10px;
+  border-radius: 9px;
+  font-weight: 600;
 }
 .insights-period button[aria-pressed='true'] {
   background: var(--ui-accent);
-  border-color: var(--ui-accent);
   color: var(--ui-on-accent);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 18%);
 }
 .insight-title {
   display: flex;

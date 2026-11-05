@@ -15,9 +15,7 @@ const mocks = vi.hoisted(() => ({
     ) => Promise<{ data: unknown[] | null; error: ApiError; count: number | null }>
   >(),
   insert: vi.fn<(table: string, rows: unknown) => Promise<{ error: ApiError }>>(),
-  upsert: vi.fn<
-    (table: string, rows: unknown, options: unknown) => Promise<{ error: ApiError }>
-  >(),
+  upsert: vi.fn<(table: string, rows: unknown, options: unknown) => Promise<{ error: ApiError }>>(),
   rpc: vi.fn<(name: string, args: unknown) => Promise<{ error: ApiError }>>(),
 }))
 vi.mock('@supabase/supabase-js', () => ({
@@ -131,6 +129,34 @@ describe('atomic writes', () => {
       ],
       p_completions: [{ goal_id: 'goal', completed: true }],
     })
+    expect(mocks.upsert).not.toHaveBeenCalled()
+  })
+
+  it('sends the version each record had when the day was opened (migration 011)', async () => {
+    const { saveDay } = await cloudData()
+    const other = { ...detail, goal_id: 'other' }
+    const third = { ...detail, goal_id: 'third' }
+    await saveDay('2026-11-03', [
+      { detail, expectedUpdatedAt: '2026-11-03T10:00:00.123456+00:00' },
+      { detail: other, expectedUpdatedAt: null },
+      { detail: third },
+    ])
+    const sent = (mocks.rpc.mock.calls[0]![1] as { p_details: Record<string, unknown>[] }).p_details
+    // Exact string kept (microseconds included); null means "there was no record".
+    expect(sent[0]!.expected_updated_at).toBe('2026-11-03T10:00:00.123456+00:00')
+    expect(sent[1]!.expected_updated_at).toBeNull()
+    // Unknown version (records loaded before the migration): no check requested.
+    expect('expected_updated_at' in sent[2]!).toBe(false)
+  })
+
+  it('reports a conflict from another device without retrying field by field', async () => {
+    const { saveDay } = await cloudData()
+    mocks.rpc.mockResolvedValue({
+      error: { code: '40001', message: 'Este dia foi alterado em outro dispositivo.' },
+    })
+    await expect(saveDay('2026-11-03', [{ detail, expectedUpdatedAt: null }])).rejects.toThrow(
+      'alterado em outro dispositivo',
+    )
     expect(mocks.upsert).not.toHaveBeenCalled()
   })
 

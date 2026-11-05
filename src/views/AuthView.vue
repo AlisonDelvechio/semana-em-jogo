@@ -2,18 +2,22 @@
 import { ref } from 'vue'
 import { Sparkles } from '@lucide/vue'
 import { supabase } from '../lib/data'
+import InlineAlert from '../components/InlineAlert.vue'
 
 // Shared with the app so a session error found at startup is shown here too.
 const message = defineModel<string>('message', { required: true })
 const email = ref(''),
   password = ref(''),
   signUp = ref(false),
-  busy = ref(false)
+  busy = ref(false),
+  // The only non-error message here is the email confirmation hint.
+  info = ref(false)
 
 async function submit() {
   if (!supabase) return
   busy.value = true
   message.value = ''
+  info.value = false
   try {
     if (signUp.value) {
       const { data, error } = await supabase.auth.signUp({
@@ -21,7 +25,10 @@ async function submit() {
         password: password.value,
       })
       if (error) throw error
-      if (!data.session) message.value = 'Confira seu email para confirmar a conta.'
+      if (!data.session) {
+        message.value = 'Confira seu email para confirmar a conta.'
+        info.value = true
+      }
     } else {
       const { error } = await supabase.auth.signInWithPassword({
         email: email.value,
@@ -76,7 +83,7 @@ function switchMode() {
       ><button type="button" class="auth-switch" @click="switchMode">
         {{ signUp ? 'Já tem conta? Entrar' : 'Ainda não tem conta? Criar conta' }}
       </button>
-      <p v-if="message" role="status" class="notice">{{ message }}</p>
+      <InlineAlert v-if="message" :message="message" :tone="info ? 'info' : 'error'" />
     </form>
   </main>
 </template>
