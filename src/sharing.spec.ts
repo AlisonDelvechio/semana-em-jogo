@@ -128,7 +128,14 @@ describe('professional side', () => {
       await flushPromises()
       // Only this patient's data is requested.
       expect(mocks.loadData).toHaveBeenCalledWith('patient')
-      expect(wrapper.get('.patient-name').text()).toContain('paciente@exemplo.com')
+      // A single patient opens straight on the simplified overview.
+      expect(wrapper.get('.overview-heading h1').text()).toBe('paciente@exemplo.com')
+      expect(wrapper.find('.overview-summary').exists()).toBe(true)
+      expect(wrapper.findAll('.overview-month').length).toBe(3)
+      expect(wrapper.find('.day-card').exists()).toBe(false)
+      // Details: the usual week, read-only.
+      await wrapper.get('.overview-actions .primary-button').trigger('click')
+      expect(wrapper.get('.patients-back').text()).toContain('Visão geral')
       // No quick checks, no "Nova meta", and days open for viewing.
       expect(wrapper.find('.task-check').exists()).toBe(false)
       expect(wrapper.find('.heading-action').exists()).toBe(false)
@@ -155,5 +162,65 @@ describe('professional side', () => {
     } finally {
       wrapper.unmount()
     }
+  })
+})
+
+describe('professional with several patients', () => {
+  it('lists who needs attention first and opens each overview', async () => {
+    const today = new Date()
+    const key = (offset: number) => {
+      const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() - offset)
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+    }
+    const day = (owner: string, offset: number, dinner: boolean) => ({
+      goal_id: `${owner}-diet`,
+      user_id: owner,
+      local_date: key(offset),
+      meal_options: defaultMealOptions,
+      adherence_recorded: true,
+      note: '',
+      meals: Object.fromEntries(
+        defaultMealOptions.map(({ id }) => [
+          id,
+          { checked: true, description: '', adherent: id === 'jantar' ? dinner : true },
+        ]),
+      ),
+    })
+    const created = new Date(today.getFullYear(), today.getMonth() - 2, 1).toISOString()
+    const recordsOf = (owner: string, dinnerOff: boolean) => ({
+      goals: [{ ...diet, id: `${owner}-diet`, user_id: owner, created_at: created }],
+      completions: [],
+      history: [],
+      // Every day of the last 20, all recorded; one person often skips the plan at dinner.
+      dayDetails: Array.from({ length: 20 }, (_, offset) =>
+        day(owner, offset, !(dinnerOff && offset % 2 === 0)),
+      ),
+    })
+    mocks.loadData.mockImplementation(async (owner) =>
+      owner === 'calm' ? recordsOf('calm', false) : recordsOf('busy', true),
+    )
+    const links: CareLink[] = [
+      { ...link, id: 'a', owner_id: 'calm', owner_name: 'calma@exemplo.com' },
+      { ...link, id: 'b', owner_id: 'busy', owner_name: 'atencao@exemplo.com' },
+    ]
+    const wrapper = mount(PatientsView, {
+      props: { following: links, mobileWeek: false, confirm: vi.fn<() => Promise<boolean>>() },
+    })
+    await flushPromises()
+    const rows = wrapper.findAll('.patient-row')
+    expect(rows.map((row) => row.get('.patient-row-main strong').text())).toEqual([
+      'atencao@exemplo.com',
+      'calma@exemplo.com',
+    ])
+    expect(rows[0]!.text()).toContain('Registrou hoje')
+    expect(rows[0]!.text()).toMatch(/pontos? para conversar/)
+    await rows[0]!.trigger('click')
+    expect(wrapper.get('.overview-heading h1').text()).toBe('atencao@exemplo.com')
+    expect(wrapper.get('.overview-talk').text()).toContain(
+      'Jantar: é a refeição que mais sai do plano.',
+    )
+    await wrapper.get('.patients-back').trigger('click')
+    expect(wrapper.findAll('.patient-row')).toHaveLength(2)
+    wrapper.unmount()
   })
 })

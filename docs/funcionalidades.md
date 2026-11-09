@@ -99,14 +99,13 @@ Para que sua nutricionista (ou outro profissional) acompanhe seus registros. Req
 **Para quem acompanha (profissional)**:
 
 - Abra o link do convite com sua conta (ou crie uma; o convite é mantido durante o cadastro e o login). O app mostra quem está compartilhando e quais metas antes de você aceitar.
-- A aba **Pacientes** lista quem compartilha com você. Em cada pessoa, as telas de semana e mês funcionam como as suas, em **modo leitura**: dá para ver refeições, classificações, descrições e observações, mas nada pode ser alterado. Quem não tem metas próprias abre o app direto em Pacientes.
-- **Resumo** (ao lado de Semana e Mês) reúne o que interessa na consulta, para as últimas 4 ou 8 semanas, este mês ou o mês anterior:
-  - aderência no período e a diferença em relação ao período anterior de mesmo tamanho (sem comparação quando o período anterior não tem registros);
-  - gráfico de aderência por semana, com tabela;
-  - refeições que mais escapam do plano, em percentual das refeições classificadas;
-  - lista das refeições fora do plano e das livres além do limite, com o que foi comido e a observação do dia;
-  - refeições livres usadas por semana e dias sem nenhum registro;
-  - **Salvar PDF** com o mesmo conteúdo.
+- A aba **Pacientes** vai do mais simples ao mais detalhado:
+  1. **Lista de pacientes** (pulada quando há só um): último registro, aderência dos últimos 3 meses, barras por mês e a variação do último mês. Quem tem pontos para conversar aparece primeiro.
+  2. **Visão geral** de cada pessoa, para 3 ou 6 meses: a aderência do período com uma frase sobre a tendência; um cartão por mês com a %, a variação para o mês anterior, as semanas do mês (cada semana pertence ao mês da sua segunda-feira) e os dias registrados; e **Para conversar na consulta**, com até 3 frases simples.
+  3. **Ver detalhes**: **Registros** (semana e mês em modo leitura, como as telas do próprio paciente) e **Relatório** (aderência por semana, refeições que mais escapam, lista do que saiu do plano com o que foi comido, livres por semana, dias sem registro e **Salvar PDF**).
+- As frases de **Para conversar na consulta** seguem regras fixas, em `src/lib/overview.ts`: a refeição que mais sai do plano (25% ou mais, com pelo menos 8 refeições classificadas; se melhorou muito no último mês, vira ponto positivo), fins de semana pelo menos 15 pontos abaixo dos outros dias, mês com 20% ou mais de dias sem registro (meses sem nenhum registro aparecem como "Sem registros"), refeições livres além do limite e, se sobrar espaço, algo que melhorou. Sem nada a destacar: "Nada fora do comum no período".
+- Um mês sem nenhum registro aparece como "Sem registros", nunca como 0%. O mês atual com menos de 7 dias aparece como "início do mês" e fica fora da frase de tendência e da comparação com o mês anterior, porque poucos dias distorcem a porcentagem.
+- Em todos os níveis nada pode ser alterado: o profissional só lê.
 - Quem só acompanha pacientes e não tem metas próprias vê apenas a área **Pacientes**. **Quero registrar minhas próprias metas** mostra as outras abas (a escolha fica salva no navegador); criar uma meta também as mostra.
 - **Parar de acompanhar** encerra o acesso pelo lado do profissional.
 
