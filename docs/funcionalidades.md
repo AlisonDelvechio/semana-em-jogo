@@ -86,6 +86,24 @@ Em **Minhas metas → Relatórios e backups**, escolha tudo, um mês ou um inter
 - Quando o intervalo começa no meio da semana, a coluna técnica inclui também os registros alimentares desde a segunda-feira anterior, para preservar o uso do limite de refeições livres na restauração.
 - CSVs antigos sem a coluna técnica continuam legíveis como relatório, mas não podem ser restaurados. A importação aceita tanto o formato antigo de 14 colunas (com pontos) quanto o atual de 12.
 
+## Compartilhar com profissional
+
+Para que sua nutricionista (ou outro profissional) acompanhe seus registros. Requer conta no Supabase e a migração `012_care_sharing.sql`; sem ela, a seção não aparece.
+
+**Para quem compartilha (paciente)**, em **Minhas metas → Compartilhar com profissional**:
+
+- Escolha as metas que a pessoa poderá ver (as de alimentação já vêm marcadas) e toque em **Gerar link de convite**. O link vale por 7 dias, pode ser usado uma vez e só aparece na hora; o banco guarda apenas um resumo (hash) dele, que não permite reconstruir o link.
+- Em **Quem acompanha você**, marque ou desmarque as metas visíveis para cada pessoa a qualquer momento, ou use **Remover acesso**.
+- Convites ainda não usados aparecem em **Convites pendentes** e podem ser cancelados.
+
+**Para quem acompanha (profissional)**:
+
+- Abra o link do convite com sua conta (ou crie uma; o convite é mantido durante o cadastro e o login). O app mostra quem está compartilhando e quais metas antes de você aceitar.
+- A aba **Pacientes** lista quem compartilha com você. Em cada pessoa, as telas de semana e mês funcionam como as suas, em **modo leitura**: dá para ver refeições, classificações, descrições e observações, mas nada pode ser alterado. Quem não tem metas próprias abre o app direto em Pacientes.
+- **Parar de acompanhar** encerra o acesso pelo lado do profissional.
+
+**Segurança**: a proteção está no banco de dados, não só na tela. As regras de acesso deixam o profissional apenas **ler** as metas compartilhadas e seus registros; gravar, editar e apagar continuam exclusivos do dono. Os testes executam essas regras num Postgres real.
+
 ## Conta e acesso
 
 - **Esqueci minha senha:** na tela de entrada, informe o email e o app envia um link de recuperação. A resposta é a mesma exista ou não uma conta com aquele email. Ao abrir o link, o app pede a nova senha antes de mostrar o painel; **Agora não** entra sem trocar.

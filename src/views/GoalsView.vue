@@ -4,6 +4,9 @@ import { weekdays } from '../lib/dates'
 import { categoryName } from '../lib/goals'
 import type { BackupRecord } from '../lib/report'
 import GoalMenu from '../components/GoalMenu.vue'
+import SharingPanel from '../components/SharingPanel.vue'
+import type { CareState } from '../lib/data'
+import type { AskConfirmation } from '../lib/confirm'
 import ReportsPanel from '../components/ReportsPanel.vue'
 import type { Completion, Goal, GoalDayDetail, GoalHistory } from '../types'
 
@@ -14,12 +17,16 @@ defineProps<{
   dayDetails: GoalDayDetail[]
   busy: boolean
   restore: (records: BackupRecord[]) => Promise<string>
+  // Sharing with a professional; null when unavailable (local mode or no migration 012).
+  care: CareState | null
+  confirm: AskConfirmation
 }>()
 const emit = defineEmits<{
   newGoal: []
   edit: [goal: Goal]
   pause: [goal: Goal]
   remove: [goal: Goal]
+  careChanged: []
 }>()
 
 const schedule = (goal: Goal) =>
@@ -81,6 +88,13 @@ const schedule = (goal: Goal) =>
       </div>
     </article>
   </section>
+  <SharingPanel
+    v-if="care"
+    :goals="goals"
+    :care="care"
+    :confirm="confirm"
+    @changed="emit('careChanged')"
+  />
   <ReportsPanel
     :goals="goals"
     :completions="completions"

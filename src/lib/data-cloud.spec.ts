@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   insert: vi.fn<(table: string, rows: unknown) => Promise<{ error: ApiError }>>(),
   upsert: vi.fn<(table: string, rows: unknown, options: unknown) => Promise<{ error: ApiError }>>(),
   rpc: vi.fn<(name: string, args: unknown) => Promise<{ error: ApiError }>>(),
+  filters: [] as string[],
 }))
 vi.mock('@supabase/supabase-js', () => ({
   createClient: () => ({
@@ -27,6 +28,10 @@ vi.mock('@supabase/supabase-js', () => ({
     from: (table: string) => ({
       select: () => {
         const builder = {
+          eq: (column: string, value: unknown) => {
+            mocks.filters.push(`${table}.${column}=${String(value)}`)
+            return builder
+          },
           order: () => builder,
           range: (from: number, to: number) => mocks.read(table, from, to),
         }
@@ -46,6 +51,7 @@ async function cloudData() {
 }
 
 beforeEach(() => {
+  mocks.filters = []
   mocks.tables = {}
   mocks.maxRows = 1000
   mocks.read.mockReset().mockImplementation(async (table, from, to) => {
@@ -76,6 +82,25 @@ it('retries cloud startup reads when one table rejects a freshly issued JWT', as
   expect(await result).toEqual({ goals: [], completions: [], history: [], dayDetails: [] })
   expect(goalReads).toBe(2)
   expect(mocks.read).toHaveBeenCalledTimes(8)
+})
+
+describe('loading only the right person', () => {
+  it('reads the signed-in account by default and a shared account when asked', async () => {
+    const { loadData } = await cloudData()
+    await loadData()
+    expect(mocks.filters).toContain('goal_templates.user_id=user-b')
+    expect(mocks.filters).toContain('goal_day_details.user_id=user-b')
+    mocks.filters = []
+    await loadData('patient-a')
+    expect(new Set(mocks.filters)).toEqual(
+      new Set([
+        'goal_templates.user_id=patient-a',
+        'goal_completions.user_id=patient-a',
+        'goal_history.user_id=patient-a',
+        'goal_day_details.user_id=patient-a',
+      ]),
+    )
+  })
 })
 
 describe('loading large accounts', () => {

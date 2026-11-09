@@ -18,6 +18,9 @@ const mocks = vi.hoisted(() => ({
   updateUser: vi.fn<(attributes: unknown) => Promise<unknown>>(),
   signIn: vi.fn<(credentials: unknown) => Promise<unknown>>(),
   authRedirect: { recovery: false, error: '' },
+  loadCare: vi.fn<() => Promise<unknown>>(),
+  previewCareInvite: vi.fn<(token: string) => Promise<unknown>>(),
+  acceptCareInvite: vi.fn<(token: string) => Promise<void>>(),
 }))
 vi.mock('./lib/data', () => ({
   cloudEnabled: true,
@@ -34,6 +37,9 @@ vi.mock('./lib/data', () => ({
     },
   },
   loadData: mocks.load,
+  loadCare: mocks.loadCare,
+  previewCareInvite: mocks.previewCareInvite,
+  acceptCareInvite: mocks.acceptCareInvite,
   createGoal: vi.fn<() => void>(),
   deleteGoal: vi.fn<() => void>(),
   importGoalBackup: vi.fn<() => void>(),
@@ -60,6 +66,10 @@ beforeEach(() => {
   mocks.updateUser.mockReset().mockResolvedValue({ data: {}, error: null })
   mocks.signIn.mockReset()
   mocks.authRedirect = { recovery: false, error: '' }
+  mocks.loadCare.mockReset().mockResolvedValue({ sharing: [], following: [], invites: [] })
+  mocks.previewCareInvite.mockReset()
+  mocks.acceptCareInvite.mockReset().mockResolvedValue()
+  sessionStorage.clear()
   mocks.subscribe.mockImplementation((callback: typeof listener) => {
     listener = callback
     return { data: { subscription: { unsubscribe: mocks.unsubscribe } } }
@@ -243,6 +253,57 @@ it('explains an expired recovery link', async () => {
   try {
     await flushPromises()
     expect(wrapper.get('.inline-alert').text()).toContain('O link expirou ou já foi usado')
+  } finally {
+    wrapper.unmount()
+  }
+})
+
+it('asks before accepting a sharing invite and then opens the patients screen', async () => {
+  window.history.replaceState(null, '', '/?convite=token-abc')
+  mocks.getSession.mockResolvedValue({ data: { session }, error: null })
+  mocks.load.mockResolvedValue({ goals: [], completions: [], history: [], dayDetails: [] })
+  mocks.previewCareInvite.mockResolvedValue({
+    owner_name: 'paciente@exemplo.com',
+    goal_titles: ['Dieta'],
+    expires_at: '2026-11-20T00:00:00Z',
+  })
+  const following = {
+    id: 'link',
+    owner_id: 'patient',
+    viewer_id: 'u',
+    owner_name: 'paciente@exemplo.com',
+    viewer_name: 'user@example.test',
+    created_at: '2026-11-09T12:00:00Z',
+    goalIds: ['diet'],
+  }
+  const wrapper = mount(TrackerApp, { attachTo: document.body })
+  try {
+    await flushPromises()
+    // The token leaves the address bar right away.
+    expect(window.location.search).toBe('')
+    const dialog = wrapper.get('[role="alertdialog"]')
+    expect(dialog.text()).toContain('paciente@exemplo.com quer compartilhar com você: Dieta')
+    expect(mocks.acceptCareInvite).not.toHaveBeenCalled()
+    mocks.loadCare.mockResolvedValue({ sharing: [], following: [following], invites: [] })
+    await wrapper.get('.confirmation-actions .primary-button').trigger('click')
+    await flushPromises()
+    expect(mocks.acceptCareInvite).toHaveBeenCalledWith('token-abc')
+    expect(wrapper.get('.sidebar .nav-button.selected').text()).toContain('Pacientes')
+    expect(wrapper.get('.app-notice').text()).toContain('Agora você acompanha paciente@exemplo.com')
+  } finally {
+    wrapper.unmount()
+  }
+})
+
+it('keeps the invite through sign-in and explains why', async () => {
+  window.history.replaceState(null, '', '/?convite=token-xyz')
+  mocks.getSession.mockResolvedValue({ data: { session: null }, error: null })
+  const wrapper = mount(TrackerApp)
+  try {
+    await flushPromises()
+    expect(wrapper.get('.inline-alert.info').text()).toContain('aceitar o convite')
+    expect(sessionStorage.getItem('semana-em-jogo-convite')).toBe('token-xyz')
+    expect(mocks.previewCareInvite).not.toHaveBeenCalled()
   } finally {
     wrapper.unmount()
   }

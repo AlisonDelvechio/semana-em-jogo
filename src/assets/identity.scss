@@ -395,7 +395,10 @@ html[data-theme='dark'] .period-progress-date {
     right: 0;
     z-index: 15;
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    /* 3 or 4 items ("Pacientes" appears only for professionals): one row, equal widths. */
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-template-columns: none;
     gap: 6px;
     margin: 0;
     padding: 8px 14px max(8px, env(safe-area-inset-bottom));
@@ -1681,4 +1684,214 @@ html[data-theme='dark'] {
   font-size: 0.7rem;
   font-weight: 700;
   vertical-align: middle;
+}
+
+/* ===== Sharing with a professional ===== */
+.sharing-panel {
+  margin-top: 18px;
+}
+.sharing-panel h2 {
+  margin: 0 0 6px;
+}
+.sharing-intro,
+.sharing-empty {
+  margin: 0 0 16px;
+  color: var(--ui-muted);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+.sharing-block {
+  padding: 16px 0;
+  border-top: 1px solid var(--ui-border);
+}
+.sharing-block h3 {
+  margin: 0 0 10px;
+  font-size: 0.98rem;
+}
+.share-goals {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 6px 16px;
+  margin: 0 0 14px;
+  padding: 0;
+  border: 0;
+}
+.share-goals legend {
+  margin-bottom: 8px;
+  padding: 0;
+  color: var(--ui-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+.share-goal {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.share-goal input {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  accent-color: var(--ui-accent-text);
+}
+.share-goal small {
+  color: var(--ui-muted);
+  font-weight: 400;
+}
+.sharing-panel .primary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.invite-link {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  margin-top: 14px;
+}
+.invite-link input {
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  background: var(--ui-input);
+  color: var(--ui-text);
+  font-size: 0.85rem;
+}
+.invite-link .small-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.invite-link p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--ui-muted);
+  font-size: 0.82rem;
+}
+.sharing-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sharing-list li,
+.sharing-person-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sharing-list li > span,
+.sharing-person-head > span {
+  display: grid;
+  gap: 2px;
+}
+.sharing-list small,
+.sharing-person-head small {
+  color: var(--ui-muted);
+  font-size: 0.8rem;
+}
+.sharing-person {
+  padding: 12px 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+}
+.sharing-person + .sharing-person {
+  margin-top: 10px;
+}
+.sharing-person .share-goals {
+  margin: 10px 0 0;
+}
+.sharing-list .text-button,
+.sharing-revoke {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.sharing-revoke {
+  color: var(--ui-danger);
+}
+
+/* Professional's side. */
+.patients-list {
+  display: grid;
+  gap: 8px;
+}
+.patients-list h2 {
+  margin: 0 0 6px;
+}
+.patient-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 12px 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  background: var(--ui-input);
+  color: var(--ui-text);
+  text-align: left;
+}
+.patient-item:hover {
+  border-color: var(--ui-accent-text);
+}
+.patient-item > span {
+  display: grid;
+  gap: 2px;
+}
+.patient-item small {
+  color: var(--ui-muted);
+}
+.patient-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 14px;
+  background: var(--ui-surface);
+}
+.patient-bar .text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.patient-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-inline-end: auto;
+  font-size: 1.02rem;
+}
+
+/* Read-only day record: keep the recorded choices readable, not greyed out. */
+.day-goals {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.day-goals:disabled button,
+.day-goals:disabled input,
+.day-goals:disabled textarea {
+  opacity: 1;
+  cursor: default;
+}
+.day-goals:disabled textarea {
+  color: var(--ui-text);
+  -webkit-text-fill-color: var(--ui-text);
+  resize: none;
+}
+.day-goals:disabled .adherence-option:not([aria-pressed='true']) {
+  opacity: 0.55;
 }

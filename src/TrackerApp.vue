@@ -3,14 +3,27 @@
 // Screens (views/) and dialogs (components/) receive data as props and emit intents.
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { Session } from '@supabase/supabase-js'
-import { CalendarDays, ClipboardList, LogOut, Moon, Sparkles, Sun, Target } from '@lucide/vue'
+import {
+  CalendarDays,
+  ClipboardList,
+  LogOut,
+  Moon,
+  Sparkles,
+  Sun,
+  Target,
+  Users,
+} from '@lucide/vue'
 import {
   authRedirect,
   cloudEnabled,
   createGoal,
   deleteGoal,
   importGoalBackup,
+  acceptCareInvite,
+  loadCare,
   loadData,
+  previewCareInvite,
+  type CareState,
   saveDay,
   setCompleted,
   supabase,
@@ -19,6 +32,7 @@ import {
 } from './lib/data'
 import { localKey, mondayOf } from './lib/dates'
 import { authErrorMessage } from './lib/auth-messages'
+import type { ConfirmOptions } from './lib/confirm'
 import { goalToInput } from './lib/goals'
 import type { BackupRecord } from './lib/report'
 import { currentDate, startTodayClock, syncToday, todayKey } from './lib/today'
@@ -28,6 +42,7 @@ import NewPasswordView from './views/NewPasswordView.vue'
 import WeekView from './views/WeekView.vue'
 import MonthView from './views/MonthView.vue'
 import GoalsView from './views/GoalsView.vue'
+import PatientsView from './views/PatientsView.vue'
 import AppNotice from './components/AppNotice.vue'
 import ConfirmDialog from './components/ConfirmDialog.vue'
 import DayDialog from './components/DayDialog.vue'
@@ -51,7 +66,7 @@ function finishRecovery(changed: boolean) {
   clearAuthRedirect()
   if (changed) message.value = 'Senha alterada. Você já está conectado.'
 }
-const tab = ref<'week' | 'month' | 'goals'>('week')
+const tab = ref<'week' | 'month' | 'goals' | 'patients'>('week')
 const loading = ref(true),
   busy = ref(false)
 const { darkMode, toggleTheme } = useTheme()
@@ -72,7 +87,7 @@ const errorMessage = (error: unknown) => {
 }
 
 // Promise-based confirmation dialog.
-type Confirmation = { title: string; description: string; confirmLabel: string; danger?: boolean }
+type Confirmation = ConfirmOptions
 const confirmation = ref<Confirmation | null>(null)
 let resolveConfirmation: ((confirmed: boolean) => void) | null = null
 function askConfirmation(options: Confirmation): Promise<boolean> {
@@ -161,10 +176,14 @@ let refreshVersion = 0
 let authRefreshTimer: ReturnType<typeof setTimeout> | undefined
 let unsubscribeAuth: (() => void) | undefined
 let disposed = false
+// The first load decides the starting tab only once.
+let openedOnce = false
 // Quick checks still being written (see toggleCompletion).
 let pendingToggles = 0
 function clearData() {
   refreshVersion++
+  openedOnce = false
+  care.value = null
   goals.value = []
   completions.value = []
   history.value = []
@@ -176,18 +195,91 @@ async function refresh({ silent = false } = {}) {
   const version = ++refreshVersion
   if (!silent) loading.value = true
   try {
-    const result = await loadData()
+    const [result, sharing] = await Promise.all([loadData(), loadCareSafely()])
     if (version !== refreshVersion || disposed) return
     goals.value = result.goals
     completions.value = result.completions
     history.value = result.history
     dayDetails.value = result.dayDetails
+    care.value = sharing
+    // Someone who only follows other people (no goals of their own) starts on Pacientes.
+    if (!silent && !openedOnce && !result.goals.length && sharing?.following.length)
+      tab.value = 'patients'
+    openedOnce = true
+    void handlePendingInvite()
   } catch (error) {
     if (version === refreshVersion && !disposed && !silent) errorMessage(error)
   } finally {
     if (version === refreshVersion && !disposed && !silent) loading.value = false
   }
 }
+// ===== Read-only sharing with a professional (migration 012) =====
+// null: local mode, signed out, or the migration is not applied yet (feature hidden).
+const care = ref<CareState | null>(null)
+async function loadCareSafely(): Promise<CareState | null> {
+  if (!cloudEnabled || !session.value) return null
+  try {
+    return await loadCare()
+  } catch {
+    // Sharing is secondary: a failure here must not block the person's own records.
+    return care.value
+  }
+}
+async function refreshCare() {
+  care.value = await loadCareSafely()
+}
+// An invite link (?convite=...) survives the sign-in or sign-up in between.
+const INVITE_KEY = 'semana-em-jogo-convite'
+function readInvite(): string | null {
+  const token = new URLSearchParams(window.location.search).get('convite')
+  try {
+    if (token) {
+      sessionStorage.setItem(INVITE_KEY, token)
+      window.history.replaceState(null, '', window.location.pathname + window.location.hash)
+    }
+    return sessionStorage.getItem(INVITE_KEY)
+  } catch {
+    return token
+  }
+}
+const pendingInvite = ref(readInvite())
+function dropInvite() {
+  pendingInvite.value = null
+  try {
+    sessionStorage.removeItem(INVITE_KEY)
+  } catch {
+    // Nothing stored.
+  }
+}
+let handlingInvite = false
+async function handlePendingInvite() {
+  const token = pendingInvite.value
+  if (!token || !session.value || !cloudEnabled || handlingInvite) return
+  handlingInvite = true
+  try {
+    const preview = await previewCareInvite(token)
+    const accepted = await askConfirmation({
+      title: 'Aceitar convite de acompanhamento?',
+      description: `${preview.owner_name || 'Uma pessoa'} quer compartilhar com você: ${preview.goal_titles.join(', ') || 'metas'}. Você poderá ver os registros dessas metas, sem alterar nada.`,
+      confirmLabel: 'Aceitar convite',
+    })
+    dropInvite()
+    if (!accepted) return
+    await acceptCareInvite(token)
+    await refreshCare()
+    tab.value = 'patients'
+    message.value = `Agora você acompanha ${preview.owner_name || 'esta pessoa'}.`
+  } catch (error) {
+    dropInvite()
+    errorMessage(error)
+  } finally {
+    handlingInvite = false
+  }
+}
+const showPatients = computed(
+  () => Boolean(care.value?.following.length) || tab.value === 'patients',
+)
+
 // Another device or tab may have saved records while this one was in the background.
 // Reload them when the page is shown again so a later save does not overwrite them
 // with stale data. Skipped while a write is running or the first load is pending.
@@ -453,10 +545,24 @@ onUnmounted(() => {
         :aria-current="tab === 'goals' ? 'page' : undefined"
         @click="tab = 'goals'"
       >
-        <Target :size="19" /> <span>Metas</span>
+        <Target :size="19" /> <span>Metas</span></button
+      ><button
+        v-if="showPatients"
+        type="button"
+        :class="{ selected: tab === 'patients' }"
+        :aria-current="tab === 'patients' ? 'page' : undefined"
+        @click="tab = 'patients'"
+      >
+        <Users :size="19" /> <span>Pacientes</span>
       </button>
     </nav>
-    <AuthView v-if="cloudEnabled && !session" v-model:message="message" />
+    <AuthView
+      v-if="cloudEnabled && !session"
+      v-model:message="message"
+      :hint="
+        pendingInvite ? 'Entre ou crie sua conta para aceitar o convite de acompanhamento.' : ''
+      "
+    />
     <NewPasswordView
       v-else-if="recovering"
       @done="finishRecovery(true)"
@@ -470,7 +576,13 @@ onUnmounted(() => {
         ><button :class="['nav-button', { selected: tab === 'month' }]" @click="tab = 'month'">
           <CalendarDays :size="18" aria-hidden="true" /> Calendário</button
         ><button :class="['nav-button', { selected: tab === 'goals' }]" @click="tab = 'goals'">
-          <Target :size="18" aria-hidden="true" /> Minhas metas
+          <Target :size="18" aria-hidden="true" /> Minhas metas</button
+        ><button
+          v-if="showPatients"
+          :class="['nav-button', { selected: tab === 'patients' }]"
+          @click="tab = 'patients'"
+        >
+          <Users :size="18" aria-hidden="true" /> Pacientes
         </button>
       </aside>
       <main :class="['content', { 'week-layout': tab === 'week' }]">
@@ -501,8 +613,18 @@ onUnmounted(() => {
           @overlay-change="detailOverlay = $event"
           @current-week="goToCurrentWeek"
         />
+        <PatientsView
+          v-else-if="tab === 'patients'"
+          :following="care?.following || []"
+          :mobile-week="mobileWeek"
+          :confirm="askConfirmation"
+          @changed="refreshCare"
+          @overlay-change="detailOverlay = $event"
+        />
         <GoalsView
           v-else
+          :care="care"
+          :confirm="askConfirmation"
           :goals="goals"
           :completions="completions"
           :history="history"
@@ -513,6 +635,7 @@ onUnmounted(() => {
           @edit="editGoal"
           @pause="pauseGoal"
           @remove="removeGoal"
+          @care-changed="refreshCare"
         />
         <AppNotice
           v-if="message && !selectedDay && !goalEditorOpen"

@@ -9,6 +9,7 @@ import {
   Dumbbell,
   Utensils,
   ClipboardList,
+  Eye,
   Pencil,
 } from '@lucide/vue'
 import ProgressCard from '../components/ProgressCard.vue'
@@ -31,6 +32,8 @@ const props = defineProps<{
   completions: Completion[]
   history: GoalHistory[]
   dayDetails: GoalDayDetail[]
+  // Viewing someone else's shared records: days open read-only.
+  readonly?: boolean
 }>()
 const emit = defineEmits<{
   openDay: [date: Date]
@@ -137,7 +140,7 @@ function goalCounts(goal: Goal) {
 </script>
 
 <template>
-  <div class="page-heading month-page-heading">
+  <div v-if="!readonly" class="page-heading month-page-heading">
     <div>
       <span class="eyebrow">VISÃO DO MÊS</span>
       <h1>Seu mês, <em>dia a dia.</em></h1>
@@ -278,7 +281,7 @@ function goalCounts(goal: Goal) {
             class="task"
             :class="{ done: isGoalDone(goal, localKey(selectedDate), completions, dayDetails) }"
             @click="editSelectedDay"
-            :aria-label="`${goal.title}: ${isGoalDone(goal, localKey(selectedDate), completions, dayDetails) ? 'Concluída' : 'Pendente'}. Editar dia`"
+            :aria-label="`${goal.title}: ${isGoalDone(goal, localKey(selectedDate), completions, dayDetails) ? 'Concluída' : 'Pendente'}. ${readonly ? 'Ver dia' : 'Editar dia'}`"
           >
             <span class="check-visual" aria-hidden="true"><Check :size="18" /></span>
             <span class="task-title"
@@ -304,7 +307,8 @@ function goalCounts(goal: Goal) {
           class="day-edit-action"
           @click="editSelectedDay"
         >
-          <Pencil :size="18" aria-hidden="true" /> Editar dia
+          <template v-if="readonly"><Eye :size="18" aria-hidden="true" /> Ver dia</template>
+          <template v-else><Pencil :size="18" aria-hidden="true" /> Editar dia</template>
         </button>
       </section></FormDialog
     ></Teleport
