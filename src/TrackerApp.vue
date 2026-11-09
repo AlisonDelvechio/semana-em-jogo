@@ -5,6 +5,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { Session } from '@supabase/supabase-js'
 import { CalendarDays, ClipboardList, LogOut, Moon, Sparkles, Sun, Target } from '@lucide/vue'
 import {
+  authRedirect,
   cloudEnabled,
   createGoal,
   deleteGoal,
@@ -17,11 +18,13 @@ import {
   type DayEntry,
 } from './lib/data'
 import { localKey, mondayOf } from './lib/dates'
+import { authErrorMessage } from './lib/auth-messages'
 import { goalToInput } from './lib/goals'
 import type { BackupRecord } from './lib/report'
 import { currentDate, startTodayClock, syncToday, todayKey } from './lib/today'
 import { useTheme } from './composables/useTheme'
 import AuthView from './views/AuthView.vue'
+import NewPasswordView from './views/NewPasswordView.vue'
 import WeekView from './views/WeekView.vue'
 import MonthView from './views/MonthView.vue'
 import GoalsView from './views/GoalsView.vue'
@@ -36,6 +39,18 @@ const goals = ref<Goal[]>([]),
   history = ref<GoalHistory[]>([]),
   dayDetails = ref<GoalDayDetail[]>([])
 const session = ref<Session | null>(null)
+// Opened from a password recovery email: ask for the new password before the app.
+const recovering = ref(authRedirect.recovery)
+// Removes the tokens or error that Supabase put in the address after an email link.
+function clearAuthRedirect() {
+  if (window.location.hash || window.location.search.includes('error'))
+    window.history.replaceState(null, '', window.location.pathname)
+}
+function finishRecovery(changed: boolean) {
+  recovering.value = false
+  clearAuthRedirect()
+  if (changed) message.value = 'Senha alterada. Você já está conectado.'
+}
 const tab = ref<'week' | 'month' | 'goals'>('week')
 const loading = ref(true),
   busy = ref(false)
@@ -331,7 +346,14 @@ onMounted(async () => {
     if (disposed) return
     if (error) errorMessage(error)
     session.value = data.session
+    // An expired or already used email link comes back with an error in the address.
+    if (authRedirect.error && !data.session) {
+      message.value = authErrorMessage(authRedirect.error)
+      clearAuthRedirect()
+    }
     const subscription = supabase.auth.onAuthStateChange((event, next) => {
+      if (event === 'PASSWORD_RECOVERY') recovering.value = true
+      if (!next) recovering.value = false
       if (session.value?.user.id !== next?.user.id) clearData()
       session.value = next
       clearTimeout(authRefreshTimer)
@@ -386,7 +408,7 @@ onUnmounted(() => {
           <Sun v-if="darkMode" :size="19" aria-hidden="true" />
           <Moon v-else :size="19" aria-hidden="true" />
         </button>
-        <div v-if="!cloudEnabled || session" class="profile-corner">
+        <div v-if="(!cloudEnabled || session) && !recovering" class="profile-corner">
           <div class="profile-avatar" aria-hidden="true">{{ session ? profileInitials : 'V' }}</div>
           <div class="profile-copy">
             <strong>{{ profileName }}</strong
@@ -406,7 +428,7 @@ onUnmounted(() => {
       </div>
     </header>
     <nav
-      v-if="!cloudEnabled || session"
+      v-if="(!cloudEnabled || session) && !recovering"
       class="mobile-nav"
       :inert="hasOverlay"
       aria-label="Navegação principal"
@@ -435,6 +457,11 @@ onUnmounted(() => {
       </button>
     </nav>
     <AuthView v-if="cloudEnabled && !session" v-model:message="message" />
+    <NewPasswordView
+      v-else-if="recovering"
+      @done="finishRecovery(true)"
+      @skip="finishRecovery(false)"
+    />
     <div v-else class="dashboard" :inert="hasOverlay">
       <aside class="sidebar">
         <span class="eyebrow">MEU ESPAÇO</span

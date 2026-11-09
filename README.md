@@ -19,7 +19,7 @@ Sem variáveis de ambiente, o app funciona em **modo local**: os dados ficam ape
 
 1. Crie um projeto no [Supabase](https://supabase.com/dashboard).
 2. No **SQL Editor**, cole e execute o conteúdo de cada arquivo de `supabase/migrations/`, em ordem numérica (`001` a `011`). Digitar o nome do arquivo no editor não executa a migração. Em um projeto existente, execute só as que faltam, **antes** de publicar a versão do app que depende delas.
-3. Em **Authentication**, ative o provedor Email. Se a confirmação por email estiver ativa, confirme a conta pelo link recebido.
+3. Em **Authentication**, ative o provedor Email. Se a confirmação por email estiver ativa, confirme a conta pelo link recebido. Para o **Esqueci minha senha**, o endereço do site precisa estar em **Authentication → URL Configuration** (Site URL ou Redirect URLs); senão, o link do email leva para a Site URL. O texto do email de recuperação pode ser traduzido em **Authentication → Emails → Reset Password**.
 4. Copie `.env.example` para `.env.local` e preencha `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` com a URL e a chave pública (publishable/anon) do projeto. **Nunca** use a chave secret/service role no navegador.
 5. Reinicie `npm run dev`, crie uma conta e entre.
 
