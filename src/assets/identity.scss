@@ -168,12 +168,14 @@ html[data-theme='dark'] .goal-editor-dialog .form-actions {
 .goal-editor-dialog .goal-form select,
 .report-panel input,
 .report-panel select,
+.summary-filters select,
 .meal-description,
 .day-note textarea,
 html[data-theme='dark'] .goal-editor-dialog .goal-form input:not([type='checkbox']),
 html[data-theme='dark'] .goal-editor-dialog .goal-form select,
 html[data-theme='dark'] .report-panel input,
 html[data-theme='dark'] .report-panel select,
+html[data-theme='dark'] .summary-filters select,
 html[data-theme='dark'] .meal-description,
 html[data-theme='dark'] .day-note textarea {
   background: var(--ui-input);
@@ -190,7 +192,8 @@ html[data-theme='dark'] .day-note textarea {
   margin-top: 8px;
 }
 .goal-form .select-control select,
-.report-panel .select-control select {
+.report-panel .select-control select,
+.summary-filters .select-control select {
   appearance: none;
   -webkit-appearance: none;
   display: block;
@@ -1894,4 +1897,322 @@ html[data-theme='dark'] {
 }
 .day-goals:disabled .adherence-option:not([aria-pressed='true']) {
   opacity: 0.55;
+}
+
+/* ===== Consultation summary ===== */
+/* Chart bars use a more saturated step of the brand green than --ui-accent-text: the
+   muted UI sage reads as gray next to gridlines. Both steps pass the dataviz palette
+   checks (lightness band, chroma floor, 3:1 contrast) on their surfaces. */
+:root {
+  --chart-series: #47852f;
+  --chart-grid: #e3e9df;
+}
+html[data-theme='dark'] {
+  --chart-series: #65a446;
+  --chart-grid: #34493c;
+}
+.summary-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px 16px;
+  margin-bottom: 16px;
+}
+.summary-filters label {
+  display: grid;
+  gap: 4px;
+  min-width: 200px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+.summary-range {
+  flex: 1;
+  padding-bottom: 12px;
+  color: var(--ui-muted);
+  font-size: 0.86rem;
+}
+.summary-filters .small-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.summary-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.summary-stat {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--ui-border);
+  border-radius: 14px;
+  background: var(--ui-surface);
+}
+.summary-stat-label {
+  color: var(--ui-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.summary-stat-value {
+  font-size: 1.9rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.summary-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ui-muted);
+  font-size: 0.78rem;
+}
+.summary-delta.up {
+  color: var(--ui-accent-text);
+}
+.summary-delta.down {
+  color: var(--ui-danger);
+}
+.summary-section {
+  margin-bottom: 16px;
+}
+.summary-section h3 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+}
+.summary-hint {
+  margin: 0 0 12px;
+  color: var(--ui-muted);
+  font-size: 0.84rem;
+}
+.summary-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.summary-columns .summary-section {
+  margin-bottom: 0;
+}
+
+/* Weekly column chart: one series, so no legend; the latest week is labelled and every
+   value is in the hover/focus tip and the table. */
+.week-chart {
+  position: relative;
+  height: 220px;
+  margin: 8px 0 4px;
+  padding: 14px 0 28px 40px;
+}
+.week-chart-grid {
+  position: absolute;
+  inset: 14px 0 28px 40px;
+}
+.week-chart-grid span {
+  position: absolute;
+  right: 0;
+  left: 0;
+  border-top: 1px solid var(--chart-grid);
+}
+.week-chart-grid em {
+  position: absolute;
+  top: -8px;
+  left: -40px;
+  width: 34px;
+  color: var(--ui-muted);
+  font-size: 0.72rem;
+  font-style: normal;
+  text-align: right;
+}
+.week-chart-bars {
+  position: relative;
+  display: flex;
+  height: 100%;
+}
+.week-chart-column {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  border-radius: 8px;
+  outline-offset: 2px;
+}
+.week-chart-plot {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+.week-chart-bar {
+  width: min(24px, 60%);
+  border-radius: 4px 4px 0 0;
+  background: var(--chart-series);
+}
+.week-chart-label {
+  position: absolute;
+  margin-bottom: 4px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.week-chart-x {
+  position: absolute;
+  bottom: -24px;
+  color: var(--ui-muted);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+.week-chart-tip {
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  display: none;
+  padding: 6px 10px;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: var(--ui-surface);
+  box-shadow: 0 6px 16px rgb(0 0 0 / 18%);
+  color: var(--ui-text);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.week-chart-column:hover,
+.week-chart-column:focus-visible {
+  background: color-mix(in srgb, var(--chart-grid) 45%, transparent);
+}
+.week-chart-column:hover .week-chart-tip,
+.week-chart-column:focus-visible .week-chart-tip {
+  display: block;
+}
+.summary-table-toggle summary {
+  min-height: 32px;
+  color: var(--ui-accent-text);
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.summary-table-scroll {
+  overflow-x: auto;
+}
+.summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+.summary-table th,
+.summary-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--chart-grid);
+  text-align: left;
+  vertical-align: top;
+}
+.summary-table th {
+  color: var(--ui-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.summary-table-scroll .summary-table {
+  min-width: 620px;
+}
+.summary-meals {
+  display: grid;
+  gap: 12px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.summary-meals li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 2fr);
+  gap: 4px 14px;
+  align-items: center;
+}
+.summary-meal-title {
+  font-weight: 600;
+}
+/* Meter: fill on a lighter step of the same hue, so the whole bar reads as one scale. */
+.summary-meter {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--chart-grid);
+  overflow: hidden;
+}
+.summary-meter span {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--chart-series);
+}
+.summary-meal-value {
+  grid-column: 1 / -1;
+  color: var(--ui-muted);
+  font-size: 0.8rem;
+}
+.summary-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.summary-days li {
+  padding: 4px 10px;
+  border: 1px solid var(--ui-border);
+  border-radius: 999px;
+  font-size: 0.8rem;
+}
+.own-goals-link {
+  display: block;
+  margin: 18px auto 0;
+  font-size: 0.86rem;
+}
+@media (max-width: 720px) {
+  .summary-stats,
+  .summary-columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .summary-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .summary-stat-value {
+    font-size: 1.5rem;
+  }
+  .week-chart-x {
+    font-size: 0.66rem;
+  }
+}
+
+/* Phones: the off-plan table becomes one card per meal, so "O que comeu" is never
+   hidden behind a horizontal scroll. Each cell shows its column name. */
+@media (max-width: 720px) {
+  .summary-table-scroll .summary-table {
+    min-width: 0;
+  }
+  .summary-table-scroll thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  .summary-table-scroll tr {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 2px 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--chart-grid);
+  }
+  .summary-table-scroll td {
+    display: contents;
+  }
+  .summary-table-scroll td::before {
+    content: attr(data-label);
+    color: var(--ui-muted);
+    font-size: 0.76rem;
+    font-weight: 700;
+  }
 }
