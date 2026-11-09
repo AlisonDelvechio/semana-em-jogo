@@ -7,6 +7,7 @@ import {
   ChevronRight,
   ClipboardList,
   Dumbbell,
+  Eye,
   Pencil,
   Plus,
   Sparkles,
@@ -42,6 +43,8 @@ const props = defineProps<{
   history: GoalHistory[]
   dayDetails: GoalDayDetail[]
   mobileWeek: boolean
+  // Viewing someone else's shared records: no editing, no quick checks, no new goals.
+  readonly?: boolean
 }>()
 const emit = defineEmits<{
   openDay: [date: Date]
@@ -186,7 +189,7 @@ const weeklyCount = (goal: Goal, date: Date) =>
 // Simple goals are marked straight from the card; goals with meals or checklist
 // items open the day record, where each item is filled in.
 const canQuickToggle = (goal: Goal, date: Date) =>
-  goal.category !== 'alimentacao' && checklistCount(goal, date).total === 0
+  !props.readonly && goal.category !== 'alimentacao' && checklistCount(goal, date).total === 0
 const taskSummary = (goal: Goal, date: Date) => {
   if (goal.category === 'alimentacao') {
     const count = mealCount(goal, date)
@@ -205,7 +208,7 @@ const taskSummary = (goal: Goal, date: Date) => {
 </script>
 
 <template>
-  <div class="page-heading">
+  <div v-if="!readonly" class="page-heading">
     <div>
       <span class="eyebrow">SEU PAINEL SEMANAL</span>
       <div class="month-heading">
@@ -227,6 +230,7 @@ const taskSummary = (goal: Goal, date: Date) => {
       :completions="completions"
       :history="history"
       :day-details="dayDetails"
+      :readonly="readonly"
       @open-day="emit('openDay', $event)"
     />
     <ProgressCard
@@ -246,7 +250,7 @@ const taskSummary = (goal: Goal, date: Date) => {
     <div class="section-heading">
       <div>
         <span class="eyebrow">CHECKLIST</span>
-        <h2>Seu plano da semana</h2>
+        <h2>{{ readonly ? 'Plano da semana' : 'Seu plano da semana' }}</h2>
       </div>
       <div class="week-nav">
         <button aria-label="Semana anterior" @click="monday = addDays(monday, -7)">
@@ -308,8 +312,11 @@ const taskSummary = (goal: Goal, date: Date) => {
     <div v-if="!days.some((date) => planned(date).length)" class="empty-state">
       <Sparkles :size="32" aria-hidden="true" />
       <h3>Nenhuma meta nesta semana</h3>
-      <p>Crie uma meta para montar seu checklist semanal.</p>
-      <button class="primary-button" @click="emit('showGoals')">Ver minhas metas</button>
+      <p v-if="readonly">Não há metas compartilhadas previstas para esta semana.</p>
+      <template v-else>
+        <p>Crie uma meta para montar seu checklist semanal.</p>
+        <button class="primary-button" @click="emit('showGoals')">Ver minhas metas</button>
+      </template>
     </div>
     <div v-else class="days-grid">
       <article
@@ -374,7 +381,8 @@ const taskSummary = (goal: Goal, date: Date) => {
           class="day-edit-action"
           @click="emit('openDay', date)"
         >
-          <Pencil :size="18" aria-hidden="true" /> Editar dia
+          <template v-if="readonly"><Eye :size="18" aria-hidden="true" /> Ver dia</template>
+          <template v-else><Pencil :size="18" aria-hidden="true" /> Editar dia</template>
         </button>
       </article>
     </div>

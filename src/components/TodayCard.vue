@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Sun, Pencil } from '@lucide/vue'
+import { Eye, Sun, Pencil } from '@lucide/vue'
 import type { Completion, Goal, GoalDayDetail, GoalHistory } from '../types'
 import {
   goalForDate,
@@ -17,6 +17,8 @@ const props = defineProps<{
   completions: Completion[]
   history: GoalHistory[]
   dayDetails: GoalDayDetail[]
+  // Someone else's shared records: the button opens the day without editing.
+  readonly?: boolean
 }>()
 const emit = defineEmits<{ openDay: [date: Date] }>()
 const today = computed(() => currentDate())
@@ -95,7 +97,8 @@ const remaining = computed(() =>
       class="small-button"
       @click="emit('openDay', today)"
     >
-      <Pencil :size="18" aria-hidden="true" /> Registrar hoje
+      <template v-if="readonly"><Eye :size="18" aria-hidden="true" /> Ver hoje</template>
+      <template v-else><Pencil :size="18" aria-hidden="true" /> Registrar hoje</template>
     </button>
   </article>
 </template>

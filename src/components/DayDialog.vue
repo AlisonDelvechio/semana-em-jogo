@@ -48,6 +48,8 @@ const props = defineProps<{
   busy: boolean
   // Error reported by the app while saving.
   message: string
+  // Someone following this person's records (migration 012): view only, nothing is saved.
+  readonly?: boolean
 }>()
 const emit = defineEmits<{
   close: []
@@ -285,7 +287,7 @@ onUnmounted(() => trigger?.focus())
     >
       <div class="dialog-header">
         <div>
-          <span class="eyebrow">EDITAR DIA</span>
+          <span class="eyebrow">{{ readonly ? 'REGISTRO DO DIA' : 'EDITAR DIA' }}</span>
           <h2 id="day-dialog-title">
             {{
               capitalizeFirst(
@@ -316,250 +318,260 @@ onUnmounted(() => trigger?.focus())
       </div>
       <p v-if="!planned.length" class="dialog-empty">Nenhuma meta programada para este dia.</p>
       <form v-else @submit.prevent="submit">
-        <div v-for="goal in planned" :key="goal.id" class="day-goal">
-          <div class="day-goal-title">
-            <span class="goal-icon" :class="goal.category"
-              ><Utensils v-if="goal.category === 'alimentacao'" :size="19" /><Dumbbell
-                v-else-if="goal.category === 'treino'"
-                :size="19" /><ClipboardList v-else :size="19"
-            /></span>
-            <div>
-              <strong>{{ goal.title }}</strong
-              ><small>{{ categoryName(goal.category) }}</small>
-            </div>
-            <button
-              type="button"
-              class="text-button day-goal-edit"
-              :aria-expanded="Boolean(editingItems[goal.id])"
-              :aria-label="`${editingItems[goal.id] ? 'Fechar edição dos itens' : 'Editar itens'} de ${goal.title}`"
-              @click="editingItems[goal.id] = !editingItems[goal.id]"
-            >
-              <Check v-if="editingItems[goal.id]" :size="16" aria-hidden="true" /><ListChecks
-                v-else
-                :size="16"
-                aria-hidden="true"
-              />{{ editingItems[goal.id] ? 'Pronto' : 'Editar itens' }}
-            </button>
-          </div>
-          <details
-            v-if="goal.category === 'alimentacao' || draft(goal).options.length"
-            class="dialog-help"
-          >
-            <summary>Como funciona?</summary>
-            <p v-if="goal.category === 'alimentacao'">
-              Toque em <strong>No plano</strong>, <strong>Livre</strong> ou
-              <strong>Fora do plano</strong> para registrar cada refeição; toque de novo para
-              desmarcar. Seguir o plano ou usar uma refeição livre dentro do limite conta para
-              concluir o dia. As livres são opcionais: seguir a dieta sem usar nenhuma também
-              conclui a meta. O contador inclui as alterações ainda não salvas.
-            </p>
-            <p v-else>Marque todos os itens para concluir esta meta do dia.</p>
-            <p>
-              Em <strong>Editar itens</strong>, adicione, remova ou reordene itens só desta data.
-              Refeições <strong>opcionais</strong> só contam quando você as registra; sem registro,
-              não entram no percentual nem impedem a meta de ser concluída.
-            </p>
-          </details>
-          <template v-if="goal.category === 'alimentacao'">
-            <div class="free-meal-summary" role="status">
-              <span
-                >Refeições livres nesta semana:
-                <strong
-                  >{{ freeUsage(goal).used }} de {{ freeUsage(goal).limit }} permitidas</strong
-                >
-                <small v-if="freeUsage(goal).excess"
-                  >{{ freeUsage(goal).excess }} além do limite. As excedentes não contam para
-                  concluir a meta.</small
-                >
-                <small v-if="draft(goal).freeMealLimitOverride !== null"
-                  >Limite corrigido para esta data.</small
-                >
-                <small v-else-if="(goal.free_meals_per_week ?? 0) !== currentFreeMealLimit(goal)"
-                  >Este dia usa o limite histórico. A meta atual permite
-                  {{ currentFreeMealLimit(goal) }}; use “Corrigir limite deste dia” abaixo para
-                  ajustar.</small
-                >
-              </span>
+        <!-- A disabled fieldset turns every control inside it read-only at once. -->
+        <fieldset class="day-goals" :disabled="readonly">
+          <div v-for="goal in planned" :key="goal.id" class="day-goal">
+            <div class="day-goal-title">
+              <span class="goal-icon" :class="goal.category"
+                ><Utensils v-if="goal.category === 'alimentacao'" :size="19" /><Dumbbell
+                  v-else-if="goal.category === 'treino'"
+                  :size="19" /><ClipboardList v-else :size="19"
+              /></span>
+              <div>
+                <strong>{{ goal.title }}</strong
+                ><small>{{ categoryName(goal.category) }}</small>
+              </div>
+              <button
+                v-if="!readonly"
+                type="button"
+                class="text-button day-goal-edit"
+                :aria-expanded="Boolean(editingItems[goal.id])"
+                :aria-label="`${editingItems[goal.id] ? 'Fechar edição dos itens' : 'Editar itens'} de ${goal.title}`"
+                @click="editingItems[goal.id] = !editingItems[goal.id]"
+              >
+                <Check v-if="editingItems[goal.id]" :size="16" aria-hidden="true" /><ListChecks
+                  v-else
+                  :size="16"
+                  aria-hidden="true"
+                />{{ editingItems[goal.id] ? 'Pronto' : 'Editar itens' }}
+              </button>
             </div>
             <details
-              v-if="isPast || draft(goal).freeMealLimitOverride !== null"
-              class="day-limit-correction"
+              v-if="!readonly && (goal.category === 'alimentacao' || draft(goal).options.length)"
+              class="dialog-help"
             >
-              <summary>Corrigir limite deste dia</summary>
-              <p>
-                O limite histórico deste dia é {{ goal.free_meals_per_week ?? 0 }}. A meta atual
-                permite {{ currentFreeMealLimit(goal) }} por semana. Você pode corrigir o limite
-                considerado nesta data; a contagem continua incluindo as refeições livres da semana
-                inteira.
+              <summary>Como funciona?</summary>
+              <p v-if="goal.category === 'alimentacao'">
+                Toque em <strong>No plano</strong>, <strong>Livre</strong> ou
+                <strong>Fora do plano</strong> para registrar cada refeição; toque de novo para
+                desmarcar. Seguir o plano ou usar uma refeição livre dentro do limite conta para
+                concluir o dia. As livres são opcionais: seguir a dieta sem usar nenhuma também
+                conclui a meta. O contador inclui as alterações ainda não salvas.
               </p>
-              <button
-                v-if="draft(goal).freeMealLimitOverride !== currentFreeMealLimit(goal)"
-                type="button"
-                class="small-button use-current-limit"
-                @click="draft(goal).freeMealLimitOverride = currentFreeMealLimit(goal)"
-              >
-                Usar limite atual: {{ currentFreeMealLimit(goal) }}
-              </button>
-              <label
-                >Limite semanal considerado neste dia
-                <input
-                  type="number"
-                  min="0"
-                  max="84"
-                  step="1"
-                  required
-                  :value="draft(goal).freeMealLimitOverride ?? goal.free_meals_per_week ?? 0"
-                  @input="correctLimit(goal, $event)"
-                />
-              </label>
-              <button
-                v-if="draft(goal).freeMealLimitOverride !== null"
-                type="button"
-                class="text-button"
-                @click="draft(goal).freeMealLimitOverride = null"
-              >
-                Restaurar limite histórico
-              </button>
-              <p>Aplica somente a este dia ao salvar o registro.</p>
+              <p v-else>Marque todos os itens para concluir esta meta do dia.</p>
+              <p>
+                Em <strong>Editar itens</strong>, adicione, remova ou reordene itens só desta data.
+                Refeições <strong>opcionais</strong> só contam quando você as registra; sem
+                registro, não entram no percentual nem impedem a meta de ser concluída.
+              </p>
             </details>
-          </template>
-          <div
-            v-for="(option, index) in draft(goal).options"
-            :key="option.id"
-            :class="['meal-row', { 'food-row': goal.category === 'alimentacao' }]"
-          >
             <template v-if="goal.category === 'alimentacao'">
-              <span :id="`meal-${goal.id}-${option.id}`" class="meal-name"
-                >{{ option.label
-                }}<span v-if="option.optional" class="optional-tag">Opcional</span></span
+              <div class="free-meal-summary" role="status">
+                <span
+                  >Refeições livres nesta semana:
+                  <strong
+                    >{{ freeUsage(goal).used }} de {{ freeUsage(goal).limit }} permitidas</strong
+                  >
+                  <small v-if="freeUsage(goal).excess"
+                    >{{ freeUsage(goal).excess }} além do limite. As excedentes não contam para
+                    concluir a meta.</small
+                  >
+                  <small v-if="draft(goal).freeMealLimitOverride !== null"
+                    >Limite corrigido para esta data.</small
+                  >
+                  <small v-else-if="(goal.free_meals_per_week ?? 0) !== currentFreeMealLimit(goal)"
+                    >Este dia usa o limite histórico. A meta atual permite
+                    {{ currentFreeMealLimit(goal) }}; use “Corrigir limite deste dia” abaixo para
+                    ajustar.</small
+                  >
+                </span>
+              </div>
+              <details
+                v-if="!readonly && (isPast || draft(goal).freeMealLimitOverride !== null)"
+                class="day-limit-correction"
               >
-              <div
-                class="adherence-options"
-                role="group"
-                :aria-labelledby="`meal-${goal.id}-${option.id}`"
-              >
+                <summary>Corrigir limite deste dia</summary>
+                <p>
+                  O limite histórico deste dia é {{ goal.free_meals_per_week ?? 0 }}. A meta atual
+                  permite {{ currentFreeMealLimit(goal) }} por semana. Você pode corrigir o limite
+                  considerado nesta data; a contagem continua incluindo as refeições livres da
+                  semana inteira.
+                </p>
                 <button
-                  v-for="choice in adherenceChoices"
-                  :key="String(choice.value)"
+                  v-if="draft(goal).freeMealLimitOverride !== currentFreeMealLimit(goal)"
                   type="button"
-                  :class="['adherence-option', choice.tone]"
-                  :aria-pressed="isChosen(goal, option.id, choice.value)"
-                  @click="choose(goal, option.id, choice.value)"
+                  class="small-button use-current-limit"
+                  @click="draft(goal).freeMealLimitOverride = currentFreeMealLimit(goal)"
                 >
-                  <Check
-                    v-if="isChosen(goal, option.id, choice.value)"
-                    :size="16"
-                    aria-hidden="true"
-                  />{{ choice.label }}
+                  Usar limite atual: {{ currentFreeMealLimit(goal) }}
+                </button>
+                <label
+                  >Limite semanal considerado neste dia
+                  <input
+                    type="number"
+                    min="0"
+                    max="84"
+                    step="1"
+                    required
+                    :value="draft(goal).freeMealLimitOverride ?? goal.free_meals_per_week ?? 0"
+                    @input="correctLimit(goal, $event)"
+                  />
+                </label>
+                <button
+                  v-if="draft(goal).freeMealLimitOverride !== null"
+                  type="button"
+                  class="text-button"
+                  @click="draft(goal).freeMealLimitOverride = null"
+                >
+                  Restaurar limite histórico
+                </button>
+                <p>Aplica somente a este dia ao salvar o registro.</p>
+              </details>
+            </template>
+            <div
+              v-for="(option, index) in draft(goal).options"
+              :key="option.id"
+              :class="['meal-row', { 'food-row': goal.category === 'alimentacao' }]"
+            >
+              <template v-if="goal.category === 'alimentacao'">
+                <span :id="`meal-${goal.id}-${option.id}`" class="meal-name"
+                  >{{ option.label
+                  }}<span v-if="option.optional" class="optional-tag">Opcional</span></span
+                >
+                <div
+                  class="adherence-options"
+                  role="group"
+                  :aria-labelledby="`meal-${goal.id}-${option.id}`"
+                >
+                  <button
+                    v-for="choice in adherenceChoices"
+                    :key="String(choice.value)"
+                    type="button"
+                    :class="['adherence-option', choice.tone]"
+                    :aria-pressed="isChosen(goal, option.id, choice.value)"
+                    @click="choose(goal, option.id, choice.value)"
+                  >
+                    <Check
+                      v-if="isChosen(goal, option.id, choice.value)"
+                      :size="16"
+                      aria-hidden="true"
+                    />{{ choice.label }}
+                  </button>
+                </div>
+                <small v-if="isUnclassified(goal, option.id)" class="meal-legacy"
+                  >Registrada sem classificação. Escolha uma opção para atualizar.</small
+                >
+                <small v-if="freeMealExceeded(goal, option.id)" class="free-meal-warning"
+                  >Esta refeição excede o limite semanal e não conta para a meta.</small
+                >
+              </template>
+              <label v-else class="meal-check"
+                ><input v-model="draft(goal).items[option.id]!.checked" type="checkbox" />{{
+                  option.label
+                }}</label
+              >
+              <textarea
+                v-if="!readonly || draft(goal).items[option.id]!.description"
+                v-model="draft(goal).items[option.id]!.description"
+                class="meal-description"
+                rows="1"
+                maxlength="300"
+                :aria-label="
+                  goal.category === 'alimentacao'
+                    ? `O que você comeu em ${option.label}`
+                    : `Detalhes de ${option.label}`
+                "
+                :placeholder="
+                  goal.category === 'alimentacao'
+                    ? 'O que você comeu? (opcional)'
+                    : 'Detalhe opcional'
+                "
+                @input="resizeDescription($event.target as HTMLTextAreaElement)"
+              ></textarea>
+              <div v-if="editingItems[goal.id]" class="meal-item-tools">
+                <label v-if="goal.category === 'alimentacao'" class="option-optional"
+                  ><input
+                    type="checkbox"
+                    :checked="Boolean(option.optional)"
+                    :aria-label="`${option.label} é opcional neste dia`"
+                    @change="setOptional(option, $event)"
+                  />Opcional neste dia</label
+                >
+                <div class="meal-order-actions">
+                  <button
+                    type="button"
+                    :disabled="index === 0"
+                    :aria-label="`Subir ${option.label}`"
+                    @click="moveItem(goal, option.id, -1)"
+                  >
+                    <ArrowUp :size="18" /></button
+                  ><button
+                    type="button"
+                    :disabled="index === draft(goal).options.length - 1"
+                    :aria-label="`Descer ${option.label}`"
+                    @click="moveItem(goal, option.id, 1)"
+                  >
+                    <ArrowDown :size="18" />
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  class="meal-remove"
+                  :disabled="draft(goal).options.length === 1 && minimumItems(goal) === 1"
+                  :aria-label="`Remover ${option.label} deste dia`"
+                  @click="removeItem(goal, option.id)"
+                >
+                  <X :size="18" />
                 </button>
               </div>
-              <small v-if="isUnclassified(goal, option.id)" class="meal-legacy"
-                >Registrada sem classificação. Escolha uma opção para atualizar.</small
-              >
-              <small v-if="freeMealExceeded(goal, option.id)" class="free-meal-warning"
-                >Esta refeição excede o limite semanal e não conta para a meta.</small
-              >
-            </template>
-            <label v-else class="meal-check"
-              ><input v-model="draft(goal).items[option.id]!.checked" type="checkbox" />{{
-                option.label
+            </div>
+            <p
+              v-if="goal.category === 'alimentacao' && !draft(goal).trackAdherence && !readonly"
+              class="meal-hint"
+            >
+              Registro antigo sem avaliação de aderência. Classifique as refeições para atualizar
+              este dia.
+            </p>
+            <label
+              v-if="goal.category !== 'alimentacao' && !draft(goal).options.length"
+              class="meal-check completion-check"
+              ><input v-model="draft(goal).completed" type="checkbox" />{{
+                goal.goal_mode === 'weekly' ? 'Fiz esta atividade hoje' : 'Meta concluída'
               }}</label
             >
-            <textarea
-              v-model="draft(goal).items[option.id]!.description"
-              class="meal-description"
-              rows="1"
-              maxlength="300"
-              :aria-label="
-                goal.category === 'alimentacao'
-                  ? `O que você comeu em ${option.label}`
-                  : `Detalhes de ${option.label}`
-              "
-              :placeholder="
-                goal.category === 'alimentacao'
-                  ? 'O que você comeu? (opcional)'
-                  : 'Detalhe opcional'
-              "
-              @input="resizeDescription($event.target as HTMLTextAreaElement)"
-            ></textarea>
-            <div v-if="editingItems[goal.id]" class="meal-item-tools">
-              <label v-if="goal.category === 'alimentacao'" class="option-optional"
-                ><input
-                  type="checkbox"
-                  :checked="Boolean(option.optional)"
-                  :aria-label="`${option.label} é opcional neste dia`"
-                  @change="setOptional(option, $event)"
-                />Opcional neste dia</label
-              >
-              <div class="meal-order-actions">
-                <button
-                  type="button"
-                  :disabled="index === 0"
-                  :aria-label="`Subir ${option.label}`"
-                  @click="moveItem(goal, option.id, -1)"
-                >
-                  <ArrowUp :size="18" /></button
-                ><button
-                  type="button"
-                  :disabled="index === draft(goal).options.length - 1"
-                  :aria-label="`Descer ${option.label}`"
-                  @click="moveItem(goal, option.id, 1)"
-                >
-                  <ArrowDown :size="18" />
-                </button>
-              </div>
-              <button
-                type="button"
-                class="meal-remove"
-                :disabled="draft(goal).options.length === 1 && minimumItems(goal) === 1"
-                :aria-label="`Remover ${option.label} deste dia`"
-                @click="removeItem(goal, option.id)"
-              >
-                <X :size="18" />
+            <div v-if="editingItems[goal.id]" class="meal-add">
+              <input
+                v-model="newItems[goal.id]"
+                type="text"
+                maxlength="40"
+                :placeholder="
+                  goal.category === 'alimentacao'
+                    ? 'Outra refeição neste dia'
+                    : 'Novo item neste dia'
+                "
+                :aria-label="`Novo item de ${goal.title} neste dia`"
+                @keydown.enter.prevent="addItem(goal)"
+              /><button type="button" class="small-button" @click="addItem(goal)">
+                <Plus :size="18" /> Adicionar
               </button>
             </div>
+            <p v-if="goal.category === 'alimentacao'" class="meal-hint meal-progress" role="status">
+              {{ mealProgress(goal) }}% das refeições deste dia dentro do plano.
+            </p>
+            <label v-if="!readonly || draft(goal).note" class="day-note"
+              >Observação do dia (opcional)<textarea
+                v-model="draft(goal).note"
+                maxlength="500"
+                rows="2"
+                placeholder="Adicione um detalhe que queira lembrar"
+              ></textarea>
+            </label>
           </div>
-          <p
-            v-if="goal.category === 'alimentacao' && !draft(goal).trackAdherence"
-            class="meal-hint"
-          >
-            Registro antigo sem avaliação de aderência. Classifique as refeições para atualizar este
-            dia.
-          </p>
-          <label
-            v-if="goal.category !== 'alimentacao' && !draft(goal).options.length"
-            class="meal-check completion-check"
-            ><input v-model="draft(goal).completed" type="checkbox" />{{
-              goal.goal_mode === 'weekly' ? 'Fiz esta atividade hoje' : 'Meta concluída'
-            }}</label
-          >
-          <div v-if="editingItems[goal.id]" class="meal-add">
-            <input
-              v-model="newItems[goal.id]"
-              type="text"
-              maxlength="40"
-              :placeholder="
-                goal.category === 'alimentacao' ? 'Outra refeição neste dia' : 'Novo item neste dia'
-              "
-              :aria-label="`Novo item de ${goal.title} neste dia`"
-              @keydown.enter.prevent="addItem(goal)"
-            /><button type="button" class="small-button" @click="addItem(goal)">
-              <Plus :size="18" /> Adicionar
-            </button>
-          </div>
-          <p v-if="goal.category === 'alimentacao'" class="meal-hint meal-progress" role="status">
-            {{ mealProgress(goal) }}% das refeições deste dia dentro do plano.
-          </p>
-          <label class="day-note"
-            >Observação do dia (opcional)<textarea
-              v-model="draft(goal).note"
-              maxlength="500"
-              rows="2"
-              placeholder="Adicione um detalhe que queira lembrar"
-            ></textarea>
-          </label>
+        </fieldset>
+        <div v-if="readonly" class="dialog-actions">
+          <button type="button" class="primary-button" @click="emit('close')">Fechar</button>
         </div>
-        <div class="dialog-actions">
+        <div v-else class="dialog-actions">
           <button type="button" class="text-button" @click="emit('close')">Cancelar</button
           ><button type="submit" class="primary-button" :disabled="busy">
             {{ busy ? 'Salvando...' : 'Salvar dia' }}

@@ -120,10 +120,13 @@ async function readAll<T>(
   client: NonNullable<typeof supabase>,
   table: string,
   orderBy: string[],
+  userId: string,
 ): Promise<T[]> {
   const rows: T[] = []
   for (;;) {
-    let query = client.from(table).select('*', { count: 'exact' })
+    // Always filter by owner: with sharing (migration 012) the database also returns
+    // goals other people shared with this account, which must not mix with its own.
+    let query = client.from(table).select('*', { count: 'exact' }).eq('user_id', userId)
     for (const column of orderBy) query = query.order(column)
     const { data, error, count } = await query.range(rows.length, rows.length + PAGE_SIZE - 1)
     errorIfPresent(error)
@@ -134,15 +137,18 @@ async function readAll<T>(
   }
 }
 
-export async function loadData(): Promise<LocalData> {
+// Loads the signed-in person's records, or, with ownerId, what that person shared
+// with them (the database only returns the shared goals; see migration 012).
+export async function loadData(ownerId?: string): Promise<LocalData> {
   if (!supabase) return readLocal()
   const client = supabase
   return retryFutureJwtRead(async () => {
+    const userId = ownerId ?? (await currentUserId('Entre na sua conta para ver seus dados.'))
     const [goals, completions, history, dayDetails] = await Promise.all([
-      readAll<Goal>(client, 'goal_templates', ['created_at', 'id']),
-      readAll<Completion>(client, 'goal_completions', ['local_date', 'id']),
-      readAll<GoalHistory>(client, 'goal_history', ['goal_id', 'valid_until']),
-      readAll<GoalDayDetail>(client, 'goal_day_details', ['local_date', 'goal_id']),
+      readAll<Goal>(client, 'goal_templates', ['created_at', 'id'], userId),
+      readAll<Completion>(client, 'goal_completions', ['local_date', 'id'], userId),
+      readAll<GoalHistory>(client, 'goal_history', ['goal_id', 'valid_until'], userId),
+      readAll<GoalDayDetail>(client, 'goal_day_details', ['local_date', 'goal_id'], userId),
     ])
     return { goals, completions, history, dayDetails }
   })
@@ -549,4 +555,98 @@ export async function importGoalBackup(records: BackupRecord[]) {
   // Local mode writes once, so an invalid record cannot leave a partial import.
   if (!supabase) saveLocal(existing)
   return counts
+}
+
+// ===== Read-only sharing with a professional (migration 012) =====
+
+export type CareLink = {
+  id: string
+  owner_id: string
+  viewer_id: string
+  owner_name: string
+  viewer_name: string
+  created_at: string
+  goalIds: string[]
+}
+export type CareInvite = { id: string; goal_ids: string[]; expires_at: string; created_at: string }
+export type CareState = {
+  // People this account shares with, and people who share with this account.
+  sharing: CareLink[]
+  following: CareLink[]
+  invites: CareInvite[]
+}
+export type InvitePreview = { owner_name: string; goal_titles: string[]; expires_at: string }
+
+// The tables do not exist until migration 012 is applied; the feature then stays hidden.
+const isMissingTable = (error: ApiError) =>
+  error?.code === 'PGRST205' ||
+  error?.code === '42P01' ||
+  /could not find the table|does not exist/i.test(error?.message || '')
+
+export async function loadCare(): Promise<CareState | null> {
+  if (!supabase) return null
+  const userId = await currentUserId('Entre na sua conta.')
+  const [links, goals, invites] = await Promise.all([
+    supabase.from('care_links').select('*').order('created_at'),
+    supabase.from('care_link_goals').select('link_id, goal_id'),
+    supabase
+      .from('care_invites')
+      .select('id, goal_ids, expires_at, created_at')
+      .order('created_at'),
+  ])
+  if ([links.error, goals.error, invites.error].some((error) => isMissingTable(error))) return null
+  errorIfPresent(links.error)
+  errorIfPresent(goals.error)
+  errorIfPresent(invites.error)
+  const shared = (goals.data || []) as { link_id: string; goal_id: string }[]
+  const all = ((links.data || []) as Omit<CareLink, 'goalIds'>[]).map((link) => ({
+    ...link,
+    goalIds: shared.filter((entry) => entry.link_id === link.id).map((entry) => entry.goal_id),
+  }))
+  return {
+    sharing: all.filter((link) => link.owner_id === userId),
+    following: all.filter((link) => link.viewer_id === userId),
+    invites: ((invites.data || []) as CareInvite[]).filter(
+      (invite) => invite.expires_at > new Date().toISOString(),
+    ),
+  }
+}
+
+// Returns the secret token once; only its hash is stored.
+export async function createCareInvite(goalIds: string[]): Promise<string> {
+  const { data, error } = await supabase!.rpc('create_care_invite', { p_goal_ids: goalIds })
+  errorIfPresent(error)
+  return data as string
+}
+
+export async function previewCareInvite(token: string): Promise<InvitePreview> {
+  const { data, error } = await supabase!.rpc('preview_care_invite', { p_token: token })
+  errorIfPresent(error)
+  const row = (data as InvitePreview[] | null)?.[0]
+  if (!row) throw new Error('Convite inválido ou expirado. Peça um novo convite.')
+  return row
+}
+
+export async function acceptCareInvite(token: string): Promise<void> {
+  const { error } = await supabase!.rpc('accept_care_invite', { p_token: token })
+  errorIfPresent(error)
+}
+
+export async function setSharedGoal(link: CareLink, goalId: string, shared: boolean) {
+  const table = supabase!.from('care_link_goals')
+  const { error } = shared
+    ? await table.insert({ link_id: link.id, goal_id: goalId, owner_id: link.owner_id })
+    : await table.delete().eq('link_id', link.id).eq('goal_id', goalId)
+  errorIfPresent(error)
+}
+
+// Either side can end the link: the patient revokes, the professional stops following.
+export async function removeCareLink(linkId: string) {
+  const { error } = await supabase!.from('care_links').delete().eq('id', linkId)
+  errorIfPresent(error)
+}
+
+export async function cancelCareInvite(inviteId: string) {
+  const { error } = await supabase!.from('care_invites').delete().eq('id', inviteId)
+  errorIfPresent(error)
 }

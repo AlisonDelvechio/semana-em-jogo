@@ -7,6 +7,8 @@ import InlineAlert from '../components/InlineAlert.vue'
 
 // Shared with the app so a session error found at startup is shown here too.
 const message = defineModel<string>('message', { required: true })
+// Context shown above the form, e.g. when arriving through a sharing invite.
+defineProps<{ hint?: string }>()
 const mode = ref<'signin' | 'signup' | 'reset'>('signin')
 const email = ref(''),
   password = ref(''),
@@ -90,6 +92,7 @@ async function setMode(next: typeof mode.value) {
         Informe o email da sua conta. Enviaremos um link para você criar uma nova senha.
       </p>
       <p v-else>Seu progresso acompanha você em qualquer dispositivo.</p>
+      <InlineAlert v-if="hint" :message="hint" tone="info" />
       <label
         >Email<input
           ref="emailInput"
