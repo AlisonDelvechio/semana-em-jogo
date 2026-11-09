@@ -74,7 +74,10 @@ create policy "care invites select" on public.care_invites for select to authent
 create policy "care invites delete" on public.care_invites for delete to authenticated
   using ((select auth.uid()) = owner_id);
 
-revoke all on public.care_links, public.care_link_goals, public.care_invites from anon;
+-- Supabase grants every privilege on new tables to its API roles by default; RLS would
+-- still block the rest, but keep the grants to exactly what the app uses.
+revoke all on public.care_links, public.care_link_goals, public.care_invites
+  from anon, authenticated;
 grant select, delete on public.care_links to authenticated;
 grant select, insert, delete on public.care_link_goals to authenticated;
 grant select, delete on public.care_invites to authenticated;

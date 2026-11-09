@@ -18,7 +18,7 @@ Sem variáveis de ambiente, o app funciona em **modo local**: os dados ficam ape
 ## Ativar sincronização (Supabase)
 
 1. Crie um projeto no [Supabase](https://supabase.com/dashboard).
-2. No **SQL Editor**, cole e execute o conteúdo de cada arquivo de `supabase/migrations/`, em ordem numérica (`001` a `012`). Digitar o nome do arquivo no editor não executa a migração. Em um projeto existente, execute só as que faltam, **antes** de publicar a versão do app que depende delas.
+2. No **SQL Editor**, cole e execute o conteúdo de cada arquivo de `supabase/migrations/`, em ordem numérica (`001` a `013`). Digitar o nome do arquivo no editor não executa a migração. Em um projeto existente, execute só as que faltam, **antes** de publicar a versão do app que depende delas.
 3. Em **Authentication**, ative o provedor Email. Se a confirmação por email estiver ativa, confirme a conta pelo link recebido. Para o **Esqueci minha senha**, o endereço do site precisa estar em **Authentication → URL Configuration** (Site URL ou Redirect URLs); senão, o link do email leva para a Site URL. O texto do email de recuperação pode ser traduzido em **Authentication → Emails → Reset Password**.
 4. Copie `.env.example` para `.env.local` e preencha `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` com a URL e a chave pública (publishable/anon) do projeto. **Nunca** use a chave secret/service role no navegador.
 5. Reinicie `npm run dev`, crie uma conta e entre.
@@ -37,6 +37,7 @@ Sem variáveis de ambiente, o app funciona em **modo local**: os dados ficam ape
 | `010_atomic_writes.sql`             | Funções que gravam a edição da meta e o registro do dia em uma transação |
 | `011_day_conflicts.sql`             | Impede que um dispositivo sobrescreva um dia salvo por outro             |
 | `012_care_sharing.sql`              | Compartilhamento somente leitura com um profissional (nutricionista)     |
+| `013_private_sharing_helper.sql`    | Tira da API pública a função auxiliar das regras de compartilhamento     |
 
 Todas as migrações só acrescentam colunas, tabelas, funções ou gatilhos; nenhuma apaga ou reclassifica dados existentes.
 

@@ -71,7 +71,7 @@ beforeAll(async () => {
 }, 60_000)
 
 it('applies every migration in order', () => {
-  expect(Object.keys(migrations).length).toBeGreaterThanOrEqual(12)
+  expect(Object.keys(migrations).length).toBeGreaterThanOrEqual(13)
 })
 
 describe('save_day conflict check (011)', () => {
@@ -247,6 +247,14 @@ describe('read-only sharing with a professional (012)', () => {
       ]),
     )
     expect(await visibleGoals(nutri)).toEqual(['Dieta'])
+  })
+
+  it('keeps the policy helper out of the public API schema (013)', async () => {
+    const found = await db.query<{ schema: string }>(
+      `select n.nspname as schema from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+       where p.proname = 'is_shared_with_me'`,
+    )
+    expect(found.rows.map((row) => row.schema)).toEqual(['private'])
   })
 
   it('ends all access when the link is revoked', async () => {
