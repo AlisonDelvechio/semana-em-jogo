@@ -75,6 +75,11 @@ function applyWeekday(options: MealOption[]) {
   editingWeekday.value = null
 }
 
+// Stored only when true, so goals without optional meals keep their original shape.
+function setOptional(option: MealOption, event: Event) {
+  if ((event.target as HTMLInputElement).checked) option.optional = true
+  else delete option.optional
+}
 function toggleDay(day: number) {
   form.value.scheduled_weekdays = form.value.scheduled_weekdays.includes(day)
     ? form.value.scheduled_weekdays.filter((value) => value !== day)
@@ -205,13 +210,24 @@ function submit() {
         <legend>Refeições para acompanhar</legend>
         <p>
           Estas opções aparecem nos dias da meta. Você pode ajustá-las em um dia específico depois.
+          Refeições <strong>opcionais</strong>, como um lanche que nem sempre acontece, só contam
+          quando você as registra.
         </p>
         <div class="meal-option-list">
           <span
             v-for="(option, index) in form.meal_options"
             :key="option.id"
             class="meal-option-chip"
-            ><span class="option-item-label">{{ option.label }}</span
+            ><span class="option-item-label"
+              >{{ option.label
+              }}<label class="option-optional"
+                ><input
+                  type="checkbox"
+                  :checked="Boolean(option.optional)"
+                  :aria-label="`${option.label} é opcional`"
+                  @change="setOptional(option, $event)"
+                />Opcional</label
+              ></span
             ><span class="option-item-actions"
               ><button
                 type="button"

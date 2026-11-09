@@ -1633,3 +1633,52 @@ html[data-theme='dark'] {
     font-size: 0.8rem;
   }
 }
+
+/* Optional meals. */
+.option-optional {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  color: var(--ui-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.option-optional input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--ui-accent-text);
+}
+.option-item-label .option-optional,
+.weekday-editor-list li > span .option-optional {
+  display: flex;
+  width: fit-content;
+  margin-top: 2px;
+}
+/* Beats the generic `.goal-editor-dialog .goal-form label` style. */
+.goal-editor-dialog .goal-form .option-optional {
+  margin: 2px 0 0;
+  color: var(--ui-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.goal-editor-dialog .goal-form .option-optional input {
+  width: 18px;
+  height: 18px;
+}
+.meal-item-tools .option-optional {
+  margin-inline-end: auto;
+}
+.optional-tag {
+  display: inline-block;
+  margin-inline-start: 8px;
+  padding: 2px 8px;
+  border: 1px solid var(--ui-border);
+  border-radius: 999px;
+  color: var(--ui-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  vertical-align: middle;
+}

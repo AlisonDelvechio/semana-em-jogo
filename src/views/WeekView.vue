@@ -15,6 +15,7 @@ import {
 import {
   addDays,
   checklistOptionsForDate,
+  countsForDay,
   freeMealUsage,
   fullWeekdays,
   isGoalDone,
@@ -144,7 +145,10 @@ const detailFor = (goal: Goal, date: Date) =>
   props.dayDetails.find((entry) => entry.goal_id === goal.id && entry.local_date === localKey(date))
 const mealCount = (goal: Goal, date: Date) => {
   const detail = detailFor(goal, date)
-  const options = detail?.meal_options || mealOptionsForDate(goal, date)
+  // Optional meals that were not recorded stay out of the count.
+  const options = (detail?.meal_options || mealOptionsForDate(goal, date)).filter((option) =>
+    countsForDay(option, detail),
+  )
   return {
     checked: detail
       ? options.filter(({ id }) => detail.meals[id]?.checked).length

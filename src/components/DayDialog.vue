@@ -171,6 +171,11 @@ function removeItem(goal: Goal, id: string) {
   current.options = current.options.filter((option) => option.id !== id)
   delete current.items[id]
 }
+// Applies to this date only; the goal's own setting is changed in the goal editor.
+function setOptional(option: MealOption, event: Event) {
+  if ((event.target as HTMLInputElement).checked) option.optional = true
+  else delete option.optional
+}
 function moveItem(goal: Goal, id: string, offset: -1 | 1) {
   draft(goal).options = moveMeal(draft(goal).options, id, offset)
 }
@@ -238,7 +243,12 @@ function submit() {
         meals: food ? current.items : {},
         adherence_recorded: food && current.trackAdherence,
         free_meals_limit_override: food ? current.freeMealLimitOverride : null,
-        meal_options: food ? current.options : goal.meal_options || defaultMealOptions,
+        // Non-food goals still store a meal list (the database requires 1 to 12 items).
+        meal_options: food
+          ? current.options
+          : goal.meal_options?.length
+            ? goal.meal_options
+            : defaultMealOptions,
         checklist: food ? {} : current.items,
         checklist_options: food ? [] : current.options,
         note: current.note,
@@ -346,6 +356,8 @@ onUnmounted(() => trigger?.focus())
             <p v-else>Marque todos os itens para concluir esta meta do dia.</p>
             <p>
               Em <strong>Editar itens</strong>, adicione, remova ou reordene itens só desta data.
+              Refeições <strong>opcionais</strong> só contam quando você as registra; sem registro,
+              não entram no percentual nem impedem a meta de ser concluída.
             </p>
           </details>
           <template v-if="goal.category === 'alimentacao'">
@@ -417,7 +429,10 @@ onUnmounted(() => trigger?.focus())
             :class="['meal-row', { 'food-row': goal.category === 'alimentacao' }]"
           >
             <template v-if="goal.category === 'alimentacao'">
-              <span :id="`meal-${goal.id}-${option.id}`" class="meal-name">{{ option.label }}</span>
+              <span :id="`meal-${goal.id}-${option.id}`" class="meal-name"
+                >{{ option.label
+                }}<span v-if="option.optional" class="optional-tag">Opcional</span></span
+              >
               <div
                 class="adherence-options"
                 role="group"
@@ -468,6 +483,14 @@ onUnmounted(() => trigger?.focus())
               @input="resizeDescription($event.target as HTMLTextAreaElement)"
             ></textarea>
             <div v-if="editingItems[goal.id]" class="meal-item-tools">
+              <label v-if="goal.category === 'alimentacao'" class="option-optional"
+                ><input
+                  type="checkbox"
+                  :checked="Boolean(option.optional)"
+                  :aria-label="`${option.label} é opcional neste dia`"
+                  @change="setOptional(option, $event)"
+                />Opcional neste dia</label
+              >
               <div class="meal-order-actions">
                 <button
                   type="button"

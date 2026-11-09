@@ -2,6 +2,7 @@ import type { Completion, Goal, GoalDayDetail, GoalHistory } from '../types'
 import {
   addDays,
   checklistOptionsForDate,
+  countsForDay,
   fullWeekdays,
   goalForDate,
   isGoalDone,
@@ -111,25 +112,30 @@ export function createGoalReport(
       const itemEntries = food ? detail?.meals : detail?.checklist
       if (options.length) {
         for (const option of options) {
+          const skippedOptional = food && !countsForDay(option, detail)
           rows.push([
             ...common,
-            option.label,
+            option.optional ? `${option.label} (opcional)` : option.label,
             itemEntries?.[option.id]?.checked
               ? 'Sim'
-              : done && (!detail || (!food && !detail.checklist_options?.length))
+              : done &&
+                  !skippedOptional &&
+                  (!detail || (!food && !detail.checklist_options?.length))
                 ? 'Sim'
                 : 'Não',
-            food && detail?.adherence_recorded && itemEntries?.[option.id]?.checked
-              ? itemEntries[option.id]?.adherent === true
-                ? 'Sim'
-                : itemEntries[option.id]?.adherent === 'free'
-                  ? isMealAllowed(version, day, option.id, dayDetails)
-                    ? 'Refeição livre (permitida)'
-                    : 'Refeição livre (limite excedido)'
-                  : itemEntries[option.id]?.adherent === false
-                    ? 'Não'
-                    : 'Não informado'
-              : 'Não informado',
+            skippedOptional
+              ? 'Não realizada (opcional)'
+              : food && detail?.adherence_recorded && itemEntries?.[option.id]?.checked
+                ? itemEntries[option.id]?.adherent === true
+                  ? 'Sim'
+                  : itemEntries[option.id]?.adherent === 'free'
+                    ? isMealAllowed(version, day, option.id, dayDetails)
+                      ? 'Refeição livre (permitida)'
+                      : 'Refeição livre (limite excedido)'
+                    : itemEntries[option.id]?.adherent === false
+                      ? 'Não'
+                      : 'Não informado'
+                : 'Não informado',
             itemEntries?.[option.id]?.description || '',
             detail?.note || '',
             '',

@@ -21,6 +21,7 @@ Ao editar ou pausar uma meta, o plano anterior continua valendo até o dia anter
 A criação e a edição abrem em um modal, com cabeçalho e ações visíveis durante a rolagem. **Cancelar** descarta o rascunho. Editar uma meta existente pede confirmação, porque a nova configuração vale a partir de hoje.
 
 - **Alimentação:** café da manhã, almoço, lanche da tarde e jantar aparecem por padrão e podem ser removidos, acrescentados ou reordenados (até 12, com nomes de até 40 caracteres).
+- **Refeições opcionais:** marque **Opcional** em uma refeição que nem sempre acontece, como um lanche. Sem registro, ela não entra no percentual nem impede a meta de ser concluída; registrada, conta como as outras. A marcação vale a partir dos próximos dias. Para um dia já registrado, use **Editar itens → Opcional neste dia**. No relatório, uma opcional não feita aparece como "Não realizada (opcional)".
 - **Treino e Outro:** checklist opcional, sem itens predefinidos. Sem itens, a meta usa um check simples. Com itens, todos precisam ser marcados para concluir o dia.
 - **Adicionar itens:** o botão **Adicionar refeição** ou **Adicionar item** abre o campo; Enter adiciona e mantém o campo aberto para o próximo, Escape fecha só o campo.
 - **Por dia da semana:** em metas de dias fixos, cada dia pode ter sua própria lista. A personalização abre em um modal; **Aplicar opções** leva a lista para o rascunho, que só é gravado ao salvar a meta. **Usar padrão** volta à lista geral.
@@ -70,6 +71,7 @@ O calendário mostra o progresso até hoje e o total planejado no mês. Círculo
 ## Como o progresso é calculado
 
 - Refeições contam individualmente: quatro dentro do plano e uma fora resultam em 80%. Livres dentro do limite contam como certas; excedentes, fora do plano e pendentes não somam acertos.
+- Refeições opcionais sem registro ficam fora da conta (nem acerto, nem pendência).
 - O denominador inclui as refeições previstas ou a lista salva para a data, inclusive as adicionadas no dia. Dias com quantidades diferentes são ponderados pela quantidade de refeições.
 - Nas demais categorias, cada atividade e cada ida de meta semanal contam como uma unidade.
 - "Até hoje" não inclui dias futuros; o plano completo inclui a semana ou o mês inteiro.
@@ -83,6 +85,12 @@ Em **Minhas metas → Relatórios e backups**, escolha tudo, um mês ou um inter
 - **Restaurar:** em **Selecionar arquivo CSV**, escolha um CSV exportado pelo app, confira as metas reconhecidas e clique em **Importar registros**. O arquivo inteiro é validado antes; só metas e registros ausentes são adicionados, sem sobrescrever dados atuais, e uma segunda importação não cria duplicatas. Ao restaurar o backup em outra conta cujas metas ainda existem, cada meta recebe um ID novo e estável derivado do original.
 - Quando o intervalo começa no meio da semana, a coluna técnica inclui também os registros alimentares desde a segunda-feira anterior, para preservar o uso do limite de refeições livres na restauração.
 - CSVs antigos sem a coluna técnica continuam legíveis como relatório, mas não podem ser restaurados. A importação aceita tanto o formato antigo de 14 colunas (com pontos) quanto o atual de 12.
+
+## Conta e acesso
+
+- **Esqueci minha senha:** na tela de entrada, informe o email e o app envia um link de recuperação. A resposta é a mesma exista ou não uma conta com aquele email. Ao abrir o link, o app pede a nova senha antes de mostrar o painel; **Agora não** entra sem trocar.
+- Um link expirado ou já usado mostra um aviso para pedir outro.
+- Mensagens de erro do Supabase mais comuns aparecem em português (senha incorreta, email não confirmado, muitas tentativas, link expirado).
 
 ## Dados e sincronização
 

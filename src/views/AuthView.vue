@@ -1,17 +1,30 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { Sparkles } from '@lucide/vue'
+import { authErrorMessage } from '../lib/auth-messages'
 import { supabase } from '../lib/data'
 import InlineAlert from '../components/InlineAlert.vue'
 
 // Shared with the app so a session error found at startup is shown here too.
 const message = defineModel<string>('message', { required: true })
+const mode = ref<'signin' | 'signup' | 'reset'>('signin')
 const email = ref(''),
   password = ref(''),
-  signUp = ref(false),
   busy = ref(false),
-  // The only non-error message here is the email confirmation hint.
+  // Confirmation hints are information, everything else is an error.
   info = ref(false)
+const emailInput = ref<HTMLInputElement | null>(null)
+
+const titles = {
+  signin: 'Boas-vindas de volta',
+  signup: 'Crie sua conta',
+  reset: 'Recuperar senha',
+}
+const submitLabel = computed(() =>
+  busy.value
+    ? 'Aguarde...'
+    : { signin: 'Entrar', signup: 'Criar conta', reset: 'Enviar link' }[mode.value],
+)
 
 async function submit() {
   if (!supabase) return
@@ -19,7 +32,16 @@ async function submit() {
   message.value = ''
   info.value = false
   try {
-    if (signUp.value) {
+    if (mode.value === 'reset') {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.value, {
+        redirectTo: `${window.location.origin}/`,
+      })
+      if (error) throw error
+      // Same answer whether or not the account exists, so emails cannot be probed.
+      message.value =
+        'Se houver uma conta com este email, enviamos um link para criar uma nova senha. Confira também a caixa de spam.'
+      info.value = true
+    } else if (mode.value === 'signup') {
       const { data, error } = await supabase.auth.signUp({
         email: email.value,
         password: password.value,
@@ -37,14 +59,16 @@ async function submit() {
       if (error) throw error
     }
   } catch (error) {
-    message.value = error instanceof Error ? error.message : 'Algo deu errado. Tente novamente.'
+    message.value = authErrorMessage(error)
   } finally {
     busy.value = false
   }
 }
-function switchMode() {
-  signUp.value = !signUp.value
+async function setMode(next: typeof mode.value) {
+  mode.value = next
   message.value = ''
+  await nextTick()
+  emailInput.value?.focus()
 }
 </script>
 
@@ -61,27 +85,48 @@ function switchMode() {
     </div>
     <form class="auth-card" @submit.prevent="submit">
       <span class="eyebrow">COMECE POR AQUI</span>
-      <h2>{{ signUp ? 'Crie sua conta' : 'Boas-vindas de volta' }}</h2>
-      <p>Seu progresso acompanha você em qualquer dispositivo.</p>
+      <h2>{{ titles[mode] }}</h2>
+      <p v-if="mode === 'reset'">
+        Informe o email da sua conta. Enviaremos um link para você criar uma nova senha.
+      </p>
+      <p v-else>Seu progresso acompanha você em qualquer dispositivo.</p>
       <label
         >Email<input
+          ref="emailInput"
           v-model="email"
           type="email"
           autocomplete="email"
           required
-          placeholder="voce@exemplo.com" /></label
-      ><label
+          placeholder="voce@exemplo.com"
+      /></label>
+      <label v-if="mode !== 'reset'"
         >Senha<input
           v-model="password"
           type="password"
-          :autocomplete="signUp ? 'new-password' : 'current-password'"
+          :autocomplete="mode === 'signup' ? 'new-password' : 'current-password'"
           minlength="6"
           required
-          placeholder="No mínimo 6 caracteres" /></label
-      ><button class="primary-button" :disabled="busy">
-        {{ busy ? 'Aguarde...' : signUp ? 'Criar conta' : 'Entrar' }}</button
-      ><button type="button" class="auth-switch" @click="switchMode">
-        {{ signUp ? 'Já tem conta? Entrar' : 'Ainda não tem conta? Criar conta' }}
+          placeholder="No mínimo 6 caracteres"
+      /></label>
+      <button
+        v-if="mode === 'signin'"
+        type="button"
+        class="auth-switch auth-forgot"
+        @click="setMode('reset')"
+      >
+        Esqueci minha senha
+      </button>
+      <button class="primary-button" :disabled="busy">{{ submitLabel }}</button>
+      <button v-if="mode === 'reset'" type="button" class="auth-switch" @click="setMode('signin')">
+        Voltar para entrar
+      </button>
+      <button
+        v-else
+        type="button"
+        class="auth-switch"
+        @click="setMode(mode === 'signup' ? 'signin' : 'signup')"
+      >
+        {{ mode === 'signup' ? 'Já tem conta? Entrar' : 'Ainda não tem conta? Criar conta' }}
       </button>
       <InlineAlert v-if="message" :message="message" :tone="info ? 'info' : 'error'" />
     </form>

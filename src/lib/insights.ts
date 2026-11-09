@@ -1,6 +1,7 @@
 import type { Completion, Goal, GoalDayDetail, GoalHistory } from '../types'
 import {
   addDays,
+  countsForDay,
   goalForDate,
   goalProgressCounts,
   isMealAllowed,
@@ -78,6 +79,8 @@ export function periodInsights(
       const detail = details.find((entry) => entry.goal_id === goal.id && entry.local_date === day)
       const legacyDone = !detail && counts.completed > 0
       for (const option of detail?.meal_options || mealOptionsForDate(goal, date)) {
+        // An optional meal that did not happen is not pending: it simply does not count.
+        if (!countsForDay(option, detail)) continue
         // The same stable option ID can have a different historical label. Keep both identities.
         const id = JSON.stringify([goal.id, option.id, option.label])
         if (!patterns.has(id))

@@ -14,10 +14,25 @@ const mocks = vi.hoisted(() => ({
     }
   >(),
   unsubscribe: vi.fn<() => void>(),
+  resetPassword: vi.fn<(email: string, options: unknown) => Promise<unknown>>(),
+  updateUser: vi.fn<(attributes: unknown) => Promise<unknown>>(),
+  signIn: vi.fn<(credentials: unknown) => Promise<unknown>>(),
+  authRedirect: { recovery: false, error: '' },
 }))
 vi.mock('./lib/data', () => ({
   cloudEnabled: true,
-  supabase: { auth: { getSession: mocks.getSession, onAuthStateChange: mocks.subscribe } },
+  get authRedirect() {
+    return mocks.authRedirect
+  },
+  supabase: {
+    auth: {
+      getSession: mocks.getSession,
+      onAuthStateChange: mocks.subscribe,
+      resetPasswordForEmail: mocks.resetPassword,
+      updateUser: mocks.updateUser,
+      signInWithPassword: mocks.signIn,
+    },
+  },
   loadData: mocks.load,
   createGoal: vi.fn<() => void>(),
   deleteGoal: vi.fn<() => void>(),
@@ -41,6 +56,10 @@ beforeEach(() => {
   vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
   mocks.load.mockReset()
   mocks.unsubscribe.mockClear()
+  mocks.resetPassword.mockReset().mockResolvedValue({ data: {}, error: null })
+  mocks.updateUser.mockReset().mockResolvedValue({ data: {}, error: null })
+  mocks.signIn.mockReset()
+  mocks.authRedirect = { recovery: false, error: '' }
   mocks.subscribe.mockImplementation((callback: typeof listener) => {
     listener = callback
     return { data: { subscription: { unsubscribe: mocks.unsubscribe } } }
@@ -129,6 +148,101 @@ it('clears visible data immediately when an auth event replaces the user', async
     })
     await flushPromises()
     expect(wrapper.text()).not.toContain('Private old goal')
+  } finally {
+    wrapper.unmount()
+  }
+})
+
+it('sends a recovery link without revealing whether the account exists', async () => {
+  mocks.getSession.mockResolvedValue({ data: { session: null }, error: null })
+  const wrapper = mount(TrackerApp)
+  try {
+    await flushPromises()
+    await wrapper.get('.auth-forgot').trigger('click')
+    expect(wrapper.get('.auth-card h2').text()).toBe('Recuperar senha')
+    expect(wrapper.find('input[type="password"]').exists()).toBe(false)
+    await wrapper.get('input[type="email"]').setValue('pessoa@exemplo.com')
+    await wrapper.get('.auth-card').trigger('submit')
+    await flushPromises()
+    expect(mocks.resetPassword).toHaveBeenCalledWith('pessoa@exemplo.com', {
+      redirectTo: `${window.location.origin}/`,
+    })
+    expect(wrapper.get('.inline-alert.info').text()).toContain('Se houver uma conta')
+  } finally {
+    wrapper.unmount()
+  }
+})
+
+it('translates sign-in errors from Supabase', async () => {
+  mocks.getSession.mockResolvedValue({ data: { session: null }, error: null })
+  mocks.signIn.mockResolvedValue({ error: new Error('Invalid login credentials') })
+  const wrapper = mount(TrackerApp)
+  try {
+    await flushPromises()
+    await wrapper.get('input[type="email"]').setValue('pessoa@exemplo.com')
+    await wrapper.get('input[type="password"]').setValue('senha-errada')
+    await wrapper.get('.auth-card').trigger('submit')
+    await flushPromises()
+    expect(wrapper.get('.inline-alert').text()).toContain('Email ou senha incorretos.')
+  } finally {
+    wrapper.unmount()
+  }
+})
+
+it('asks for a new password after the recovery link and then opens the app', async () => {
+  mocks.authRedirect = { recovery: true, error: '' }
+  mocks.getSession.mockResolvedValue({ data: { session }, error: null })
+  mocks.load.mockResolvedValue({ goals: [], completions: [], history: [], dayDetails: [] })
+  const wrapper = mount(TrackerApp)
+  try {
+    await flushPromises()
+    expect(wrapper.get('.auth-card h2').text()).toBe('Criar nova senha')
+    expect(wrapper.find('.dashboard').exists()).toBe(false)
+    expect(wrapper.find('.mobile-nav').exists()).toBe(false)
+    const [first, second] = wrapper.findAll('input[type="password"]')
+    await first!.setValue('nova-senha')
+    await second!.setValue('outra-senha')
+    await wrapper.get('.auth-card').trigger('submit')
+    expect(wrapper.get('.inline-alert').text()).toContain('não coincidem')
+    expect(mocks.updateUser).not.toHaveBeenCalled()
+    await second!.setValue('nova-senha')
+    await wrapper.get('.auth-card').trigger('submit')
+    await flushPromises()
+    expect(mocks.updateUser).toHaveBeenCalledWith({ password: 'nova-senha' })
+    expect(wrapper.find('.dashboard').exists()).toBe(true)
+    expect(wrapper.get('.app-notice').text()).toContain('Senha alterada')
+  } finally {
+    wrapper.unmount()
+  }
+})
+
+it('also reacts to the PASSWORD_RECOVERY event from Supabase', async () => {
+  mocks.getSession.mockResolvedValue({ data: { session }, error: null })
+  mocks.load.mockResolvedValue({ goals: [], completions: [], history: [], dayDetails: [] })
+  const wrapper = mount(TrackerApp)
+  try {
+    await flushPromises()
+    expect(wrapper.find('.dashboard').exists()).toBe(true)
+    listener('PASSWORD_RECOVERY', session)
+    await flushPromises()
+    expect(wrapper.get('.auth-card h2').text()).toBe('Criar nova senha')
+    await wrapper
+      .findAll('.auth-switch')
+      .find((button) => button.text() === 'Agora não')!
+      .trigger('click')
+    expect(wrapper.find('.dashboard').exists()).toBe(true)
+  } finally {
+    wrapper.unmount()
+  }
+})
+
+it('explains an expired recovery link', async () => {
+  mocks.authRedirect = { recovery: false, error: 'Email link is invalid or has expired' }
+  mocks.getSession.mockResolvedValue({ data: { session: null }, error: null })
+  const wrapper = mount(TrackerApp)
+  try {
+    await flushPromises()
+    expect(wrapper.get('.inline-alert').text()).toContain('O link expirou ou já foi usado')
   } finally {
     wrapper.unmount()
   }
