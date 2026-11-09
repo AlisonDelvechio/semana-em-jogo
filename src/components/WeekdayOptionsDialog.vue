@@ -28,6 +28,10 @@ function add() {
 function remove(id: string) {
   if (draft.value.length > minimum) draft.value = draft.value.filter((option) => option.id !== id)
 }
+function setOptional(option: MealOption, event: Event) {
+  if ((event.target as HTMLInputElement).checked) option.optional = true
+  else delete option.optional
+}
 function move(id: string, offset: -1 | 1) {
   draft.value = moveMeal(draft.value, id, offset)
 }
@@ -73,7 +77,17 @@ onUnmounted(() => trigger?.focus())
       </p>
       <ol class="weekday-editor-list">
         <li v-for="(option, index) in draft" :key="option.id">
-          <span>{{ option.label }}</span>
+          <span
+            >{{ option.label
+            }}<label v-if="category === 'alimentacao'" class="option-optional"
+              ><input
+                type="checkbox"
+                :checked="Boolean(option.optional)"
+                :aria-label="`${option.label} é opcional`"
+                @change="setOptional(option, $event)"
+              />Opcional</label
+            ></span
+          >
           <div class="meal-order-actions">
             <button
               type="button"

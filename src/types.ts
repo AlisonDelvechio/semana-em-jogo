@@ -29,6 +29,9 @@ export interface Completion {
 export interface MealOption {
   id: string
   label: string
+  // Meals only: counts toward progress and completion only when recorded
+  // (e.g. an afternoon snack that may or may not happen).
+  optional?: boolean
 }
 export const defaultMealOptions: MealOption[] = [
   { id: 'cafe', label: 'Café da manhã' },

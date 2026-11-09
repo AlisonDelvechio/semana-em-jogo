@@ -14,6 +14,19 @@ import { localKey } from './dates'
 import { retryFutureJwtRead } from './auth-retry'
 import type { BackupRecord } from './report'
 
+// Read before the Supabase client is created: it consumes the URL fragment of an email
+// link and may fire PASSWORD_RECOVERY before the app has subscribed to auth events.
+function readAuthRedirect() {
+  if (typeof window === 'undefined') return { recovery: false, error: '' }
+  const params = new URLSearchParams(window.location.hash.slice(1))
+  const query = new URLSearchParams(window.location.search)
+  return {
+    recovery: params.get('type') === 'recovery',
+    error: params.get('error_description') || query.get('error_description') || '',
+  }
+}
+export const authRedirect = readAuthRedirect()
+
 const url = import.meta.env.VITE_SUPABASE_URL
 const key = import.meta.env.VITE_SUPABASE_ANON_KEY
 export const cloudEnabled = Boolean(url && key)
@@ -264,7 +277,11 @@ function normalizeDayDetail(detail: DayDetailInput): DayDetailInput {
   const override = detail.free_meals_limit_override
   if (override != null && (!Number.isInteger(override) || override < 0 || override > 84))
     throw new Error('Escolha de 0 a 84 refeições livres para corrigir este dia.')
-  const meal_options = detail.meal_options.map(({ id, label }) => ({ id, label: label.trim() }))
+  const meal_options = detail.meal_options.map(({ id, label, optional }) => ({
+    id,
+    label: label.trim(),
+    ...(optional ? { optional: true } : {}),
+  }))
   const checklist_options = (detail.checklist_options || []).map(({ id, label }) => ({
     id,
     label: label.trim(),

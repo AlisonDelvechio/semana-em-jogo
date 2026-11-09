@@ -4,6 +4,7 @@ import {
   type Goal,
   type GoalDayDetail,
   type GoalHistory,
+  type MealOption,
 } from '../types'
 
 export const weekdays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
@@ -115,6 +116,10 @@ function freeMealLimit(goal: Goal, day: string, details: GoalDayDetail[]) {
   )
 }
 
+// Optional meals only count on a day when they were recorded; required meals always count.
+export const countsForDay = (option: MealOption, detail?: GoalDayDetail) =>
+  !option.optional || Boolean(detail?.meals[option.id]?.checked)
+
 export function isMealAllowed(goal: Goal, day: string, id: string, details: GoalDayDetail[]) {
   const detail = details.find((entry) => entry.goal_id === goal.id && entry.local_date === day)
   const meal = detail?.meals[id]
@@ -135,8 +140,10 @@ export function isGoalDone(
 ): boolean {
   const detail = dayDetails.find((entry) => entry.goal_id === goal.id && entry.local_date === day)
   if (goal.category === 'alimentacao' && detail) {
-    const options = detail.meal_options || goal.meal_options || []
-    return options.length > 0 && options.every(({ id }) => isMealAllowed(goal, day, id, dayDetails))
+    const counted = (detail.meal_options || goal.meal_options || []).filter((option) =>
+      countsForDay(option, detail),
+    )
+    return counted.length > 0 && counted.every(({ id }) => isMealAllowed(goal, day, id, dayDetails))
   }
   if (goal.category !== 'alimentacao' && detail?.checklist_options?.length) {
     return detail.checklist_options.every(({ id }) => detail.checklist?.[id]?.checked)
@@ -155,13 +162,15 @@ export function goalProgressCounts(
   const detail = details.find((entry) => entry.goal_id === goal.id && entry.local_date === day)
   if (goal.category !== 'alimentacao')
     return { total: 1, completed: isGoalDone(goal, day, completions, details) ? 1 : 0 }
-  const options = detail?.meal_options || mealOptionsForDate(goal, new Date(`${day}T12:00:00`))
+  const counted = (
+    detail?.meal_options || mealOptionsForDate(goal, new Date(`${day}T12:00:00`))
+  ).filter((option) => countsForDay(option, detail))
   const legacyDone = !detail && isGoalDone(goal, day, completions, details)
   return {
-    total: options.length,
+    total: counted.length,
     completed: legacyDone
-      ? options.length
-      : options.filter(({ id }) => isMealAllowed(goal, day, id, details)).length,
+      ? counted.length
+      : counted.filter(({ id }) => isMealAllowed(goal, day, id, details)).length,
   }
 }
 

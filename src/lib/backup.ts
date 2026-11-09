@@ -42,6 +42,7 @@ const options = (value: unknown, allowEmpty = true): MealOption[] => {
   const result = value.map((item) => ({
     id: text(object(item).id, 80),
     label: text(object(item).label, 40),
+    ...(object(item).optional === true ? { optional: true } : {}),
   }))
   if (
     new Set(result.map((item) => item.id)).size !== result.length ||
