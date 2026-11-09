@@ -7,6 +7,7 @@ import { currentDate } from '../lib/today'
 import DayDialog from '../components/DayDialog.vue'
 import InlineAlert from '../components/InlineAlert.vue'
 import MonthView from './MonthView.vue'
+import SummaryView from './SummaryView.vue'
 import WeekView from './WeekView.vue'
 import type { Completion, Goal, GoalDayDetail, GoalHistory } from '../types'
 import type { AskConfirmation } from '../lib/confirm'
@@ -63,7 +64,7 @@ watch(
   { immediate: true },
 )
 
-const view = ref<'week' | 'month'>('week')
+const view = ref<'week' | 'month' | 'summary'>('week')
 const monday = ref(mondayOf(currentDate()))
 const selectedWeekDay = ref(localKey(currentDate()))
 watch(
@@ -163,7 +164,10 @@ const formatDate = (iso: string) => new Date(iso).toLocaleDateString('pt-BR')
       >
       <div class="insights-period" role="group" aria-label="Visualização">
         <button type="button" :aria-pressed="view === 'week'" @click="view = 'week'">Semana</button
-        ><button type="button" :aria-pressed="view === 'month'" @click="view = 'month'">Mês</button>
+        ><button type="button" :aria-pressed="view === 'month'" @click="view = 'month'">Mês</button
+        ><button type="button" :aria-pressed="view === 'summary'" @click="view = 'summary'">
+          Resumo
+        </button>
       </div>
       <button type="button" class="text-button sharing-revoke" @click="stopFollowing(patient)">
         <UserRoundX :size="18" aria-hidden="true" /> Parar de acompanhar
@@ -185,6 +189,14 @@ const formatDate = (iso: string) => new Date(iso).toLocaleDateString('pt-BR')
         @open-day="selectedDay = $event"
         @current-week="goToCurrentWeek"
         @overlay-change="detailOverlay = $event"
+      />
+      <SummaryView
+        v-else-if="view === 'summary'"
+        :patient-name="patient.owner_name || 'Paciente'"
+        :goals="records.goals"
+        :completions="records.completions"
+        :history="records.history"
+        :day-details="records.dayDetails"
       />
       <MonthView
         v-else

@@ -279,6 +279,38 @@ async function handlePendingInvite() {
 const showPatients = computed(
   () => Boolean(care.value?.following.length) || tab.value === 'patients',
 )
+// Someone who only follows other people and has no goals of their own sees just the
+// Pacientes area. "Quero registrar minhas próprias metas" brings the rest back; the
+// choice is a per-browser convenience, and creating a goal brings it back anyway.
+const OWN_GOALS_KEY = 'semana-em-jogo-metas-proprias'
+const ownGoalsWanted = ref(
+  (() => {
+    try {
+      return localStorage.getItem(OWN_GOALS_KEY) === '1'
+    } catch {
+      return false
+    }
+  })(),
+)
+const professionalOnly = computed(
+  () =>
+    !loading.value &&
+    Boolean(care.value?.following.length) &&
+    !goals.value.length &&
+    !ownGoalsWanted.value,
+)
+watch(professionalOnly, (only) => {
+  if (only) tab.value = 'patients'
+})
+function useOwnGoals() {
+  ownGoalsWanted.value = true
+  try {
+    localStorage.setItem(OWN_GOALS_KEY, '1')
+  } catch {
+    // Still applies for this visit.
+  }
+  tab.value = 'week'
+}
 
 // Another device or tab may have saved records while this one was in the background.
 // Reload them when the page is shown again so a later save does not overwrite them
@@ -520,33 +552,36 @@ onUnmounted(() => {
       </div>
     </header>
     <nav
-      v-if="(!cloudEnabled || session) && !recovering"
+      v-if="(!cloudEnabled || session) && !recovering && !professionalOnly"
       class="mobile-nav"
       :inert="hasOverlay"
       aria-label="Navegação principal"
     >
+      <template v-if="!professionalOnly">
+        <button
+          type="button"
+          :class="{ selected: tab === 'week' }"
+          :aria-current="tab === 'week' ? 'page' : undefined"
+          @click="tab = 'week'"
+        >
+          <ClipboardList :size="20" aria-hidden="true" /> <span>Semana</span></button
+        ><button
+          type="button"
+          :class="{ selected: tab === 'month' }"
+          :aria-current="tab === 'month' ? 'page' : undefined"
+          @click="tab = 'month'"
+        >
+          <CalendarDays :size="19" /> <span>Mês</span></button
+        ><button
+          type="button"
+          :class="{ selected: tab === 'goals' }"
+          :aria-current="tab === 'goals' ? 'page' : undefined"
+          @click="tab = 'goals'"
+        >
+          <Target :size="19" /> <span>Metas</span>
+        </button>
+      </template>
       <button
-        type="button"
-        :class="{ selected: tab === 'week' }"
-        :aria-current="tab === 'week' ? 'page' : undefined"
-        @click="tab = 'week'"
-      >
-        <ClipboardList :size="20" aria-hidden="true" /> <span>Semana</span></button
-      ><button
-        type="button"
-        :class="{ selected: tab === 'month' }"
-        :aria-current="tab === 'month' ? 'page' : undefined"
-        @click="tab = 'month'"
-      >
-        <CalendarDays :size="19" /> <span>Mês</span></button
-      ><button
-        type="button"
-        :class="{ selected: tab === 'goals' }"
-        :aria-current="tab === 'goals' ? 'page' : undefined"
-        @click="tab = 'goals'"
-      >
-        <Target :size="19" /> <span>Metas</span></button
-      ><button
         v-if="showPatients"
         type="button"
         :class="{ selected: tab === 'patients' }"
@@ -570,13 +605,15 @@ onUnmounted(() => {
     />
     <div v-else class="dashboard" :inert="hasOverlay">
       <aside class="sidebar">
-        <span class="eyebrow">MEU ESPAÇO</span
-        ><button :class="['nav-button', { selected: tab === 'week' }]" @click="tab = 'week'">
-          <ClipboardList :size="20" aria-hidden="true" /> Minha semana</button
-        ><button :class="['nav-button', { selected: tab === 'month' }]" @click="tab = 'month'">
-          <CalendarDays :size="18" aria-hidden="true" /> Calendário</button
-        ><button :class="['nav-button', { selected: tab === 'goals' }]" @click="tab = 'goals'">
-          <Target :size="18" aria-hidden="true" /> Minhas metas</button
+        <span class="eyebrow">MEU ESPAÇO</span>
+        <template v-if="!professionalOnly"
+          ><button :class="['nav-button', { selected: tab === 'week' }]" @click="tab = 'week'">
+            <ClipboardList :size="20" aria-hidden="true" /> Minha semana</button
+          ><button :class="['nav-button', { selected: tab === 'month' }]" @click="tab = 'month'">
+            <CalendarDays :size="18" aria-hidden="true" /> Calendário</button
+          ><button :class="['nav-button', { selected: tab === 'goals' }]" @click="tab = 'goals'">
+            <Target :size="18" aria-hidden="true" /> Minhas metas
+          </button></template
         ><button
           v-if="showPatients"
           :class="['nav-button', { selected: tab === 'patients' }]"
@@ -621,6 +658,14 @@ onUnmounted(() => {
           @changed="refreshCare"
           @overlay-change="detailOverlay = $event"
         />
+        <button
+          v-if="tab === 'patients' && professionalOnly"
+          type="button"
+          class="text-button own-goals-link"
+          @click="useOwnGoals"
+        >
+          Quero registrar minhas próprias metas
+        </button>
         <GoalsView
           v-else
           :care="care"

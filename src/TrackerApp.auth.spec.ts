@@ -308,3 +308,33 @@ it('keeps the invite through sign-in and explains why', async () => {
     wrapper.unmount()
   }
 })
+
+it('shows only Pacientes to someone who follows people and has no goals', async () => {
+  const following = {
+    id: 'link',
+    owner_id: 'patient',
+    viewer_id: 'u',
+    owner_name: 'paciente@exemplo.com',
+    viewer_name: 'user@example.test',
+    created_at: '2026-11-09T12:00:00Z',
+    goalIds: ['diet'],
+  }
+  localStorage.removeItem('semana-em-jogo-metas-proprias')
+  mocks.getSession.mockResolvedValue({ data: { session }, error: null })
+  mocks.load.mockResolvedValue({ goals: [], completions: [], history: [], dayDetails: [] })
+  mocks.loadCare.mockResolvedValue({ sharing: [], following: [following], invites: [] })
+  const wrapper = mount(TrackerApp)
+  try {
+    await flushPromises()
+    expect(wrapper.findAll('.sidebar .nav-button').map((button) => button.text())).toEqual([
+      'Pacientes',
+    ])
+    expect(wrapper.find('.mobile-nav').exists()).toBe(false)
+    await wrapper.get('.own-goals-link').trigger('click')
+    expect(wrapper.findAll('.sidebar .nav-button')).toHaveLength(4)
+    expect(localStorage.getItem('semana-em-jogo-metas-proprias')).toBe('1')
+  } finally {
+    wrapper.unmount()
+    localStorage.removeItem('semana-em-jogo-metas-proprias')
+  }
+})

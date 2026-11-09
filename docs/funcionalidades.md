@@ -100,6 +100,14 @@ Para que sua nutricionista (ou outro profissional) acompanhe seus registros. Req
 
 - Abra o link do convite com sua conta (ou crie uma; o convite é mantido durante o cadastro e o login). O app mostra quem está compartilhando e quais metas antes de você aceitar.
 - A aba **Pacientes** lista quem compartilha com você. Em cada pessoa, as telas de semana e mês funcionam como as suas, em **modo leitura**: dá para ver refeições, classificações, descrições e observações, mas nada pode ser alterado. Quem não tem metas próprias abre o app direto em Pacientes.
+- **Resumo** (ao lado de Semana e Mês) reúne o que interessa na consulta, para as últimas 4 ou 8 semanas, este mês ou o mês anterior:
+  - aderência no período e a diferença em relação ao período anterior de mesmo tamanho (sem comparação quando o período anterior não tem registros);
+  - gráfico de aderência por semana, com tabela;
+  - refeições que mais escapam do plano, em percentual das refeições classificadas;
+  - lista das refeições fora do plano e das livres além do limite, com o que foi comido e a observação do dia;
+  - refeições livres usadas por semana e dias sem nenhum registro;
+  - **Salvar PDF** com o mesmo conteúdo.
+- Quem só acompanha pacientes e não tem metas próprias vê apenas a área **Pacientes**. **Quero registrar minhas próprias metas** mostra as outras abas (a escolha fica salva no navegador); criar uma meta também as mostra.
 - **Parar de acompanhar** encerra o acesso pelo lado do profissional.
 
 **Segurança**: a proteção está no banco de dados, não só na tela. As regras de acesso deixam o profissional apenas **ler** as metas compartilhadas e seus registros; gravar, editar e apagar continuam exclusivos do dono. Os testes executam essas regras num Postgres real.
